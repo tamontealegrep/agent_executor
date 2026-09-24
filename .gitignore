@@ -1,0 +1,18 @@
+__pycache__/
+backups/
+.env
+.venv/
+.pytest_cache
+*.pyc
+compiled_agents/*/sessions.db*
+test_runs/
+
+# AI-development governance docs (from templates/) — accumulate real
+# project/business decisions and context over time, never committed.
+/CLAUDE.md
+/DESIGN_PATTERNS.md
+/EXPERTS.md
+/FRAMEWORK.md
+/SPEC.md
+/STATUS.yaml
+/TESTING.md

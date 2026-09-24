@@ -1,0 +1,45 @@
+tool_contracts:
+  - name: tool_name
+    description: "Descripción autorizada de la herramienta. Explica qué resuelve y qué parte del flujo controla."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: indica exactamente cuándo esta herramienta debe ejecutarse dentro del flujo."
+      - "ABSOLUTE EXECUTION RULE: especifica qué no se puede afirmar, enrutar o asumir antes de ejecutar la herramienta y obtener una respuesta válida."
+      - "ARGUMENT RULE: documenta cada restricción importante de entrada, defaults, normalizaciones o literales permitidos."
+      - "SOURCE OF TRUTH RULE: deja claro qué campo o estructura de la respuesta manda la decisión del flujo."
+      - "POST-EXECUTION RULE: explica qué debe hacer el flujo según los resultados posibles, incluidos reintentos, escalamiento o continuidad."
+    inputs:
+      - name: input_name
+        required: true
+        description: "Descripción precisa del campo de entrada, formato esperado, ejemplos, defaults y reglas de captura."
+      - name: optional_input_name
+        required: false
+        description: "Descripción de un campo opcional, incluyendo cuándo se omite y cómo se interpreta."
+    outputs:
+      - name: success
+        required: true
+        description: "Booleano indicando si la herramienta se ejecutó correctamente desde el punto de vista técnico o funcional."
+      - name: primary_output
+        required: true
+        description: "Campo principal de salida que el flujo debe usar como resultado autorizado."
+      - name: errors
+        required: true
+        description: "Mensaje de error técnico o de validación. null en caso de éxito, salvo que la herramienta permita errores parciales con success == true."
+
+  - name: another_tool_name
+    description: "Segunda plantilla opcional para documentar otra herramienta del mismo agente usando el mismo formato."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: define el disparador obligatorio real de esta herramienta."
+      - "ARGUMENT RULE: agrega aquí diferencias de payload respecto de herramientas parecidas."
+      - "VALIDATION RULE: documenta rechazos explícitos, reasons posibles o condiciones de negocio particulares."
+      - "SOURCE OF TRUTH RULE: define qué parte de la respuesta autoriza la siguiente decisión del flujo."
+    inputs:
+      - name: input_name
+        required: true
+        description: "Campo requerido."
+    outputs:
+      - name: success
+        required: true
+        description: "Resultado técnico de la ejecución."
+      - name: errors
+        required: true
+        description: "Error técnico o de validación si corresponde."

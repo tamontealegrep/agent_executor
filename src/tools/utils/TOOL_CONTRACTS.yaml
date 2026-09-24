@@ -1,0 +1,173 @@
+tool_contracts:
+  - name: time_now
+    description: "Herramienta autorizada para obtener la fecha y hora actual en una zona horaria IANA dada. Debe llamarse cuando el flujo necesite una referencia temporal exacta para normalizar una fecha relativa o preparar una comparación dependiente del momento actual."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo necesite una fecha/hora actual exacta antes de derivar una fecha relativa o evaluar una regla dependiente del momento presente."
+      - "ABSOLUTE EXECUTION RULE: no asumas ni estimes la fecha actual por contexto de la conversación, ni reemplaces esta herramienta con la fecha implícita del modelo o razonamiento propio."
+      - "ARGUMENT RULE: timezone acepta un identificador IANA estándar. Si llega vacío, esta implementación usa 'UTC' por defecto; no fija Bogotá como constante."
+      - "SOURCE OF TRUTH RULE: captura el campo now y úsalo como única referencia temporal actual autorizada para esa zona horaria."
+      - "POST-EXECUTION RULE: si success es false, errors describe que la zona horaria no existe o no pudo resolverse; vuelve a capturar un identificador IANA válido antes de continuar."
+    inputs:
+      - name: timezone
+        required: false
+        description: "Zona horaria IANA a consultar. Ejemplos: America/Bogota, Europe/Madrid, UTC. Si llega vacía, el endpoint usa UTC."
+    outputs:
+      - name: success
+        required: true
+        description: "Valor booleano que indica si la consulta se ejecutó correctamente."
+      - name: timezone
+        required: true
+        description: "Eco de la zona horaria usada tras normalización."
+      - name: now
+        required: true
+        description: "Fecha y hora actual en la zona pedida, en formato ISO 8601 con offset. null si hubo un error."
+      - name: errors
+        required: true
+        description: "Mensaje de error si la consulta falló. null en caso de éxito."
+
+  - name: check_days_elapsed
+    description: "Herramienta autorizada para verificar si ya transcurrió un número configurable de días desde una fecha dada. Su resultado es la única fuente autorizada para decidir si ya pasó el umbral consultado."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando ya cuentes con una fecha normalizada y necesites verificar si han transcurrido suficientes días desde ella."
+      - "ARGUMENT RULE: normaliza date a formato YYYY-MM-DD o YYYY/MM/DD antes de llamar. Convierte cualquier fecha hablada por el usuario a uno de esos formatos antes de ejecutar la herramienta."
+      - "ARGUMENT RULE: days es configurable en esta implementación. Debe ser un entero mayor que 0. Si el flujo necesita exactamente un año, envía 365 explícitamente."
+      - "ABSOLUTE EXECUTION RULE: está prohibido asumir o estimar si ya pasó el umbral sin haber ejecutado esta herramienta."
+      - "SOURCE OF TRUTH RULE: usa elapsed como booleano primitivo y único veredicto autorizado. days_elapsed es el conteo exacto de días calendario, útil como contexto adicional."
+      - "BUSINESS-ERROR RULE: entradas inválidas de negocio no tumban técnicamente la herramienta. En esos casos esta implementación devuelve success == true, elapsed == null y errors explicando el problema."
+      - "POST-EXECUTION RULE: si la fecha aún no puede normalizarse con confianza o el umbral no es válido, vuelve a capturar el dato antes de reintentar en lugar de improvisar un resultado."
+    inputs:
+      - name: date
+        required: true
+        description: "Fecha a evaluar, en formato YYYY-MM-DD o YYYY/MM/DD. Ejemplo: 2024-06-15 o 2024/06/15."
+      - name: days
+        required: true
+        description: "Umbral de días a evaluar. Debe ser un entero mayor que 0. Ejemplos: 365, 500."
+    outputs:
+      - name: success
+        required: true
+        description: "Valor booleano que indica si la operación HTTP/endpoint se ejecutó correctamente. Puede seguir siendo true aunque los datos de negocio sean inválidos."
+      - name: elapsed
+        required: true
+        description: "Booleano que indica si ya transcurrió al menos 'days' días desde la fecha dada. null si date o days no eran válidos."
+      - name: days_elapsed
+        required: true
+        description: "Número exacto de días calendario transcurridos entre 'date' y hoy. null si la entrada no era válida."
+      - name: errors
+        required: true
+        description: "Mensaje de error si la fecha o el umbral no eran válidos, o null en caso de éxito."
+
+  - name: calculate_bmi
+    description: "Herramienta autorizada para calcular el Índice de Masa Corporal (IMC/BMI). Debe llamarse inmediatamente después de contar con peso y altura válidos, y su resultado es la única fuente autorizada para continuar o no con la evaluación por rango de IMC."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando cuentes con el peso en kg y la altura en cm de la persona."
+      - "ARGUMENT RULE: usa weight_kg en kilogramos y height_cm en centímetros. Si el usuario responde en libras o pies/pulgadas, conviértelos antes de llamar (1 lb = 0.453592 kg; 1 in = 2.54 cm) — no reemplaces la herramienta con un cálculo mental del IMC en sí."
+      - "SOURCE OF TRUTH RULE: usa bmi como único resultado autorizado. Guárdalo tal cual para reutilizarlo después; no lo redondees ni lo recalcules por tu cuenta."
+      - "ROUNDING RULE: esta implementación devuelve el BMI redondeado a 1 decimal con la convención del flujo original."
+      - "BUSINESS-ERROR RULE: si peso o altura son inválidos, faltan o son menores/iguales a 0, la herramienta devuelve success == true, bmi == null y errors explicando el problema."
+      - "POST-EXECUTION RULE: si la herramienta no devuelve un valor numérico en bmi, no avances a la siguiente pregunta hasta resolver la captura o la validación."
+    inputs:
+      - name: weight_kg
+        required: true
+        description: "Peso actual en kilogramos."
+      - name: height_cm
+        required: true
+        description: "Altura actual en centímetros."
+    outputs:
+      - name: success
+        required: true
+        description: "Valor booleano que indica si la operación HTTP/endpoint se ejecutó correctamente. Puede seguir siendo true aunque los datos de negocio sean inválidos."
+      - name: bmi
+        required: true
+        description: "Valor numérico decimal del índice de masa corporal calculado. null si weight_kg o height_cm no eran válidos."
+      - name: errors
+        required: true
+        description: "Mensaje de error cuando weight_kg o height_cm no son válidos. null en caso de éxito."
+
+  - name: input_payload
+    description: "Herramienta autorizada para recibir y registrar el payload de una página o proceso externo para inspección estructural."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando necesites capturar y guardar el contenido de un payload JSON recibido de una fuente externa para análisis posterior."
+      - "SOURCE OF TRUTH RULE: usa success para confirmar que el payload se guardó correctamente en el servidor."
+      - "STORAGE RULE: el servidor guarda el contenido en un archivo de registro para inspección manual."
+    inputs:
+      - name: payload
+        required: true
+        description: "Objeto JSON completo que se desea registrar."
+    outputs:
+      - name: success
+        required: true
+        description: "Indica si el registro fue exitoso."
+      - name: message
+        required: true
+        description: "Detalle del resultado de la operación."
+      - name: received_keys
+        required: true
+        description: "Lista de llaves encontradas en el primer nivel del payload."
+
+  - name: request_callback
+    description: "Herramienta autorizada para validar y normalizar una solicitud de llamada humana. No envía correos ni crea tareas; solo deja la solicitud lista para que otro paso del flujo la escale."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo no puede resolver algo por sí solo, cuando el usuario pida explícitamente hablar con una persona, o cuando necesites dejar normalizada una solicitud de callback para un paso posterior."
+      - "ARGUMENT RULE: contact_name siempre es obligatorio. De contact_phone y contact_email debes enviar al menos uno."
+      - "ARGUMENT RULE: reason debe ser uno de estos 5 valores exactos: no_availability, booking_failed, user_requested, ambiguous_data, technical_error."
+      - "ARGUMENT RULE: preferred_days acepta un día, varios separados por coma, una lista, o los atajos 'weekdays', 'weekend' y 'any'. preferred_time_window acepta morning, midday, afternoon, evening o any."
+      - "ARGUMENT RULE: timezone es obligatorio y debe ser un identificador IANA válido."
+      - "SOURCE OF TRUTH RULE: usa errors como único indicador de que la solicitud quedó incompleta o mal formada. Si viene null, la solicitud quedó lista para que el flujo la escale."
+      - "BUSINESS-ERROR RULE: validaciones de negocio fallidas no tumban técnicamente el endpoint. En esos casos esta implementación devuelve success == true y errors explicando el dato faltante o inválido."
+      - "POST-EXECUTION RULE: tras una ejecución con errors == null, informa al usuario que alguien se pondrá en contacto y cierra esa rama. Si errors no es null, captura o corrige el dato señalado y vuelve a llamar la herramienta antes de dar la solicitud por completada."
+    inputs:
+      - name: contact_name
+        required: true
+        description: "Nombre completo del contacto tal como lo mencionó durante la conversación."
+      - name: contact_phone
+        required: false
+        description: "Número telefónico del contacto en formato internacional. Debe venir al menos uno entre contact_phone y contact_email."
+      - name: contact_email
+        required: false
+        description: "Correo electrónico del contacto. Debe venir al menos uno entre contact_phone y contact_email."
+      - name: reason
+        required: true
+        description: "Motivo del callback. Uno de: no_availability, booking_failed, user_requested, ambiguous_data, technical_error."
+      - name: context
+        required: false
+        description: "Resumen corto de qué pasó en la conversación."
+      - name: preferred_days
+        required: false
+        description: "Día o días preferidos para la llamada. Acepta lista, string separado por comas, weekdays, weekend o any."
+      - name: preferred_time_window
+        required: false
+        description: "Franja horaria preferida. Uno de: morning, midday, afternoon, evening, any."
+      - name: timezone
+        required: true
+        description: "Identificador estándar IANA de la zona horaria del usuario."
+    outputs:
+      - name: success
+        required: true
+        description: "Valor booleano que indica si la operación HTTP/endpoint se ejecutó correctamente. Puede seguir siendo true aunque falten datos de negocio."
+      - name: contact_name
+        required: true
+        description: "Eco del nombre recibido. null si la solicitud fue rechazada por validación."
+      - name: contact_phone
+        required: true
+        description: "Eco del teléfono recibido."
+      - name: contact_email
+        required: true
+        description: "Eco del correo recibido."
+      - name: reason
+        required: true
+        description: "Eco normalizado del motivo en minúsculas."
+      - name: context
+        required: true
+        description: "Eco del contexto recibido."
+      - name: preferred_days
+        required: true
+        description: "Lista normalizada de días, con los atajos ya expandidos. Array vacío ([]) si no se envió preferencia o se envió 'any'."
+      - name: preferred_time_window
+        required: true
+        description: "Eco normalizado de la franja horaria. null si no se envió preferencia o se envió 'any'."
+      - name: timezone
+        required: true
+        description: "Eco de la zona horaria recibida."
+      - name: errors
+        required: true
+        description: "Explica por qué la solicitud quedó incompleta o inválida. null cuando la solicitud quedó lista para escalar."

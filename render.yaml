@@ -1,0 +1,78 @@
+services:
+  - type: web
+    name: ghl-tools
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /docs
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: HOST
+        value: 0.0.0.0
+      - key: NGROK_TOKEN
+        sync: false
+      - key: NGROK_DOMAIN
+        sync: false
+      - key: FA_GOOGLE_CLIENT_ID_IVF
+        sync: false
+      - key: FA_GOOGLE_CLIENT_SECRET_IVF
+        sync: false
+      - key: FA_GOOGLE_REFRESH_TOKEN_IVF
+        sync: false
+      - key: FA_CALENDAR_ID_IVF
+        value: achuquisan@familyaims.com
+      - key: FA_DURATION_MINUTES_IVF
+        value: "20"
+      - key: FA_GAP_MINUTES_IVF
+        value: "10"
+      - key: FA_DAYS_AHEAD_IVF
+        value: "7"
+      - key: FA_GOOGLE_CLIENT_ID_SUR
+        sync: false
+      - key: FA_GOOGLE_CLIENT_SECRET_SUR
+        sync: false
+      - key: FA_GOOGLE_REFRESH_TOKEN_SUR
+        sync: false
+      - key: FA_CALENDAR_ID_SUR
+        value: marango@familyaims.com
+      - key: FA_DURATION_MINUTES_SUR
+        value: "20"
+      - key: FA_GAP_MINUTES_SUR
+        value: "10"
+      - key: FA_DAYS_AHEAD_SUR
+        value: "7"
+      - key: FA_GOOGLE_CLIENT_ID_GMAIL
+        sync: false
+      - key: FA_GOOGLE_CLIENT_SECRET_GMAIL
+        sync: false
+      - key: FA_GOOGLE_REFRESH_TOKEN_GMAIL
+        sync: false
+      - key: FA_GMAIL_SENDER_EMAIL
+        sync: false
+      - key: NFS_GOOGLE_CLIENT_ID
+        sync: false
+      - key: NFS_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NFS_GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: NFS_CALENDAR_ID
+        value: primary
+      - key: NFS_DURATION_MINUTES
+        value: "30"
+      - key: NFS_GAP_MINUTES
+        value: "5"
+      - key: NFS_DAYS_AHEAD
+        value: "14"
+      - key: NFS_GOOGLE_CLIENT_ID_GMAIL
+        sync: false
+      - key: NFS_GOOGLE_CLIENT_SECRET_GMAIL
+        sync: false
+      - key: NFS_GOOGLE_REFRESH_TOKEN_GMAIL
+        sync: false
+      - key: NFS_GMAIL_SENDER_EMAIL
+        sync: false
+      - key: NFS_CONTACT_CENTER_EMAIL
+        sync: false
