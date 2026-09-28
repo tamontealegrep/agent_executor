@@ -37,6 +37,8 @@ class SelectiveLogFilter(logging.Filter):
             return True
         if logger_name.startswith("httpx") and "HTTP Request:" in message:
             return True
+        if logger_name == "agents.family_aims_sam_text.endpoint":
+            return True
         if logger_name == "agents.family_aims_sam.agent":
             if message.startswith("[") and (
                 "Executing tool " in message
