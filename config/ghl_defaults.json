@@ -1,0 +1,33 @@
+{
+  "ghl": {
+    "base_url_env": "GHL_BASE_URL",
+    "default_base_url": "https://services.leadconnectorhq.com",
+    "version_env": "GHL_VERSION",
+    "default_version": "v3",
+    "conversation_search_limit": 1,
+    "message_history_page_size": 100,
+    "history_max_days_env": "GHL_HISTORY_MAX_DAYS",
+    "history_max_days": 7
+  },
+  "runtime": {
+    "timeouts": {
+      "history_seconds": 60,
+      "conversation_search_seconds": 30,
+      "send_message_seconds": 30
+    }
+  },
+  "messaging": {
+    "default_send_type": "Live_Chat",
+    "channel_type_map": {
+      "SMS": "SMS",
+      "WHATSAPP": "WhatsApp",
+      "TYPE_WHATSAPP": "WhatsApp",
+      "IG": "IG",
+      "INSTAGRAM": "IG",
+      "EMAIL": "Email",
+      "FACEBOOK": "FB",
+      "GMB": "FB",
+      "LIVE_CHAT": "Live_Chat"
+    }
+  }
+}

@@ -1,12 +1,18 @@
+import json
 import logging
 import os
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from agents.helpers.history import filter_recent_messages, history_cutoff, parse_date_added
 from agents.helpers.text import normalize_channel
+
+# agent_executor root: src/agents/helpers/ghl.py -> helpers -> agents -> src -> root
+GHL_DEFAULTS_PATH = Path(__file__).resolve().parents[3] / "config" / "ghl_defaults.json"
 
 GHL_OUTBOUND_CHANNEL_MAP: Dict[str, str] = {
     "SMS": "SMS",
@@ -118,6 +124,26 @@ def build_ghl_client_config(
         default_send_type=messaging_settings.get("default_send_type", "Live_Chat"),
         channel_type_map=messaging_settings.get("channel_type_map", GHL_OUTBOUND_CHANNEL_MAP),
         history_max_days=history_max_days,
+    )
+
+
+@lru_cache
+def default_ghl_client_config() -> GhlClientConfig:
+    """The agent-agnostic GhlClientConfig, read from config/ghl_defaults.json
+    at the project root -- edit that file directly for base_url, timeouts,
+    or the channel map; no code change needed.
+
+    For any agent whose GHL wiring doesn't need its own overrides (every
+    compiled agent so far -- see compiled_runner/ghl_endpoint.py). The
+    classic family_aims_sam agent keeps its own copy in agent.json instead,
+    since it also carries agent-specific runtime keys (allowed_phones, tool
+    timeouts) this file deliberately doesn't.
+    """
+    raw = json.loads(GHL_DEFAULTS_PATH.read_text(encoding="utf-8"))
+    return build_ghl_client_config(
+        raw.get("ghl", {}),
+        raw.get("runtime", {}),
+        raw.get("messaging", {}),
     )
 
 
