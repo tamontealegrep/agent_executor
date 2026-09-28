@@ -13,6 +13,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from langgraph.types import Command
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from agent_compiler.runtime.graph_builder import fresh_state
 from agent_compiler.runtime.session_resolver import resolve_session
@@ -55,14 +56,23 @@ async def chat(slug: str, req: CompiledChatRequest) -> CompiledChatResponse:
 
     snapshot = graph.get_state(config)
     resolution = resolve_session(snapshot.values, artifact.session_timeout_minutes)
+    if resolution == "continuing" and not snapshot.next:
+        # A thread that already reached a terminal node (snapshot.next == ())
+        # has nothing pending to resume -- resolve_session only knows elapsed
+        # time, not this. Treat a new message as a fresh conversation.
+        resolution = "new"
     logger.info("[%s] thread=%s session=%s", slug, req.thread_id, resolution)
 
+    # graph.invoke() is synchronous and blocking; a tool call this graph
+    # makes can hit this same server over HTTP, so it must run off the
+    # event loop or that self-call deadlocks against the frozen loop
+    # until the tool's own timeout kills it.
     if resolution in ("new", "stale"):
-        result = graph.invoke(fresh_state(artifact, contact=req.contact), config)
+        result = await run_in_threadpool(graph.invoke, fresh_state(artifact, contact=req.contact), config)
     else:
         if not req.message:
             raise HTTPException(status_code=422, detail="message is required to continue an existing session.")
-        result = graph.invoke(Command(resume=req.message), config)
+        result = await run_in_threadpool(graph.invoke, Command(resume=req.message), config)
 
     interrupts = result.get("__interrupt__")
     if interrupts:
