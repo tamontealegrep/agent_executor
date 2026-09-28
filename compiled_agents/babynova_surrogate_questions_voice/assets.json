@@ -1,0 +1,594 @@
+[
+  {
+    "name": "end_call",
+    "description": "Closes the call session in an orderly way.",
+    "notes": [
+      "This is always the last tool executed in any terminal flow.",
+      "Make sure all required updates have been completed before end_call."
+    ],
+    "inputs": [],
+    "outputs": []
+  },
+  {
+    "name": "callback",
+    "description": "Authorized tool for escalating the conversation to a human call. It must be called when the flow cannot resolve something on its own (no availability, the booking fails repeatedly, a piece of information remains ambiguous, or the user explicitly asks to speak with a person). It only validates and normalizes the request — it does not send any email or create any task; the actual notification mechanism is executed by a subsequent step in the flow.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: if the active flow node is C__CB_RUN, execute this tool immediately — execution on this node is mandatory, without exception. Also execute it when get_available_slots returns no availability after several attempts, when book_appointment fails repeatedly, when a piece of information remains ambiguous after retrying, or when the user explicitly asks to speak with a person.",
+      "ARGUMENT RULE: contact_name is always required. You must send at least one of contact_phone and contact_email — you do not need to send both, but do not send neither.",
+      "ARGUMENT RULE: reason must be one of the 5 exact values listed below — map the actual flow situation to the closest one; do not invent another value.",
+      "ARGUMENT RULE: if the user mentions a preferred day, send it in preferred_days — accepts one day, multiple days separated by commas, or shortcuts such as 'weekdays'/'weekend'. If the user mentions a time range, map it to morning/midday/afternoon/evening in preferred_time_window. Neither is mandatory — if the user did not provide a preference, do not send them (or send 'any').",
+      "ARGUMENT RULE: iana_timezone is required and must be the same IANA timezone already determined for the user (the same one you would use for get_available_slots) — do not ask for it again if you already have it.",
+      "SOURCE OF TRUTH RULE: use 'errors' as the sole indicator that the request is incomplete or malformed — if it is null, the request is ready for the flow to escalate.",
+      "POST-EXECUTION RULE: after a successful execution (errors is null), inform the user that someone will contact them and close that branch of the conversation warmly — do not continue trying to resolve yourself what prompted the callback.",
+      "POST-EXECUTION RULE: if errors is not null, the data indicated in the message is missing or invalid — collect or correct it with the user and call the tool again before considering the request complete."
+    ],
+    "inputs": [
+      {
+        "name": "contact_name",
+        "required": true,
+        "description": "Full name of the contact as mentioned during the call."
+      },
+      {
+        "name": "contact_phone",
+        "required": false,
+        "description": "Contact's phone number in international format. At least one of contact_phone and contact_email must be provided. e.g. +573001234567"
+      },
+      {
+        "name": "contact_email",
+        "required": false,
+        "description": "Contact's email address. At least one of contact_phone and contact_email must be provided. e.g. maria@example.com"
+      },
+      {
+        "name": "reason",
+        "required": true,
+        "description": "Callback reason. One of: no_availability (no availability was found), booking_failed (the booking failed repeatedly), user_requested (the user asked to speak with a person), ambiguous_data (a piece of information remained ambiguous after several attempts), technical_error (technical error during the flow)."
+      },
+      {
+        "name": "context",
+        "required": false,
+        "description": "Short summary of what happened in the conversation, so the person calling does not do so blindly. e.g. 'No availability was found in the next 14 days'"
+      },
+      {
+        "name": "preferred_days",
+        "required": false,
+        "description": "Day or days when the user prefers to be called. Accepts one day, multiple days separated by commas, a list, or the shortcuts 'weekdays' / 'weekend' / 'any' (no preference). e.g. 'weekdays', 'monday,wednesday'"
+      },
+      {
+        "name": "preferred_time_window",
+        "required": false,
+        "description": "Time window when the user prefers to be called. One of: morning, midday, afternoon, evening, any."
+      },
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Standard IANA timezone identifier for the user — the same one already determined for get_available_slots. Examples: 'America/Bogota', 'America/Sao_Paulo', 'Europe/Madrid', 'Asia/Tokyo'."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Boolean value indicating whether the tool executed successfully."
+      },
+      {
+        "name": "contact_name",
+        "required": true,
+        "description": "Echo of the received name. null if the request was rejected."
+      },
+      {
+        "name": "contact_phone",
+        "required": true,
+        "description": "Echo of the received phone number."
+      },
+      {
+        "name": "contact_email",
+        "required": true,
+        "description": "Echo of the received email address."
+      },
+      {
+        "name": "reason",
+        "required": true,
+        "description": "Normalized echo of the reason (lowercase)."
+      },
+      {
+        "name": "context",
+        "required": true,
+        "description": "Echo of the received context."
+      },
+      {
+        "name": "preferred_days",
+        "required": true,
+        "description": "Normalized list of days (Monday through Sunday, in that order), with shortcuts already expanded. Empty array ([]) if no preference was provided or 'any' was provided."
+      },
+      {
+        "name": "preferred_time_window",
+        "required": true,
+        "description": "Normalized echo of the time window. null if no preference was provided or 'any' was provided."
+      },
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Echo of the received timezone."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Explains why the request was rejected (missing or invalid data: contact_name, contact_phone/contact_email, reason, iana_timezone, preferred_days, or preferred_time_window). null when the request is ready to be escalated."
+      }
+    ]
+  },
+  {
+    "name": "time_now",
+    "description": "Authorized tool for getting the real current date and time in the given timezone. Its response is the flow's only authorized time reference.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: when a node declares EXECUTE: time_now, call it as the first action of the turn — imperative, no exception.",
+      "ABSOLUTE EXECUTION RULE: FORBIDDEN to deduce, estimate, or assume the current date or time from the model's knowledge, training, or conversational context. Do not speak or route before capturing the 'now' field.",
+      "ARGUMENT RULE: iana_timezone is an IANA continent/city identifier (e.g. America/Bogota, Europe/Madrid, America/Sao_Paulo). Send whatever the flow fixes; never use abbreviations (EST, COT, BRT).",
+      "SOURCE OF TRUTH RULE: use the 'now' field as the only authorized time reference. To normalize a relative date ('8 months ago', 'last year'), compute it from 'now'.",
+      "POST-EXECUTION RULE: if 'now' comes back null or 'errors' is not null, call the tool again before continuing."
+    ],
+    "inputs": [
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "IANA identifier of the timezone the current time is wanted in (continent/city). Examples: America/Bogota, Europe/Madrid, America/Sao_Paulo."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Boolean: the query ran successfully."
+      },
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Echo of the IANA timezone identifier used."
+      },
+      {
+        "name": "now",
+        "required": true,
+        "description": "Current date and time in the given timezone, ISO 8601 with offset. Example: 2026-08-28T18:18:28.935329-05:00. null on error."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Error message if the query failed. null on success."
+      }
+    ]
+  },
+  {
+    "name": "calculate_bmi",
+    "description": "Herramienta autorizada para calcular el IMC. Su resultado es la única fuente autorizada del valor de IMC usado más adelante por surrogate_classification.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: al entrar al nodo Q__SQ_CALCULATE_BMI, llama calculate_bmi como primera acción del turno — imperativo, sin excepción.",
+      "ABSOLUTE EXECUTION RULE: no calcules ni estimes el IMC por tu cuenta. No hables ni enrutes antes de capturar imc.",
+      "ARGUMENT RULE: weight_kg en kilogramos, height_cm en centímetros, ambos desde los datos capturados en la precalificación. Si el usuario respondió en libras o pies/pulgadas, conviértelos antes (1 lb = 0.453592 kg; 1 in = 2.54 cm).",
+      "SOURCE OF TRUTH RULE: usa imc como único resultado autorizado. Guárdalo sin redondear para pasarlo tal cual a surrogate_classification.",
+      "POST-EXECUTION RULE: si imc no viene como número (peso o altura inválidos o <= 0), no avances; vuelve a capturar el dato."
+    ],
+    "inputs": [
+      {
+        "name": "weight_kg",
+        "required": true,
+        "description": "Peso actual de la candidata en kilogramos, desde el slot de peso capturado."
+      },
+      {
+        "name": "height_cm",
+        "required": true,
+        "description": "Altura actual de la candidata en centímetros, desde el slot de altura capturado."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano: el cálculo se ejecutó correctamente."
+      },
+      {
+        "name": "imc",
+        "required": true,
+        "description": "Valor decimal del IMC. null si weight_kg o height_cm no eran válidos."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error cuando weight_kg o height_cm no son válidos. null en caso de éxito."
+      }
+    ]
+  },
+  {
+    "name": "get_available_slots",
+    "description": "Herramienta autorizada de disponibilidad para las citas comerciales de BabyNova (Subrogación). Su salida es la única fuente autorizada de días y horas.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: al entrar al nodo S__SC_AVAIL o AM_RESCHED_AV, llama get_available_slots como primera acción del turno — imperativo, sin excepción. También ante cualquier intención de agendar, reagendar, ver más opciones o reintentar una cita.",
+      "ABSOLUTE EXECUTION RULE: no menciones días, fechas, horas ni disponibilidad, y no enrutes, antes de ejecutar la herramienta y capturar una respuesta válida.",
+      "ARGUMENT RULE: iana_timezone es un identificador IANA continente/ciudad. Este agente opera solo en Colombia: valor fijo America/Bogota. Nunca lo adivines ni uses abreviaturas como EST o COT.",
+      "SOURCE OF TRUTH RULE: la única fuente de horarios es el array available_slots de la llamada más reciente. Un horario solo es válido si aparece como objeto con start_co, end_co, start_local y end_local. Si errors no es null o available_slots no es una lista válida, trata la respuesta como inválida.",
+      "PRESENTATION RULE: al hablar con el contacto usa solo start_local/end_local. start_co/end_co son la hora de Colombia (zona del calendario), solo para uso interno.",
+      "POST-EXECUTION RULE: si el contacto pide más opciones, avanza dentro del mismo array antes de volver a llamar la herramienta. Al reservar, copia start_co del slot elegido a start_date de book_appointment o edit_appointment sin alterar el offset."
+    ],
+    "inputs": [
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Identificador IANA (continente/ciudad) de la zona horaria del usuario. Valor fijo para este agente: America/Bogota."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano: la consulta se ejecutó correctamente. No indica por sí solo si hay disponibilidad — para eso revisa available_slots."
+      },
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Eco del identificador IANA (continente/ciudad) usado para calcular start_local/end_local."
+      },
+      {
+        "name": "available_slots",
+        "required": true,
+        "description": "Array de objetos con los espacios disponibles. Cada objeto trae start_co/end_co (hora de Colombia, ISO 8601) y start_local/end_local (zona del contacto, ISO 8601). Array vacío ([]) si no hay disponibilidad."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error si la consulta falló. null cuando fue exitosa, incluso si available_slots vino vacío."
+      }
+    ]
+  },
+  {
+    "name": "book_appointment",
+    "description": "Herramienta autorizada de reserva para las citas comerciales de BabyNova (Subrogación). Crea la cita a partir de un slot válido de get_available_slots.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: al entrar al nodo S__SC_BOOK, llama book_appointment como primera acción del turno — imperativo, sin excepción. Nunca la llames sin haber ejecutado antes get_available_slots.",
+      "ABSOLUTE EXECUTION RULE: no digas que la cita quedó agendada, reservada o confirmada, y no enrutes a confirmación, antes de recibir success == true y event_id no nulo.",
+      "ARGUMENT RULE: start_date se copia literal del campo start_co del slot elegido — no lo conviertas, redondees, reformatees ni deduzcas. duration es fijo: <APPOINTMENT_DURATION_MINUTES>. iana_timezone es fijo America/Bogota. contact_name, contact_email y contact_phone vienen del dato ya confirmado en el flujo.",
+      "SOURCE OF TRUTH RULE: usa success como único resultado autorizado para decidir si la cita quedó creada.",
+      "POST-EXECUTION RULE: si success es false, revisa reason: 'past_date' o 'invalid_start_date' -> vuelve a get_available_slots; 'invalid_hour' -> informa que está fuera de horario y ofrece consultar de nuevo; 'creation_failed' o reason ausente -> problema de sistema, discúlpate y deriva a un callback."
+    ],
+    "inputs": [
+      {
+        "name": "start_date",
+        "required": true,
+        "description": "Fecha y hora de inicio en ISO 8601 con offset. Copia literal del campo start_co del slot elegido en available_slots. Ejemplo: 2026-06-04T08:00:00-05:00"
+      },
+      {
+        "name": "duration",
+        "required": true,
+        "description": "Duración de la cita en minutos, enviada como string. Valor fijo para este flujo: <APPOINTMENT_DURATION_MINUTES>."
+      },
+      {
+        "name": "contact_name",
+        "required": true,
+        "description": "Nombre completo del contacto, ya confirmado en el flujo."
+      },
+      {
+        "name": "contact_email",
+        "required": true,
+        "description": "Correo del contacto en minúsculas, ya confirmado en el flujo. Se usa para enviar la confirmación de la cita."
+      },
+      {
+        "name": "contact_phone",
+        "required": true,
+        "description": "Teléfono del contacto en formato internacional E.164, ya confirmado en el flujo. Ejemplo: +573001234567"
+      },
+      {
+        "name": "iana_timezone",
+        "required": true,
+        "description": "Identificador IANA de la zona horaria del contacto, valor fijo America/Bogota."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano: la reserva se creó correctamente."
+      },
+      {
+        "name": "reason",
+        "required": true,
+        "description": "Motivo del rechazo cuando success es false: 'invalid_start_date', 'past_date', 'invalid_hour', 'creation_failed', 'slot_taken'. null cuando success es true."
+      },
+      {
+        "name": "event_id",
+        "required": true,
+        "description": "Identificador del evento creado. null si la reserva no se completó."
+      },
+      {
+        "name": "event_link",
+        "required": true,
+        "description": "Enlace al evento en el calendario. null si la reserva no se completó."
+      },
+      {
+        "name": "meet_link",
+        "required": true,
+        "description": "Enlace de videollamada de la cita. null si la reserva no se completó."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error técnico. Puede venir presente con success == true si la cita se creó pero falló la notificación por correo."
+      }
+    ]
+  },
+  {
+    "name": "find_appointment",
+    "description": "Herramienta autorizada para buscar citas existentes de un contacto por su nombre en los calendarios de BabyNova.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo esté en el nodo AM_FIND o cuando el contacto quiera consultar, verificar o conocer los detalles de una cita que ya cree haber agendado.",
+      "ARGUMENT RULE: contact_name debe ser el nombre completo del contacto tal como figura en el CRM o como se registró en la cita.",
+      "SOURCE OF TRUTH RULE: el array 'appointments' contiene la lista de citas encontradas. Si está vacío, informa al contacto que no se encontraron registros bajo ese nombre. No dependas de metadatos de calendario para gestionar la cita."
+    ],
+    "inputs": [
+      {
+        "name": "contact_name",
+        "required": true,
+        "description": "Nombre completo del contacto para realizar la búsqueda."
+      },
+      {
+        "name": "calendar_phone",
+        "required": false,
+        "description": "Numero de celular del contacto para realizar la búsqueda."
+      },
+      {
+        "name": "contact_email",
+        "required": false,
+        "description": "Correo electrónico del contacto para realizar la búsqueda."
+      },
+      {
+        "name": "iana_timezone",
+        "required": false,
+        "description": "Zona horaria IANA para mostrar las horas de las citas encontradas. Defecto: America/Bogota."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano indicando si la búsqueda se completó."
+      },
+      {
+        "name": "appointments",
+        "required": true,
+        "description": "Lista de objetos con información de las citas encontradas (event_id, summary, start_time)."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error si la búsqueda falló."
+      }
+    ]
+  },
+  {
+    "name": "cancel_appointment",
+    "description": "Herramienta autorizada para cancelar/eliminar una cita existente en los calendarios de BabyNova.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: ejecútala únicamente cuando el flujo esté en el nodo AM_DO_CANCEL o cuando el contacto solicite explícitamente cancelar su cita y proporcione o confirme el event_id (obtenido previamente vía find_appointment).",
+      "ABSOLUTE EXECUTION RULE: no confirmes la cancelación antes de recibir success == true.",
+      "ARGUMENT RULE: event_id debe ser el ID exacto devuelto por la API."
+    ],
+    "inputs": [
+      {
+        "name": "event_id",
+        "required": true,
+        "description": "Identificador único del evento de Google Calendar a cancelar."
+      },
+      {
+        "name": "iana_timezone",
+        "required": false,
+        "description": "Zona horaria IANA del contacto. Defecto: America/Bogota."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano indicando si la cancelación fue exitosa."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error si la cancelación falló."
+      }
+    ]
+  },
+  {
+    "name": "edit_appointment",
+    "description": "Herramienta autorizada para modificar o reprogramar una cita existente en los calendarios de BabyNova.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo esté en el nodo AM_DO_RESCHED cuando el contacto confirme el cambio de horario.",
+      "ABSOLUTE EXECUTION RULE: no confirmes el cambio antes de recibir success == true.",
+      "ARGUMENT RULE: new_start_date debe ser un slot válido obtenido de get_available_slots si se está reprogramando. Se copia literal del campo start_co del slot.",
+      "VALIDATION RULE: la herramienta verifica automáticamente disponibilidad y horario laboral antes de aplicar el cambio."
+    ],
+    "inputs": [
+      {
+        "name": "event_id",
+        "required": true,
+        "description": "Identificador único del evento de Google Calendar a modificar."
+      },
+      {
+        "name": "new_start_date",
+        "required": false,
+        "description": "Nueva fecha y hora en ISO 8601 con offset. Requerido si se cambia el horario."
+      },
+      {
+        "name": "new_duration",
+        "required": false,
+        "description": "Nueva duración en minutos (como string). Requerido si se cambia la duración."
+      },
+      {
+        "name": "iana_timezone",
+        "required": false,
+        "description": "Zona horaria IANA del contacto. Defecto: America/Bogota."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano indicando si la modificación fue exitosa."
+      },
+      {
+        "name": "message",
+        "required": false,
+        "description": "Mensaje de confirmación del cambio realizado."
+      },
+      {
+        "name": "new_start_time",
+        "required": false,
+        "description": "Fecha y hora formateada si hubo cambio de horario."
+      },
+      {
+        "name": "new_duration",
+        "required": false,
+        "description": "Nueva duración de la cita en minutos si fue modificada."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error si la modificación falló."
+      }
+    ]
+  },
+  {
+    "name": "check_documentation",
+    "description": "Herramienta autorizada de verificación documental. Su respuesta es la única fuente autorizada del veredicto documental.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: al entrar al nodo Q__SQ_CHECK_DOCUMENTATION, llama check_documentation como PRIMERA acción del turno — imperativo, sin excepción, sin preguntar ni evaluar nada antes.",
+      "ABSOLUTE EXECUTION RULE: no emitas, adelantes ni asumas ningún veredicto documental sin haber ejecutado la herramienta y leído document_result. No hables ni enrutes antes de capturarlo.",
+      "ARGUMENT RULE: nationality se envía como código ISO 3166-1 alfa-3 en mayúsculas (ya normalizado en el flujo). Para nationality == 'COL' no se envía document_type (colombianas aprobadas automáticamente). Para el resto, document_type es un array con los documentos que la candidata mencionó, ya normalizados a: cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro.",
+      "SOURCE OF TRUTH RULE: usa document_result como único veredicto. document_motive lo explica; document_norm trae el tipo normalizado de cada documento, en orden.",
+      "POST-EXECUTION RULE: aunque document_result sea false, NO cierres ni des rechazo final: conserva el veredicto y continúa con la pregunta de drogas y la clasificación final. Si nationality tiene formato inválido, reconfirma el país antes de reintentar."
+    ],
+    "inputs": [
+      {
+        "name": "nationality",
+        "required": true,
+        "description": "Código ISO 3166-1 alfa-3 en mayúsculas. Ejemplos: COL, VEN, ARG, USA, ECU, MEX, PER, BOL, BRA. Inferido del país que dijo la candidata — nunca del acento ni del teléfono."
+      },
+      {
+        "name": "document_type",
+        "required": false,
+        "description": "Array de tipos de documento. Solo se envía cuando nationality != 'COL'. Valores por elemento: cedula_ciudadania y ppt (aprueban); cedula_extranjeria, pasaporte y otro (rechazan). Aprueba si CUALQUIER elemento del array es un tipo válido."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Booleano: la verificación se ejecutó correctamente."
+      },
+      {
+        "name": "document_result",
+        "required": true,
+        "description": "Booleano: true si la candidata cumple el requisito documental, false si no."
+      },
+      {
+        "name": "document_motive",
+        "required": true,
+        "description": "Explicación textual del veredicto, en inglés (nombres propios de documentos colombianos en español). Ejemplo: \"Document not allowed ('pasaporte'). Cedula de Ciudadania or PPT is required for non-Colombians.\""
+      },
+      {
+        "name": "document_norm",
+        "required": true,
+        "description": "Array con el tipo normalizado de cada documento recibido, en orden. Valores: cedula_ciudadania, ppt, cedula_extranjeria, pasaporte, otro, desconocido. Array vacío ([]) cuando no aplica (colombiana, nacionalidad inválida, o document_type ausente)."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error técnico si la verificación falló. null en caso de éxito."
+      }
+    ]
+  },
+  {
+    "name": "surrogate_classification",
+    "description": "Herramienta autorizada de clasificación final para elegibilidad médica y demográfica. Debe llamarse cuando el flujo ya recopiló la mayor cantidad posible de datos y su respuesta es la única fuente autorizada para resolver si la candidata es apta, rechazada o inconclusa.",
+    "notes": [
+      "MANDATORY EXECUTION TRIGGER: ejecuta esta herramienta inmediatamente al llegar al nodo Q__SQ_RUN_CLASSIFICATION — imperativo, sin excepción. Siempre antes de emitir cualquier clasificación, y solo cuando ya tengas todos los datos disponibles hasta ese punto: edad, ciudad, eps, hijos, último parto, cesáreas, abortos, preeclampsia, bmi (resultado de calculate_bmi), documentación (resultado de check_documentation) y consumo de drogas.",
+      "ARGUMENT RULE: no inventes valores. Si un dato falta o sigue ambiguo, envía ese campo vacío.",
+      "ARGUMENT RULE: city debe ser una de: Bogotá, Soacha, Zipaquirá, Chía, Mosquera, Funza, Cajicá, Madrid, La Calera, Cota, Facatativá, Sibaté, u 'Otro'. Cualquier otra ciudad, incluida 'Otro' explícitamente, rechaza a la candidata por ciudad.",
+      "ARGUMENT RULE: bmi debe copiarse literalmente del resultado de calculate_bmi — nunca estimarse a mano. documentation debe reflejar el 'approved' devuelto por check_documentation (si la candidata es colombiana, documentation siempre es 'si', ya que el requisito no le aplica).",
+      "ARGUMENT RULE: eps, abortions, preeclampsia, documentation y drug_use aceptan 'si'/'no', 'yes'/'no', 'true'/'false' o '1'/'0', sin distinción de mayúsculas.",
+      "SOURCE OF TRUTH RULE: usa 'classification_result' como único veredicto autorizado para aptitud, rechazo o inconclusión. No sustituyas esta decisión con heurísticas del agente.",
+      "POST-EXECUTION RULE: si 'classification_result' es 'Inconclusive', el flujo debe pedir o reconfirmar el dato faltante antes de volver a llamar la herramienta.",
+      "POST-EXECUTION RULE: si 'classification_result' empieza por 'Rejected', comunica el resultado con empatía y no continúes con la calificación. Si es 'Approved', continúa con el siguiente paso del flujo (agendamiento vía get_available_slots / book_appointment)."
+    ],
+    "inputs": [
+      {
+        "name": "age",
+        "required": false,
+        "description": "Edad en años de la candidata. Valor numérico cuando exista."
+      },
+      {
+        "name": "city",
+        "required": false,
+        "description": "Ciudad de residencia de la candidata en Colombia. Enviar el texto capturado cuando exista. Debe ser una de las siguientes: Bogotá, Soacha, Zipaquirá, Chía, Mosquera, Funza, Cajicá, Madrid, La Calera, Cota, Facatativá, Sibaté, Otro."
+      },
+      {
+        "name": "eps",
+        "required": false,
+        "description": "Indica si la candidata cuenta con EPS activa en Colombia. Acepta booleanos (true/false) o equivalentes en texto ('si'/'no', 'yes'/'no', '1'/'0'). Enviar vacío cuando no exista."
+      },
+      {
+        "name": "number_of_children",
+        "required": false,
+        "description": "Número de hijos biológicos de la candidata. Valor numérico cuando exista."
+      },
+      {
+        "name": "last_birth_date",
+        "required": false,
+        "description": "Fecha del último parto de la candidata, en formato YYYY-MM-DD (también acepta YYYY/MM/DD). Enviar vacío cuando no exista."
+      },
+      {
+        "name": "number_of_c_sections",
+        "required": false,
+        "description": "Número de cesáreas de la candidata. Valor numérico cuando exista. Si no ha tenido ninguna, usar 0."
+      },
+      {
+        "name": "abortions",
+        "required": false,
+        "description": "Indica si la candidata ha tenido abortos o pérdidas de embarazo previas. Acepta booleanos (true/false) o equivalentes en texto ('si'/'no', 'yes'/'no', '1'/'0'). Enviar vacío cuando no exista."
+      },
+      {
+        "name": "preeclampsia",
+        "required": false,
+        "description": "Indica si la candidata tiene antecedentes de preeclampsia. Acepta booleanos (true/false) o equivalentes en texto ('si'/'no', 'yes'/'no', '1'/'0'). Enviar vacío cuando no exista."
+      },
+      {
+        "name": "bmi",
+        "required": false,
+        "description": "Índice de masa corporal calculado por calculate_bmi. Valor numérico cuando exista — nunca estimado manualmente."
+      },
+      {
+        "name": "documentation",
+        "required": false,
+        "description": "Indica si la candidata cuenta con la documentación requerida (resultado de check_documentation, o 'si' fijo para colombianas). Acepta booleanos (true/false) o equivalentes en texto ('si'/'no', 'yes'/'no', '1'/'0'). Enviar vacío cuando no exista."
+      },
+      {
+        "name": "drug_use",
+        "required": false,
+        "description": "Indica si la candidata consume drogas recreativas actualmente. Acepta booleanos (true/false) o equivalentes en texto ('si'/'no', 'yes'/'no', '1'/'0'). Enviar vacío cuando no exista."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "success",
+        "required": true,
+        "description": "Valor booleano que indica si la clasificación se ejecutó correctamente."
+      },
+      {
+        "name": "classification_result",
+        "required": true,
+        "description": "Clasificación final de la candidata. Valores esperados: 'Approved', 'Inconclusive', 'Rejected (Age)', 'Rejected (Timing)' (cubre tanto edad menor a 18 como un parto reciente, hace 12 meses o menos), 'Rejected (City)', 'Rejected (EPS)', 'Rejected (Children)', 'Rejected (C-Sections)', 'Rejected (Preeclampsia)', 'Rejected (BMI)', 'Rejected (Documentation)', 'Rejected (Drug Use)'."
+      },
+      {
+        "name": "errors",
+        "required": true,
+        "description": "Mensaje de error técnico si la clasificación falló. null en caso de éxito."
+      }
+    ]
+  }
+]
