@@ -25,52 +25,20 @@ GHL_OUTBOUND_CHANNEL_MAP: Dict[str, str] = {
     "LIVE_CHAT": "Live_Chat",
 }
 
-GHL_INBOUND_TYPE_MAP: Dict[Any, str] = {
-    # ── NUMÉRICOS — verificados con payloads reales + docs oficiales ──────
-    1: "CALL",
-    2: "SMS",
-    5: "LIVE_CHAT",
-    10: "VOICEMAIL",
-    11: "FACEBOOK",
-    18: "IG",
-    19: "WHATSAPP",
-    # EMAIL y GMB → pendientes de payload real
+def _load_inbound_type_map() -> Dict[Any, str]:
+    """Incoming message.type -> normalized channel name, from
+    config/ghl_defaults.json's inbound_type_map (edit that file, not this
+    function -- see its own "_note" field for provenance/confidence).
+    Numeric-looking keys ("19") are parsed back to int: a real GHL
+    payload's message.type for those entries is a JSON number, not a
+    string, but JSON object keys can only be strings, so the file spells
+    them as "19" and this loader turns that back into 19 to match.
+    """
+    raw = json.loads(GHL_DEFAULTS_PATH.read_text(encoding="utf-8")).get("inbound_type_map", {})
+    return {(int(key) if key.isdigit() else key): value for key, value in raw.items() if key != "_note"}
 
-    # ── TYPE_ STRINGS — docs oficiales API 2023-02-21 ────────────────────
-    # (filter options del endpoint get-messages)
-    "TYPE_CALL": "CALL",
-    "TYPE_SMS": "SMS",
-    "TYPE_EMAIL": "EMAIL",
-    "TYPE_FACEBOOK": "FACEBOOK",
-    "TYPE_GMB": "GMB",
-    "TYPE_INSTAGRAM": "IG",
-    "TYPE_WHATSAPP": "WHATSAPP",
-    "TYPE_ACTIVITY_APPOINTMENT": "ACTIVITY_APPOINTMENT",
-    "TYPE_ACTIVITY_CONTACT": "ACTIVITY_CONTACT",
-    "TYPE_ACTIVITY_INVOICE": "ACTIVITY_INVOICE",
-    "TYPE_ACTIVITY_OPPORTUNITY": "ACTIVITY_OPPORTUNITY",
-    "TYPE_ACTIVITY_PAYMENT": "ACTIVITY_PAYMENT",
 
-    # ── TYPE_ STRINGS — docs oficiales API 2021-07-28 ────────────────────
-    "TYPE_WEBCHAT": "LIVE_CHAT",  # ✅ confirmado 2021 docs
-    "TYPE_CAMPAIGN_SMS": "SMS",
-    "TYPE_CAMPAIGN_CALL": "CALL",
-    "TYPE_CAMPAIGN_EMAIL": "EMAIL",
-    "TYPE_CAMPAIGN_VOICEMAIL": "VOICEMAIL",
-    "TYPE_CAMPAIGN_FACEBOOK": "FACEBOOK",
-    "TYPE_SMS_REVIEW_REQUEST": "SMS",
-    "TYPE_SMS_NO_SHOW_REQUEST": "SMS",
-
-    # ── TYPE_ STRINGS — confirmados en webhook examples (messageTypeString)
-    "TYPE_VOICEMAIL": "VOICEMAIL",  # ✅ OutboundMessage + InboundMessage webhook
-
-    # ── Defensivos — tab "Live Chat" existe en webhook page pero string
-    #    exacto no confirmable desde HTML estático (2021 usa TYPE_WEBCHAT)
-    "TYPE_LIVE_CHAT": "LIVE_CHAT",  # ⚠️ mantener como fallback
-
-    # ── Nuevo — OutboundMessage webhook docs (notas internas agentes)
-    "InternalComment": "INTERNAL",  # ✅ OutboundMessage webhook page
-}
+GHL_INBOUND_TYPE_MAP: Dict[Any, str] = _load_inbound_type_map()
 
 GHL_FILTER_TYPE_MAP: Dict[str, str] = {
     "CALL": "TYPE_CALL",
