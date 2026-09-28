@@ -1,0 +1,202 @@
+"""Postgres wiring for the compiled-agent pipeline: the LangGraph
+checkpointer (conversation replay state) and a small `conversations`
+table we own ourselves.
+
+Why a separate table when the checkpointer already persists everything:
+LangGraph's own `checkpoints`/`checkpoint_blobs` tables are internal replay
+plumbing, not a queryable business table. `checkpoints.checkpoint` (JSONB)
+only inlines primitive channel values (plain str/int/float/bool) -- our
+`current_state`/`last_user_message`/`last_message_at` land there, but
+`slots` (which holds `preferred_language`), `history`, and `contact` are
+dicts/lists, so LangGraph pops them out and stores them separately in
+`checkpoint_blobs.blob` as msgpack-encoded bytes (see `put()` in
+`langgraph/checkpoint/postgres/__init__.py`) -- not plain SQL-queryable
+JSON. There's also no column anywhere for *which agent* a thread belongs
+to; a checkpointer is generic across any graph that uses it.
+
+`conversations` is a thin, denormalized, query-friendly mirror -- one row
+per thread_id, upserted after each turn -- for anything you'd want to ask
+with plain SQL (which agent, what language, is this contact idle, what did
+they last say) without touching msgpack blobs. Shared by every compiled
+agent (see compiled_runner/ghl_endpoint.py) -- `agent_slug` plus
+`slots_summary` being a schemaless JSONB, not fixed columns per business
+field, is what lets one table serve agents with completely different slot
+vocabularies (family_aims_sam_text's `vi__treat` vs. some future agent's
+own fields) without a migration per agent.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+from datetime import datetime, timezone
+from functools import lru_cache
+from typing import Any
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+
+def postgres_enabled() -> bool:
+    return bool(DATABASE_URL)
+
+
+CONVERSATIONS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS conversations (
+    thread_id TEXT PRIMARY KEY,
+    agent_slug TEXT NOT NULL,
+    location_id TEXT NOT NULL,
+    contact_id TEXT NOT NULL,
+    contact_name TEXT,
+    contact_phone TEXT,
+    contact_email TEXT,
+    preferred_language TEXT,
+    current_state TEXT,
+    last_user_message TEXT,
+    history JSONB NOT NULL DEFAULT '[]',
+    slots_summary JSONB NOT NULL DEFAULT '{}',
+    last_message_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+_UPSERT_SQL = """
+INSERT INTO conversations (
+    thread_id, agent_slug, location_id, contact_id,
+    contact_name, contact_phone, contact_email,
+    preferred_language, current_state, last_user_message, history,
+    slots_summary, last_message_at, updated_at
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+ON CONFLICT (thread_id) DO UPDATE SET
+    contact_name = EXCLUDED.contact_name,
+    contact_phone = EXCLUDED.contact_phone,
+    contact_email = EXCLUDED.contact_email,
+    preferred_language = EXCLUDED.preferred_language,
+    current_state = EXCLUDED.current_state,
+    last_user_message = EXCLUDED.last_user_message,
+    history = EXCLUDED.history,
+    slots_summary = EXCLUDED.slots_summary,
+    last_message_at = EXCLUDED.last_message_at,
+    updated_at = now();
+"""
+
+# A hand-picked allowlist of "business-meaningful" slots goes stale the
+# moment a new subflow is authored (found live: an earlier version of this
+# function only covered 3 classification fields and some of scheduling --
+# missed value_ivf's `treat` (conventional/donor_eggs/ROPA -- the actual
+# IVF-vs-ROPA distinction), objections' `obj`/`final_choice`,
+# appointment_management, surrogacy_programs, and half of classification's
+# own fields: prior treatment, embryo origin, first-contact flag...). It
+# also wouldn't generalize across agents -- a list of family_aims_sam_text's
+# fields means nothing for a future agent with its own vocabulary.
+#
+# `kind: captured` in the DSL YAML (vs. `control`/`retry_counter`) would be
+# the authoritative, per-agent-correct signal, but that classification is
+# compile-time-only -- it never reaches graph.json/RuntimeArtifact, so it
+# isn't available here.
+#
+# Excluding mechanically instead, by the DSL's own naming conventions
+# (matches `_CONSTANT_NAME_RE`/`*_try` already used the same way in
+# agent_runtime's graph_builder.py): every compile-time constant
+# (`AGENT_NAME`, `MAX_RETRY_ATTEMPTS`, ...) is UPPER_SNAKE_CASE, every
+# retry counter ends in `_try`. Everything else captured, from any
+# subflow of any agent, present or future, is business data by definition
+# and included automatically -- no list to keep in sync per agent.
+_CONSTANT_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+_EXCLUDED_SLOT_NAMES = {
+    "preferred_language",  # already its own column
+    "available_slots",  # raw tool response (several full appointment objects) -- bulky, ephemeral, not a fact about the lead
+}
+
+
+def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
+    """Every captured slot, from any subflow of any agent, minus constants/retry counters/plumbing.
+
+    Keeps each slot's real namespaced key as-is (e.g. `cl__nat`, `vi__treat`,
+    `ob__obj`) rather than a prettified label -- multiple subflows reuse
+    short names (`success`, `ok`, `appt`...) for unrelated things, and
+    stripping the namespace prefix would silently collide them.
+    """
+    slots = slots or {}
+    return {
+        key: value
+        for key, value in slots.items()
+        if value is not None
+        and key not in _EXCLUDED_SLOT_NAMES
+        and not key.endswith("_try")
+        and not _CONSTANT_NAME_RE.match(key)
+    }
+
+
+@lru_cache
+def _connection():
+    import psycopg
+
+    conn = psycopg.connect(DATABASE_URL, autocommit=True, connect_timeout=5)
+    with conn.cursor() as cur:
+        cur.execute(CONVERSATIONS_TABLE_SQL)
+    return conn
+
+
+def build_postgres_checkpointer():
+    """A single shared PostgresSaver, tables created once via .setup()."""
+    from langgraph.checkpoint.postgres import PostgresSaver
+
+    checkpointer = PostgresSaver.from_conn_string(DATABASE_URL)
+    checkpointer.setup()
+    return checkpointer
+
+
+def upsert_conversation(
+    *,
+    thread_id: str,
+    agent_slug: str,
+    location_id: str,
+    contact_id: str,
+    contact: dict[str, Any] | None,
+    slots: dict[str, Any] | None,
+    current_state: str | None,
+    last_user_message: str | None = None,
+    history: list[str] | None = None,
+) -> None:
+    """Best-effort mirror write -- never raises into the caller's turn.
+
+    Called after a turn finishes, so it reflects the latest known slots
+    (preferred_language, and the business fields in `slots_summary`),
+    current_state, and recent conversation preview without needing its own
+    copy of the graph's routing logic.
+    """
+    if not postgres_enabled():
+        return
+    from psycopg.types.json import Jsonb
+
+    contact = contact or {}
+    slots = slots or {}
+    try:
+        conn = _connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                _UPSERT_SQL,
+                (
+                    thread_id,
+                    agent_slug,
+                    location_id,
+                    contact_id,
+                    contact.get("name"),
+                    contact.get("phone"),
+                    contact.get("email"),
+                    slots.get("preferred_language"),
+                    current_state,
+                    last_user_message,
+                    Jsonb(history or []),
+                    Jsonb(build_slots_summary(slots)),
+                    datetime.now(timezone.utc),
+                ),
+            )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "[%s] Failed to upsert conversations row (non-fatal).", thread_id, exc_info=True
+        )

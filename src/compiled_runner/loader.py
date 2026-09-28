@@ -21,6 +21,8 @@ from agent_compiler.runtime.llm_client import OpenAILLMClient
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 from langgraph.checkpoint.sqlite import SqliteSaver
 
+from compiled_runner.postgres import build_postgres_checkpointer, postgres_enabled
+
 COMPILED_AGENTS_DIR = Path(__file__).resolve().parents[2] / "compiled_agents"
 
 # say_callback is fixed once, at build_graph() time, not per request — a
@@ -54,11 +56,11 @@ def load_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
     timeout metadata `session_resolver.resolve_session` needs; `graph` is
     the compiled, checkpointed LangGraph graph, ready for `.invoke()`.
 
-    Persistence: a real SqliteSaver, one file per agent
-    (`compiled_agents/<slug>/sessions.db`) — not the InMemorySaver
-    default, so conversation state survives a process restart. A single
-    shared `sqlite3.Connection` for the process lifetime, `check_same_thread=False`
-    since FastAPI may dispatch requests across threads.
+    Persistence: `DATABASE_URL` set -> a shared `PostgresSaver` (survives a
+    redeploy, unlike local disk on e.g. Render's free tier). Otherwise
+    falls back to a SqliteSaver file per agent (`compiled_agents/<slug>/
+    sessions.db`) -- fine for local dev, lost on process restart in a real
+    deploy. A single shared connection for the process lifetime either way.
     """
     agent_dir = COMPILED_AGENTS_DIR / slug
     graph_path = agent_dir / "graph.json"
@@ -67,9 +69,12 @@ def load_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
 
     artifact = runtime_artifact_from_dict(json.loads(graph_path.read_text(encoding="utf-8")))
 
-    db_path = agent_dir / "sessions.db"
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
+    if postgres_enabled():
+        checkpointer = build_postgres_checkpointer()
+    else:
+        db_path = agent_dir / "sessions.db"
+        conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
 
     llm_client = OpenAILLMClient(api_key=os.environ.get("OPENAI_API_KEY"))
 
