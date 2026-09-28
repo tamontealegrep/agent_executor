@@ -105,9 +105,20 @@ ON CONFLICT (thread_id) DO UPDATE SET
 # and included automatically -- no list to keep in sync per agent.
 _CONSTANT_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _EXCLUDED_SLOT_NAMES = {
-    "preferred_language",  # already its own column
-    "available_slots",  # raw tool response (several full appointment objects) -- bulky, ephemeral, not a fact about the lead
+    "preferred_language",  # already its own column -- global slot, never namespaced (confirmed against a real graph.json: referenced as bare [preferred_language] everywhere, unlike available_slots below)
 }
+# Unlike preferred_language, available_slots is a per-subflow `capture:` slot
+# like any other -- its real runtime key is namespaced per subflow instance
+# (confirmed against family_aims_sam_text's real graph.json: the actual
+# `capture` tuple is `["sc__available_slots", ...]` in scheduling,
+# `["am__available_slots", ...]` in appointment_management, never the bare
+# name). An exact-match exclusion on "available_slots" therefore never
+# fired -- found auditing this function for a slots_summary example
+# (2026-09-29): the raw appointment-slot dump this exclusion was written
+# to keep out of `conversations` was landing in it anyway, on every agent
+# with a scheduling subflow. Matched by suffix instead, same idea as the
+# `_try` retry-counter check below.
+_EXCLUDED_SLOT_SUFFIXES = ("available_slots",)
 
 
 def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
@@ -125,6 +136,7 @@ def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
         if value is not None
         and key not in _EXCLUDED_SLOT_NAMES
         and not key.endswith("_try")
+        and not any(key == suffix or key.endswith(f"__{suffix}") for suffix in _EXCLUDED_SLOT_SUFFIXES)
         and not _CONSTANT_NAME_RE.match(key)
     }
 

@@ -38,6 +38,20 @@ def test_drops_explicitly_excluded_plumbing_fields():
     assert postgres.build_slots_summary(slots) == {"vi__treat": "donor_eggs"}
 
 
+def test_drops_namespaced_available_slots():
+    """available_slots is a per-subflow `capture:` slot like any other --
+    its real runtime key is namespaced (sc__available_slots in scheduling,
+    am__available_slots in appointment_management, confirmed against a
+    real graph.json), never the bare name the exclusion originally only
+    matched exactly."""
+    slots = {
+        "vi__treat": "donor_eggs",
+        "sc__available_slots": [{"start_co": "2026-01-01T09:00:00-05:00"}],
+        "am__available_slots": [{"start_co": "2026-01-01T10:00:00-05:00"}],
+    }
+    assert postgres.build_slots_summary(slots) == {"vi__treat": "donor_eggs"}
+
+
 def test_drops_none_values():
     slots = {"vi__treat": "donor_eggs", "ob__obj": None}
     assert postgres.build_slots_summary(slots) == {"vi__treat": "donor_eggs"}
