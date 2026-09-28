@@ -10,6 +10,7 @@ from tools.family_aims.api.v1.endpoints import (
     visa,
     customer_reply,
     sam,
+    sam_text,
 )
 from tools.utils.api.v1.endpoints import callback_request, time_now
 
@@ -23,6 +24,7 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(visa.router, tags=["visa_check"])
 api_router.include_router(customer_reply.router, tags=["customer_reply"])
 api_router.include_router(sam.router, tags=["sam"])
+api_router.include_router(sam_text.router, tags=["sam_text"])
 
 # Para agregar un endpoint nuevo:
 #   1. crear tools.family_aims/api/v1/endpoints/mi_endpoint.py con su APIRouter
