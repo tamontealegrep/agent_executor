@@ -1811,7 +1811,7 @@
     "MAX_RETRY_ATTEMPTS": "3",
     "SUPPORT_LINE_NAME": "Linea de Apoyo al Paciente"
   },
-  "session_timeout_minutes": null,
+  "session_timeout_minutes": 10080,
   "say_policies": [
     "Usa mensajes breves, claros y numerados cuando presentes opciones.",
     "En preguntas de selección múltiple, permite que la paciente responda con número, texto de la opción o varias opciones separadas por coma.",

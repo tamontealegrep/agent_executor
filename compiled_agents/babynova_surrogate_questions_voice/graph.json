@@ -3993,7 +3993,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Tengo disponibilidad en estos días para: [s__available_slots]. ¿Qué día te interesa?"
+          "Tengo disponibilidad en estos días para: [s__available_slots]."
         ],
         "say_verbatim": true,
         "execute": null,

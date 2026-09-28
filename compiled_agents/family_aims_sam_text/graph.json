@@ -5304,6 +5304,7 @@
           "[sc__c_email_try] = 0",
           "[sc__time_try] = 0",
           "[sc__book_try] = 0",
+          "[sc__end_try] = 0",
           "[user_timezone] = NULL",
           "[sc__available_slots] = NULL",
           "[sc__day] = NULL",
@@ -6144,7 +6145,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Tengo disponibilidad en estas fechas:\n\n[sc__available_slots]\n\n¿Qué día te viene mejor?"
+          "Tengo disponibilidad en estas fechas:\n\n[sc__available_slots]"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -7089,6 +7090,42 @@
         "fallback": []
       },
       {
+        "node_id": "SC__SC_END",
+        "node_type": "question",
+        "goal": [
+          "Stay available after a successful scheduling in case the contact has more questions. Never re-ask anything explicitly; only the global router (FAQs/handlers) should react to what the contact says."
+        ],
+        "do": [
+          "[sc__end_try] = [sc__end_try] + 1"
+        ],
+        "trigger": [],
+        "say": [
+          "¿Hay algo más en lo que te pueda ayudar?"
+        ],
+        "say_verbatim": true,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_TRUE_END",
+            "condition_text": "IF [sc__end_try] >= <END_LISTEN_MAX_ATTEMPTS> -> GO_TO: SC__SC_TRUE_END",
+            "is_mechanical": true,
+            "python_expression": "sc__end_try >= END_LISTEN_MAX_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_END",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "MESSAGE_END",
         "node_type": "terminal",
         "goal": [
@@ -7174,10 +7211,10 @@
         "fallback": []
       },
       {
-        "node_id": "SC__SC_END",
+        "node_id": "SC__SC_TRUE_END",
         "node_type": "terminal",
         "goal": [
-          "Close the conversation after a successful scheduling."
+          "Formal exit point for the scheduling subflow. Never actually reached in normal operation -- SC_END loops indefinitely so the contact can keep asking questions after booking; this only exists to satisfy the compiler's requirement of a real terminal state."
         ],
         "do": [],
         "trigger": [],
@@ -8356,6 +8393,7 @@
     "AGENT_NAME": "Sam",
     "COMPANY_NAME": "Family Aims",
     "MAX_RETRY_ATTEMPTS": "3",
+    "END_LISTEN_MAX_ATTEMPTS": "20",
     "DATA_LAW_REFERENCE": "Law 1266 of 2008, Law 1581 of 2012, and Decree 886 of 2014",
     "HUMAN_SURROGACY_ADVISOR_NAME": "Marcela Arango",
     "HUMAN_IVF_ADVISOR_NAME": "Ayda Chuquizan",
@@ -8364,7 +8402,7 @@
     "APPOINTMENT_DURATION_MINUTES": "30",
     "MIGRATION_POLICY_REASON": "Esta política responde exclusivamente a requisitos migratorios colombianos y tiene como objetivo garantizar que el proceso pueda desarrollarse de manera legal y segura."
   },
-  "session_timeout_minutes": null,
+  "session_timeout_minutes": 10080,
   "say_policies": [
     "The conversation operating language is [preferred_language], set from {{contact.language}} when available or inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
     "If [preferred_language] == 'es', respond in natural Colombian Spanish; if 'en', respond in warm professional English; if 'pt', respond in natural Brazilian Portuguese. If it is still empty, use Spanish when the latest message is clearly Spanish; otherwise default to English.",

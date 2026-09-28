@@ -6111,7 +6111,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Tenho disponibilidade nestas datas:\n\n[sc__available_slots]\n\nQual dia funciona melhor para você?"
+          "Tenho disponibilidade nestas datas:\n\n[sc__available_slots]"
         ],
         "say_verbatim": true,
         "execute": null,
