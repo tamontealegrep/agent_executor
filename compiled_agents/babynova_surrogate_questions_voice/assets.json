@@ -444,7 +444,7 @@
       {
         "name": "new_duration",
         "required": false,
-        "description": "Nueva duración de la cita en minutos si fue modificada."
+        "description": "Nueva duración de la cita en minutos si fue modificada (enviada como string)."
       },
       {
         "name": "errors",

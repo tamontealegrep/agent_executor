@@ -9,6 +9,7 @@ from tools.novafem_surrogacy.api.v1.endpoints import (
     health,
     get_available_slots,
     surrogate_classification,
+    triage_text,
 )
 
 api_router = APIRouter()
@@ -20,6 +21,7 @@ api_router.include_router(edit_appointment.router, tags=["edit_appointment"])
 api_router.include_router(surrogate_classification.router, tags=["surrogate_classification"])
 api_router.include_router(check_documentation.router, tags=["check_documentation"])
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(triage_text.router, tags=["triage_text"])
 
 # Para agregar un endpoint nuevo:
 #   1. crear tools.novafem_surrogacy/api/v1/endpoints/mi_endpoint.py con su APIRouter

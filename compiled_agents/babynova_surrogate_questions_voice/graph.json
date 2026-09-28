@@ -6668,8 +6668,8 @@
         {
           "name": "new_duration",
           "required": false,
-          "description": "Nueva duración de la cita en minutos si fue modificada.",
-          "type_expr": "int",
+          "description": "Nueva duración de la cita en minutos si fue modificada (enviada como string).",
+          "type_expr": "str",
           "examples": []
         },
         {

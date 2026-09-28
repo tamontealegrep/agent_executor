@@ -18,7 +18,7 @@ from starlette.concurrency import run_in_threadpool
 from agent_compiler.runtime.graph_builder import fresh_state
 from agent_compiler.runtime.session_resolver import resolve_session
 
-from compiled_runner.loader import load_compiled_agent, message_buffer
+from compiled_runner.loader import load_compiled_agent, message_buffer, reload_compiled_agent
 
 logger = logging.getLogger(__name__)
 
@@ -98,3 +98,20 @@ async def reset(slug: str, thread_id: str) -> dict:
     config = {"configurable": {"thread_id": thread_id}}
     graph.checkpointer.delete_thread(thread_id)
     return {"reset": True, "thread_id": thread_id}
+
+
+@router.post("/{slug}/v1/admin/reload")
+async def reload_agent(slug: str) -> dict:
+    """Rebuild `slug` from the `graph.json` currently on disk, without
+    restarting the process -- agent_runtime's USAGE.md §9/§8.2
+    `/admin/reload` pattern. Call this after dropping a new compiled
+    `graph.json`/`assets.json` into compiled_agents/<slug>/ (e.g. via
+    scripts/sync_compiled_agents.py). Applies to every mount that reads
+    this agent through compiled_runner.loader, GHL webhook included --
+    slug is the shared cache key, not something specific to this router.
+    """
+    try:
+        artifact = await run_in_threadpool(reload_compiled_agent, slug)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"reloaded": True, "agent_id": artifact.agent_id}
