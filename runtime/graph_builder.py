@@ -1380,7 +1380,12 @@ def initial_slots(artifact: RuntimeArtifact) -> dict[str, Any]:
     return {name: _coerce_constant(value) for name, value in artifact.constants.items()}
 
 
-def fresh_state(artifact: RuntimeArtifact, contact: dict[str, Any] | None = None) -> SessionState:
+def fresh_state(
+    artifact: RuntimeArtifact,
+    contact: dict[str, Any] | None = None,
+    seed_history: list[str] | None = None,
+    seed_last_user_message: str | None = None,
+) -> SessionState:
     """Build the initial `SessionState` for a brand-new conversation.
 
     `contact` (2026-09-21) is the session's known CRM contact fields (e.g.
@@ -1390,14 +1395,27 @@ def fresh_state(artifact: RuntimeArtifact, contact: dict[str, Any] | None = None
     never references `{{contact.X}}` is unaffected either way; one that
     does simply sees every such reference as unresolved/unknown until a
     caller supplies real values here.
+
+    `seed_history`/`seed_last_user_message` (2026-09-25) let a caller give
+    the very first node some context before anything has actually happened
+    in the conversation -- the gap that broke `eval: "llm"` gates shaped
+    like an outbound-call agent's "was the call answered?" decision: on a
+    genuinely fresh state `history` is `[]`, so `_llm_pick_condition` has
+    zero evidence and reliably answers `NONE`, taking the "not answered"
+    fallback before the agent ever gets to speak. Both default to the old
+    empty values, so every existing caller is unaffected. Neither is
+    interpreted here -- a caller decides what "the call connected" or "the
+    user already said X" looks like as plain history lines (e.g.
+    `f"user: {text}"`), since that phrasing is a harness/UI concern, not
+    part of the compiled agent.
     """
     from agent_compiler.runtime.session_resolver import now_iso
 
     return {
         "slots": initial_slots(artifact),
         "current_state": "",
-        "last_user_message": "",
+        "last_user_message": seed_last_user_message or "",
         "last_message_at": now_iso(),
-        "history": [],
+        "history": list(seed_history) if seed_history else [],
         "contact": contact or {},
     }
