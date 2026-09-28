@@ -40,14 +40,26 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_here = Path(__file__).resolve()
+# Robust root finder: Busca hacia arriba la carpeta que contenga 'agents/compiled'
+def _find_project_root(start=_here):
+    for p in [_here] + list(_here.parents):
+        ac = p / "agents" / "compiled"
+        if ac.exists():
+            return p
+    # Fallback original logic (por si la estructura cambia en el futuro)
+    return _here.parents[1]
+
+PROJECT_ROOT = _find_project_root()
 SRC_ROOT = PROJECT_ROOT / "src"
 for candidate in (PROJECT_ROOT, SRC_ROOT):
     candidate_str = str(candidate)
     if candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
+# Carga primero .env en el root del proyecto, luego en agent_executor si existe
 load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(PROJECT_ROOT / "agent_executor" / ".env", override=True)
 
 from sync_engine import sync_agent_runtime_engine
 
@@ -59,9 +71,21 @@ from agent_compiler.runtime.session_resolver import resolve_session
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 
 console = Console()
-COMPILED_AGENTS_DIR = PROJECT_ROOT / "compiled_agents"
+COMPILED_AGENTS_DIR = PROJECT_ROOT / "agent_executor" / "compiled_agents"
 DEFAULT_SESSION_DIR = PROJECT_ROOT / "backups" / "tui_sessions"
 AGENT_COMPILER_DIST_DIR = PROJECT_ROOT / "agents" / "compiled"
+
+# Seeded into `history` (never spoken -- see LLMContext.block()) so a
+# fresh conversation's very first `eval: "llm"` gate has real evidence to
+# reason from. Fixes outbound-call agents (family_aims_sam_*, babynova_*)
+# whose root `states_root.yaml` starts with a "was the call answered?"
+# decision: on a genuinely empty `history`, that gate has nothing to judge
+# and reliably falls back to "not answered", ending the conversation
+# before the agent ever speaks. English on purpose -- the model reasons
+# about it regardless of which language the compiled agent itself speaks.
+OUTBOUND_ANSWERED_SEED_LINE = (
+    "[system note] The outbound call has connected -- the contact answered and is on the line."
+)
 
 STYLE = questionary.Style([
     ("qmark", "fg:#00d7af bold"),
@@ -106,6 +130,9 @@ class CompiledSessionState:
     thread_id: str
     history: List[Dict[str, Any]] = field(default_factory=list)
     last_traces: List[ToolTrace] = field(default_factory=list)
+    # "agent" (saliente/voz -- el agente habla primero, ej. family_aims_sam_*)
+    # or "user" (entrante/texto -- el usuario escribe primero).
+    first_speaker: str = "agent"
 
 
 @dataclass
@@ -169,7 +196,11 @@ def sync_from_agent_compiler() -> None:
         dest_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(graph_src, graph_dst)
         if assets_src.exists():
-            shutil.copy2(assets_src, assets_dst)
+            try:
+                shutil.copy2(assets_src, assets_dst)
+            except PermissionError as e:
+                console.print(f"[yellow]Advertencia: No se pudo copiar {assets_src} → {assets_dst}: {e}. El archivo está siendo usado por otro proceso.[/yellow]")
+                # Continúa sin interrumpir el TUI
         console.print(f"[dim]Sincronizado {slug} desde agents/compiled/[/dim]")
 
 
@@ -179,7 +210,9 @@ def discover_compiled_agents() -> List[str]:
     if not COMPILED_AGENTS_DIR.exists():
         return []
     return sorted(
-        entry.name for entry in COMPILED_AGENTS_DIR.iterdir() if entry.is_dir() and (entry / "graph.json").exists()
+        entry.name
+        for entry in COMPILED_AGENTS_DIR.iterdir()
+        if entry.is_dir() and (entry / "graph.json").exists()
     )
 
 
@@ -216,6 +249,52 @@ class CompiledAgentHarness:
             say_callback=self._say_buffer.append,
         )
 
+    def start(
+        self,
+        thread_id: str,
+        first_speaker: str = "agent",
+        opening_message: Optional[str] = None,
+    ) -> ChatTurnResult:
+        """Invoke the very first turn of a brand-new thread.
+
+        `first_speaker` decides what the graph's first `eval: "llm"` gate
+        (or any other node reading `history`/`last_user_message`) gets to
+        reason from, since a plain `fresh_state()` starts with none of
+        that -- see `fresh_state`'s own docstring for why that silently
+        breaks an outbound-call agent's "was the call answered?" decision:
+
+        - "agent" (saliente/voz): seeds a neutral note that the call
+          connected, so that kind of gate has real evidence and the agent
+          actually gets to greet, instead of the graph landing on its
+          "not answered" fallback with zero context.
+        - "user" (entrante/texto): seeds `opening_message` as the first
+          thing the contact said, so any early node that reasons over
+          `last_user_message`/`history` sees it from turn one -- the same
+          shape a real inbound webhook delivers (the platform already has
+          the user's message when it starts the conversation).
+        """
+        config = {"configurable": {"thread_id": thread_id}}
+        self._say_buffer.clear()
+        self._trace_buffer.clear()
+
+        if first_speaker == "user":
+            seed_history = [f"user: {opening_message}"] if opening_message else []
+            state = fresh_state(
+                self.artifact,
+                contact=self.contact,
+                seed_history=seed_history,
+                seed_last_user_message=opening_message or "",
+            )
+        else:
+            state = fresh_state(
+                self.artifact,
+                contact=self.contact,
+                seed_history=[OUTBOUND_ANSWERED_SEED_LINE],
+            )
+
+        result = self.graph.invoke(state, config)
+        return self._finish(thread_id, result)
+
     def turn(self, thread_id: str, message: Optional[str]) -> ChatTurnResult:
         config = {"configurable": {"thread_id": thread_id}}
         self._say_buffer.clear()
@@ -231,6 +310,10 @@ class CompiledAgentHarness:
                 raise RuntimeError("Este thread ya tiene una conversacion en curso -- se necesita un mensaje.")
             result = self.graph.invoke(Command(resume=message), config)
 
+        return self._finish(thread_id, result)
+
+    def _finish(self, thread_id: str, result: Dict[str, Any]) -> ChatTurnResult:
+        config = {"configurable": {"thread_id": thread_id}}
         interrupts = result.get("__interrupt__")
         messages = list(self._say_buffer)
         if interrupts:
@@ -269,6 +352,7 @@ def _session_payload(state: CompiledSessionState) -> Dict[str, Any]:
         "agent_slug": state.agent_slug,
         "thread_id": state.thread_id,
         "history": state.history,
+        "first_speaker": state.first_speaker,
         "saved_at": _now_iso(),
     }
 
@@ -285,6 +369,7 @@ def load_session(session_file: Path) -> CompiledSessionState:
         thread_id=data["thread_id"],
         history=data.get("history", []),
         last_traces=[],
+        first_speaker=data.get("first_speaker", "agent"),
     )
 
 
@@ -338,11 +423,34 @@ def render_state(harness: CompiledAgentHarness, state: CompiledSessionState) -> 
         console.print("[dim]Sin slots capturados todavia.[/dim]")
 
 
+def ask_first_speaker() -> str:
+    """Menu shown once per brand-new thread: who speaks first.
+
+    "agent" mirrors an outbound voice call (family_aims_sam_*, babynova_*):
+    the graph seeds evidence that the call connected, so its `states_root`
+    "was the call answered?" gate resolves and the agent's greeting plays.
+    "user" mirrors an inbound chat: you type the opening message yourself,
+    seeded as the first thing the contact said, before the graph runs at
+    all -- the same shape a real inbound webhook delivers.
+    """
+    choice = questionary.select(
+        "Quien habla primero en esta conversacion?",
+        choices=[
+            questionary.Choice("El agente (saliente / voz)", value="agent"),
+            questionary.Choice("El usuario (entrante / texto)", value="user"),
+        ],
+        style=STYLE,
+    ).ask()
+    return choice or "agent"
+
+
 def render_chat_header(state: CompiledSessionState, session_file: Path) -> None:
     console.clear()
     console.print(f"[bold cyan]{state.agent_slug}[/bold cyan] -- agente compilado (agent_compiler + agent_runtime)")
     console.print(f"Sesion: {session_file}")
     console.print(f"thread_id={state.thread_id}")
+    speaker_label = "el agente (saliente/voz)" if state.first_speaker == "agent" else "el usuario (entrante/texto)"
+    console.print(f"Habla primero: {speaker_label}")
     console.print("Comandos: /help  /history  /traces  /state  /save  /new  /back  /exit\n")
 
 
@@ -385,6 +493,7 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
         state.history = []
         state.last_traces = []
         console.print(f"[cyan]Conversacion nueva. thread_id={state.thread_id}[/cyan]")
+        run_first_turn(harness, state, session_file)
         return True
     if command == "/back":
         save_session(state, session_file)
@@ -395,6 +504,40 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
     return False
 
 
+def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, session_file: Path) -> None:
+    """Kick off a brand-new thread: ask who speaks first, then invoke it.
+
+    "agent": the graph runs with no user text, same as before, but now with
+    `OUTBOUND_ANSWERED_SEED_LINE` seeded so an outbound-call agent's "was
+    the call answered?" gate can actually resolve -- see `harness.start`.
+    "user": you type the opening message here, before the graph runs at
+    all, and it's seeded as the first thing the contact said.
+    """
+    state.first_speaker = ask_first_speaker()
+    render_chat_header(state, session_file)
+
+    opening_message: Optional[str] = None
+    if state.first_speaker == "user":
+        opening_message = console.input("\n[bold green]Primer mensaje (usuario)> [/bold green]").strip()
+        console.print(Panel.fit(opening_message, title="User", border_style="green"))
+        state.history.append(_history_entry("inbound", opening_message))
+
+    try:
+        result = harness.start(state.thread_id, state.first_speaker, opening_message)
+    except Exception as exc:
+        console.print(Panel.fit(str(exc), title="Error", border_style="red"))
+        return
+
+    for msg in result.messages:
+        console.print(Panel.fit(msg, title=state.agent_slug, border_style="magenta"))
+    state.history.extend(_history_entry("outbound", m) for m in result.messages)
+    state.last_traces = result.traces
+    render_traces(result.traces)
+    if result.conversation_ended:
+        console.print("[dim]-- conversacion finalizada (el grafo llego a un nodo terminal) --[/dim]")
+    save_session(state, session_file)
+
+
 def chat_loop(state: CompiledSessionState, session_file: Path, contact: Optional[Dict[str, Any]] = None) -> None:
     harness = CompiledAgentHarness(state.agent_slug, contact=contact)
     render_chat_header(state, session_file)
@@ -402,21 +545,11 @@ def chat_loop(state: CompiledSessionState, session_file: Path, contact: Optional
     console.print()
     render_history(state)
 
-    # Primer turno: si el thread es nuevo, arranca el flujo sin texto de
-    # usuario (igual que el nodo `start` no espera nada) y muestra el saludo.
+    # Primer turno: si el thread es nuevo, pregunta quien habla primero y
+    # arranca el flujo (ver run_first_turn).
     snapshot = harness.state_snapshot(state.thread_id)
     if not snapshot:
-        try:
-            result = harness.turn(state.thread_id, None)
-        except Exception as exc:
-            console.print(Panel.fit(str(exc), title="Error", border_style="red"))
-        else:
-            for msg in result.messages:
-                console.print(Panel.fit(msg, title=state.agent_slug, border_style="magenta"))
-            state.history.extend(_history_entry("outbound", m) for m in result.messages)
-            state.last_traces = result.traces
-            render_traces(result.traces)
-            save_session(state, session_file)
+        run_first_turn(harness, state, session_file)
 
     while True:
         try:
