@@ -6,6 +6,8 @@ silently missed IVF/ROPA and other real business fields). These tests lock
 in that exclusion rule so a future edit can't quietly narrow it again.
 """
 
+import time
+
 from compiled_runner import postgres
 
 
@@ -116,3 +118,57 @@ def test_closing_message_inactivity_threshold_is_23h45m():
     """The 15-minute safety margin before WhatsApp's hard 24h cutoff is the
     whole point of this feature -- pin the exact value."""
     assert postgres.CLOSING_MESSAGE_INACTIVITY_THRESHOLD.total_seconds() == 23 * 3600 + 45 * 60
+
+
+def test_pool_construction_is_single_flight_under_concurrent_first_access(monkeypatch):
+    """Found live (2026-09-29, real server + real Postgres): two agents'
+    closing-message sweep loops both call _pool() for the first time at
+    startup, from separate run_in_threadpool threads, at nearly the same
+    instant. @lru_cache alone doesn't stop both from entering the function
+    body before either finishes -- it only dedupes completed calls, so
+    both built a real ConnectionPool and one got discarded mid-open
+    (harmless but noisy __del__ errors). _pool_lock must serialize this."""
+    import threading as _threading
+
+    class _FakeCursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+        def execute(self, *args, **kwargs):
+            pass
+
+    class _FakeConn:
+        def cursor(self, *args, **kwargs):
+            return _FakeCursor()
+
+    class _FakeConnCtx:
+        def __enter__(self):
+            return _FakeConn()
+
+        def __exit__(self, *exc_info):
+            return False
+
+    class _FakeConnectionPool:
+        construction_count = 0
+
+        def __init__(self, *args, **kwargs):
+            type(self).construction_count += 1
+            time.sleep(0.05)  # widen the race window a slow real construction would have
+
+        def connection(self):
+            return _FakeConnCtx()
+
+    monkeypatch.setattr(postgres, "DATABASE_URL", "postgresql://fake:fake@localhost/fake")
+    monkeypatch.setattr(postgres, "_pool_instance", None)
+    monkeypatch.setattr("psycopg_pool.ConnectionPool", _FakeConnectionPool)
+
+    threads = [_threading.Thread(target=postgres._pool) for _ in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert _FakeConnectionPool.construction_count == 1

@@ -32,8 +32,8 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from typing import Any
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
@@ -160,7 +160,10 @@ def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
 CLOSING_MESSAGE_INACTIVITY_THRESHOLD = timedelta(hours=23, minutes=45)
 
 
-@lru_cache
+_pool_instance = None
+_pool_lock = threading.Lock()
+
+
 def _pool():
     """One shared connection pool, used by both the LangGraph checkpointer
     and every query in this module -- replaces a single long-lived
@@ -174,20 +177,40 @@ def _pool():
     itself uses -- needed for compatibility with a transaction-pooling
     proxy in front of the real Postgres (common on hosted providers like
     Supabase/Neon), harmless otherwise.
-    """
-    from psycopg_pool import ConnectionPool
 
-    max_size = int(os.environ.get("DATABASE_POOL_MAX_SIZE", "5"))
-    pool = ConnectionPool(
-        DATABASE_URL,
-        min_size=1,
-        max_size=max_size,
-        open=True,
-        kwargs={"autocommit": True, "prepare_threshold": 0, "connect_timeout": 5},
-    )
-    with pool.connection() as conn, conn.cursor() as cur:
-        cur.execute(CONVERSATIONS_TABLE_SQL)
-    return pool
+    Manually double-checked-locked instead of `@lru_cache`: found live
+    (2026-09-29, real server, real Postgres) -- every compiled agent wired
+    to GHL starts its own closing-message sweep loop at startup
+    (`ghl_endpoint.py::_start_closing_sweep`), and with two agents both
+    calling this function for the first time within the same instant, via
+    separate `run_in_threadpool` threads, `lru_cache` doesn't stop both
+    from entering the function body before either has finished -- it only
+    dedupes *completed* calls. Each thread built its own real
+    `ConnectionPool`, one got cached and kept, the other got garbage
+    collected mid-open, logging (harmless, but noisy) `__del__` errors
+    from its own background worker threads. A real lock serializes
+    construction instead.
+    """
+    global _pool_instance
+    if _pool_instance is not None:
+        return _pool_instance
+    with _pool_lock:
+        if _pool_instance is not None:
+            return _pool_instance
+        from psycopg_pool import ConnectionPool
+
+        max_size = int(os.environ.get("DATABASE_POOL_MAX_SIZE", "5"))
+        pool = ConnectionPool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=max_size,
+            open=True,
+            kwargs={"autocommit": True, "prepare_threshold": 0, "connect_timeout": 5},
+        )
+        with pool.connection() as conn, conn.cursor() as cur:
+            cur.execute(CONVERSATIONS_TABLE_SQL)
+        _pool_instance = pool
+        return _pool_instance
 
 
 def build_postgres_checkpointer():
