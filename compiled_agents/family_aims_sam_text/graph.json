@@ -8,7 +8,7 @@
         "node_id": "MESSAGE_START",
         "node_type": "start",
         "goal": [
-          "Entry point for the asynchronous text conversation."
+          "Enter the text conversation flow."
         ],
         "do": [],
         "trigger": [],
@@ -141,12 +141,12 @@
         "node_id": "AM__AM_ASK_NAME",
         "node_type": "question",
         "goal": [
-          "Ask for the name to search for the appointment if not already known."
+          "Ask for the name on the booking, if unknown."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para ayudarte con tu cita, ¿me podrías indicar el nombre completo con el que se hizo la reserva?"
+          "To help you with your appointment, could you indicate the full name with which the reservation was made?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -183,12 +183,12 @@
         "node_id": "AM__AM_ASK_EMAIL",
         "node_type": "question",
         "goal": [
-          "Ask for the email to search for the appointment if not already known."
+          "Ask for the email on the booking, if unknown."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Y cuál es el correo electrónico asociado a la reserva?"
+          "And what is the email address associated with the reservation?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -217,7 +217,7 @@
         "node_id": "AM__AM_FIND",
         "node_type": "action",
         "goal": [
-          "Search for existing appointments on the IVF calendar. You MUST execute find_appointment this turn."
+          "Search the IVF calendar via find_appointment."
         ],
         "do": [
           "TOOL CALL ONLY: call find_appointment now.",
@@ -256,7 +256,7 @@
         "node_id": "AM__AM_FIND_SAVE_IVF",
         "node_type": "registration",
         "goal": [
-          "Set aside the IVF calendar's result before searching the surrogacy calendar too, which reuses [am__appointments]/[am__success]."
+          "Save the IVF search result before searching surrogacy."
         ],
         "do": [
           "[am__appointments_ivf] = [am__appointments]",
@@ -284,7 +284,7 @@
         "node_id": "AM__AM_FIND_SUR",
         "node_type": "action",
         "goal": [
-          "Search for existing appointments on the surrogacy calendar too. You MUST execute find_appointment this turn. find_appointment only accepts a single calendar_type ('IVF' or 'SUR') per call, never 'BOTH' -- this is why the search runs twice."
+          "Search the surrogacy calendar via find_appointment."
         ],
         "do": [
           "TOOL CALL ONLY: call find_appointment now.",
@@ -338,7 +338,7 @@
         "node_id": "AM__AM_FIND_USE_IVF",
         "node_type": "registration",
         "goal": [
-          "Use the appointments found on the IVF calendar, overwriting [am__appointments] (currently the surrogacy calendar's result, saved by the previous state's routing). (If the contact also has appointments on the surrogacy calendar, those are not shown here -- an intentional simplification for the rare case of a contact on both tracks; the IVF ones take priority.)"
+          "Use the appointments found on the IVF calendar."
         ],
         "do": [
           "[am__appointments] = [am__appointments_ivf]"
@@ -405,14 +405,14 @@
         "node_id": "AM__AM_NOT_FOUND",
         "node_type": "message",
         "goal": [
-          "Inform that no appointment was found and redirect to service selection."
+          "Report that no appointment was found and offer to schedule a new one."
         ],
         "do": [
           "[am__not_found] = TRUE"
         ],
         "trigger": [],
         "say": [
-          "No encontré ninguna cita con ese nombre o correo. Sin embargo, puedo ayudarte a agendar una nueva ahora mismo."
+          "I didn't find any appointment with that name or email. However, I can help you schedule a new one right now."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -439,7 +439,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Encontré una cita para [am__appointments][0].summary el [am__appointments][0].start_time. ¿Es esta la que deseas gestionar?"
+          "I found an appointment for [am__appointments][0].summary on [am__appointments][0].start_time. Is this the one you want to manage?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -475,7 +475,7 @@
         "node_id": "AM__AM_SELECT_ONE",
         "node_type": "registration",
         "goal": [
-          "Store the single selected appointment."
+          "Store the selected appointment."
         ],
         "do": [
           "[am__app] = [am__appointments][0]"
@@ -502,12 +502,12 @@
         "node_id": "AM__AM_PICK_ONE",
         "node_type": "question",
         "goal": [
-          "Ask the contact to pick one from multiple appointments."
+          "Ask the contact to choose among multiple appointments."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Encontré varias citas. ¿Cuál te gustaría gestionar?",
+          "I found several appointments. Which one would you like to manage?",
           "[am__appointments]"
         ],
         "say_verbatim": false,
@@ -535,12 +535,12 @@
         "node_id": "AM__AM_ASK_ACTION",
         "node_type": "question",
         "goal": [
-          "Ask if they want to cancel or reschedule."
+          "Ask whether to cancel or reschedule."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Qué te gustaría hacer con esta cita: cancelarla o reprogramarla?"
+          "What would you like to do with this appointment: cancel it or reschedule it?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -579,7 +579,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Estás seguro de que deseas cancelar tu cita del [am__app].start_time?"
+          "Are you sure you want to cancel your appointment on [am__app].start_time?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -662,7 +662,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Tu cita ha sido cancelada exitosamente. Si necesitas algo más en el futuro, no dudes en escribirnos. ¡Que tengas un excelente día!"
+          "Your appointment has been successfully cancelled. If you need anything else in the future, don't hesitate to write to us. Have a great day!"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -731,7 +731,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Por favor elige una nueva fecha y hora para tu cita:",
+          "Please choose a new date and time for your appointment:",
           "[am__available_slots]"
         ],
         "say_verbatim": false,
@@ -808,7 +808,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¡Perfecto! Tu cita ha sido reprogramada. Recibirás un correo de confirmación en breve. ¡Que tengas un día maravilloso!"
+          "Perfect! Your appointment has been rescheduled. You will receive a confirmation email shortly. Have a wonderful day!"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -835,7 +835,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Lo siento, ocurrió un error al procesar tu solicitud. Por favor intenta de nuevo más tarde o contacta a nuestro equipo de soporte."
+          "I'm sorry, an error occurred while processing your request. Please try again later or contact our support team."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1321,7 +1321,7 @@
         "node_id": "O__OP_S",
         "node_type": "start",
         "goal": [
-          "Enter opening."
+          "Enter the opening flow."
         ],
         "do": [],
         "trigger": [],
@@ -1346,7 +1346,7 @@
         "node_id": "O__OP_INIT",
         "node_type": "registration",
         "goal": [
-          "Initialize the opening counters and normalize the operating language."
+          "Initialize opening counters and lock the operating language."
         ],
         "do": [
           "Infer [preferred_language] from {{contact.language}} first; if it is missing, infer it from the user's latest message."
@@ -1358,7 +1358,7 @@
         "store": [
           "[o__svc_try] = 0",
           "[svc] = NULL",
-          "[preferred_language] = 'es' | 'en' | 'pt' derivado de {{contact.language}} o inferido del mensaje del usuario"
+          "[preferred_language] = 'es' | 'en' | 'pt' derived from {{contact.language}} or inferred from the user's message"
         ],
         "capture": [],
         "eval": "code",
@@ -1377,14 +1377,41 @@
         "node_id": "O__OP_GREET",
         "node_type": "message",
         "goal": [
-          "Deliver the approved greeting and frame the first service split."
+          "Deliver the greeting and introduce the service choice."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Hola. Soy <AGENT_NAME>, el asistente virtual de <COMPANY_NAME>.\nRecibimos tu información y tu interés en nuestros tratamientos de fertilidad."
+          "Hello. I am <AGENT_NAME>, the virtual assistant for <COMPANY_NAME>.\nWe received your information and your interest in our fertility treatments."
         ],
         "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_PRIVACY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_PRIVACY",
+        "node_type": "message",
+        "goal": [
+          "State that continuing the conversation implies acceptance of the privacy policy."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "By continuing this conversation, you accept the Privacy and Personal Data Protection Policy of <COMPANY_NAME>, which is given in compliance with <DATA_LAW_REFERENCE>."
+        ],
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],
@@ -1404,13 +1431,13 @@
         "node_id": "O__OP_ASK",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead wants a conventional fertility path or surrogacy and normalize the answer to [svc].",
-          "Normalize IVF, FIV, fertilidad convencional, ovodonación, and método ROPA to 'ivf'. Normalize subrogación and gestación subrogada to 'surrogacy'."
+          "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
+          "Map IVF, conventional fertility, egg donation, and ROPA to 'ivf'; map surrogacy and gestational surrogacy to 'surrogacy'."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para poder orientarte mejor, ¿estás interesado o interesada en un proceso de fertilidad convencional, como FIV o método ROPA, o en un programa de gestación subrogada?"
+          "To better guide you, are you interested in a conventional fertility process, such as IVF or the ROPA method, or in a gestational surrogacy program?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1439,7 +1466,7 @@
         "node_id": "O__OP_DEC",
         "node_type": "decision",
         "goal": [
-          "Validate that the service was captured and route to classification."
+          "Confirm [svc] was captured and route to classification."
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
@@ -1568,7 +1595,7 @@
         "node_id": "CL__CL_INIT",
         "node_type": "registration",
         "goal": [
-          "Reset local classification slots and counters."
+          "Reset classification counters and slots."
         ],
         "do": [
           "Set counters to 0 and volatile local slots to NULL."
@@ -1636,7 +1663,7 @@
         "node_id": "CL__CL_DEC_SVC",
         "node_type": "decision",
         "goal": [
-          "Resolve the active service using [svc] or the user's latest message."
+          "Resolve the active service from [svc] or the user's latest message."
         ],
         "do": [
           "[cl__svc_try] = [cl__svc_try] + 1",
@@ -1686,12 +1713,12 @@
         "node_id": "CL__CL_ASK_NAT",
         "node_type": "question",
         "goal": [
-          "Capture the lead's nationality for the surrogacy migration gate."
+          "Ask for the lead's nationality."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para orientarte con precisión, cuéntame por favor: ¿cuál es tu nacionalidad?"
+          "To guide you accurately, please tell me: what is your nationality?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1720,7 +1747,7 @@
         "node_id": "CL__CL_DEC_NAT",
         "node_type": "decision",
         "goal": [
-          "Validate that a nationality was captured before running the migration tool."
+          "Confirm a nationality was captured before running the migration check."
         ],
         "do": [
           "[cl__nat_try] = [cl__nat_try] + 1"
@@ -1762,7 +1789,7 @@
         "node_id": "CL__CL_RUN_MIG",
         "node_type": "action",
         "goal": [
-          "Run the mandatory migration-eligibility tool for the reported nationality."
+          "Run the migration-eligibility check via check_visa."
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
@@ -1823,7 +1850,7 @@
         "node_id": "CL__CL_DEC_MIG",
         "node_type": "decision",
         "goal": [
-          "Resolve the nationality migration result."
+          "Resolve the migration-check result."
         ],
         "do": [
           "[cl__mig_try] = [cl__mig_try] + 1"
@@ -1879,12 +1906,12 @@
         "node_id": "CL__CL_ASK_EXC",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead has the USA or Schengen visa needed for a conditional nationality."
+          "Ask if the lead holds a valid US or Schengen visa."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Según tu nacionalidad, la entrada a Colombia puede depender de contar con visa vigente de Estados Unidos o Schengen. ¿Cuentas con una de esas visas vigente?"
+          "Depending on your nationality, entry to Colombia may depend on having a valid USA or Schengen visa. Do you have one of those valid visas?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1913,7 +1940,7 @@
         "node_id": "CL__CL_DEC_EXC",
         "node_type": "decision",
         "goal": [
-          "Resolve the conditional-visa branch."
+          "Resolve the conditional-visa answer."
         ],
         "do": [
           "[cl__exc_visa_try] = [cl__exc_visa_try] + 1"
@@ -1962,12 +1989,12 @@
         "node_id": "CL__CL_POLICY",
         "node_type": "message",
         "goal": [
-          "Deliver the approved migration-policy explanation before asking about another nationality."
+          "State the migration-policy requirement."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Política de Admisión – Requisitos migratorios:\n\nPara participar en un programa de subrogación en Colombia, los padres de intención deben contar con una condición migratoria que les permita ingresar y permanecer legalmente en Colombia durante el tiempo necesario para completar el proceso.\n\n<MIGRATION_POLICY_REASON>"
+          "Admission Policy – Migration Requirements:\n\nTo participate in a surrogacy program in Colombia, intended parents must have a migration status that allows them to enter and remain legally in Colombia for the time necessary to complete the process.\n\n<MIGRATION_POLICY_REASON>"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -1989,12 +2016,12 @@
         "node_id": "CL__CL_ASK_ALT_Q",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead has another nationality that can be evaluated."
+          "Ask if the lead has another nationality to check."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Tienes una nacionalidad diferente a la que mencionaste?"
+          "Do you have a different nationality than the one you mentioned?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2023,7 +2050,7 @@
         "node_id": "CL__CL_DEC_ALT_Q",
         "node_type": "decision",
         "goal": [
-          "Resolve the alternate-nationality branch."
+          "Resolve whether to check an alternate nationality."
         ],
         "do": [
           "[cl__alt_nat_q_try] = [cl__alt_nat_q_try] + 1"
@@ -2072,12 +2099,12 @@
         "node_id": "CL__CL_ASK_ALT",
         "node_type": "question",
         "goal": [
-          "Capture the alternate nationality to re-run the migration tool."
+          "Capture the alternate nationality."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Nos la indicas por favor?"
+          "Could you please indicate it to us?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2106,7 +2133,7 @@
         "node_id": "CL__CL_DEC_ALT",
         "node_type": "decision",
         "goal": [
-          "Validate the alternate nationality and loop back through the tool."
+          "Validate the alternate nationality before rechecking."
         ],
         "do": [
           "[cl__alt_nat_try] = [cl__alt_nat_try] + 1",
@@ -2149,7 +2176,7 @@
         "node_id": "CL__CL_SET_ALT",
         "node_type": "registration",
         "goal": [
-          "Persist the alternate nationality as the active nationality for the migration tool."
+          "Replace [cl__nat] with the alternate nationality."
         ],
         "do": [
           "[cl__nat] = [cl__alt_nat]"
@@ -2178,12 +2205,12 @@
         "node_id": "CL__CL_INELIGIBLE",
         "node_type": "message",
         "goal": [
-          "Close the Colombia surrogacy path when migration rules make it non-viable."
+          "Close the surrogacy path: migration requirements are not met."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Debido a los requisitos migratorios de Colombia, la condición reportada no hace viable realizar un proceso de subrogación con Family Aims en Colombia. Esta decisión responde únicamente a las condiciones migratorias y no a tu deseo de formar una familia."
+          "Due to Colombia's migration requirements, the reported condition does not make it viable to carry out a surrogacy process with Family Aims in Colombia. This decision responds only to migration conditions and not to your desire to form a family."
         ],
         "say_verbatim": true,
         "execute": null,
@@ -2205,12 +2232,12 @@
         "node_id": "CL__CL_ASK_FIRST",
         "node_type": "question",
         "goal": [
-          "Ask whether this is the lead's first approach with an agency."
+          "Ask if this is the lead's first contact with an agency."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Este es tu primer acercamiento con una agencia?"
+          "Is this your first contact with an agency?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2239,7 +2266,7 @@
         "node_id": "CL__CL_DEC_FIRST",
         "node_type": "decision",
         "goal": [
-          "Resolve whether to ask the surrogacy-knowledge question."
+          "Resolve whether to ask about surrogacy knowledge."
         ],
         "do": [
           "[cl__first_ag_try] = [cl__first_ag_try] + 1"
@@ -2260,15 +2287,15 @@
             "reason": null
           },
           {
-            "target": "CL__CL_ASK_P",
-            "condition_text": "IF [cl__first_ag] == 'no' -> GO_TO: CL__CL_ASK_P",
+            "target": "CL__CL_DEC_P_ENTRY",
+            "condition_text": "IF [cl__first_ag] == 'no' -> GO_TO: CL__CL_DEC_P_ENTRY",
             "is_mechanical": true,
             "python_expression": "cl__first_ag == 'no'",
             "reason": null
           },
           {
-            "target": "CL__CL_ASK_P",
-            "condition_text": "IF [cl__first_ag_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: CL__CL_ASK_P",
+            "target": "CL__CL_DEC_P_ENTRY",
+            "condition_text": "IF [cl__first_ag_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: CL__CL_DEC_P_ENTRY",
             "is_mechanical": true,
             "python_expression": "cl__first_ag_try >= MAX_RETRY_ATTEMPTS",
             "reason": null
@@ -2288,12 +2315,12 @@
         "node_id": "CL__CL_ASK_KNOWS",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead already knows what surrogacy is."
+          "Ask if the lead already knows what surrogacy involves."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Sabes en qué consiste la gestación subrogada?"
+          "Do you know what gestational surrogacy consists of?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2322,7 +2349,7 @@
         "node_id": "CL__CL_DEC_KNOWS",
         "node_type": "decision",
         "goal": [
-          "Resolve the surrogacy-knowledge branch."
+          "Resolve the surrogacy-knowledge answer."
         ],
         "do": [
           "[cl__knows_s_try] = [cl__knows_s_try] + 1"
@@ -2336,8 +2363,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "CL__CL_ASK_P",
-            "condition_text": "IF [cl__knows_s] == 'yes' -> GO_TO: CL__CL_ASK_P",
+            "target": "CL__CL_DEC_P_ENTRY",
+            "condition_text": "IF [cl__knows_s] == 'yes' -> GO_TO: CL__CL_DEC_P_ENTRY",
             "is_mechanical": true,
             "python_expression": "cl__knows_s == 'yes'",
             "reason": null
@@ -2350,8 +2377,8 @@
             "reason": null
           },
           {
-            "target": "CL__CL_ASK_P",
-            "condition_text": "IF [cl__knows_s_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: CL__CL_ASK_P",
+            "target": "CL__CL_DEC_P_ENTRY",
+            "condition_text": "IF [cl__knows_s_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: CL__CL_DEC_P_ENTRY",
             "is_mechanical": true,
             "python_expression": "cl__knows_s_try >= MAX_RETRY_ATTEMPTS",
             "reason": null
@@ -2371,12 +2398,12 @@
         "node_id": "CL__CL_EXPLAIN",
         "node_type": "message",
         "goal": [
-          "Provide the approved high-level explanation of surrogacy."
+          "Explain what surrogacy is."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "La subrogación es un proceso de reproducción asistida en el que una mujer, llamada gestante, lleva un embarazo para una persona o pareja que desea convertirse en padres y no puede gestarlo por sí misma debido a una condición médica. Mediante FIV se crea un embrión y se transfiere al útero de la gestante. La gestante no aporta sus óvulos, por lo que no existe vínculo genético con el bebé."
+          "Surrogacy is an assisted reproduction process in which a woman, called a surrogate, carries a pregnancy for a person or couple who wishes to become parents and cannot carry it themselves due to a medical condition. Through IVF, an embryo is created and transferred to the surrogate's uterus. The surrogate does not provide her eggs, so there is no genetic link with the baby."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2385,7 +2412,105 @@
         "eval": "code",
         "route": [
           {
+            "target": "CL__CL_DEC_P_ENTRY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "CL__CL_DEC_P_ENTRY",
+        "node_type": "decision",
+        "goal": [
+          "Skip the family-structure question when it is already known from the IVF classification step."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_SET_P_COUPLE",
+            "condition_text": "IF [profile] == 'homosexual_couple' -> GO_TO: CL__CL_SET_P_COUPLE",
+            "is_mechanical": true,
+            "python_expression": "profile == 'homosexual_couple'",
+            "reason": null
+          },
+          {
+            "target": "CL__CL_SET_P_PARENT",
+            "condition_text": "IF [profile] == 'single_man' -> GO_TO: CL__CL_SET_P_PARENT",
+            "is_mechanical": true,
+            "python_expression": "profile == 'single_man'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
             "target": "CL__CL_ASK_P",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "CL__CL_SET_P_COUPLE",
+        "node_type": "registration",
+        "goal": [
+          "Reuse the known male-couple profile from the IVF step as a surrogacy 'couple' and skip re-asking."
+        ],
+        "do": [
+          "[profile] = 'couple'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[profile] = 'couple'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_ASK_PRIOR",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "CL__CL_SET_P_PARENT",
+        "node_type": "registration",
+        "goal": [
+          "Reuse the known single-man profile from the IVF step as a surrogacy 'single_parent' and skip re-asking."
+        ],
+        "do": [
+          "[profile] = 'single_parent'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[profile] = 'single_parent'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_ASK_PRIOR",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2399,12 +2524,12 @@
         "node_type": "question",
         "goal": [
           "Ask whether the lead wants to do the process as a single parent or as a couple and normalize the approved special case for a single woman.",
-          "'single_woman' applies to ANY answer that identifies the lead as a woman going through this without a partner — 'madre soltera', 'mujer soltera', 'soy mujer y estoy sola', or any other explicitly female-gendered phrasing — because Colombia's genetic-material requirement specifically restricts that path (see FAQ F_SW_MX), not a generic single-parent one. Normalize a single father, or any answer that does not specify the lead's gender, to 'single_parent' instead — that category is NOT the default for every solo answer; couple answers to 'couple'; uncertainty to 'not_sure'."
+          "'single_woman' applies to ANY answer that identifies the lead as a woman going through this without a partner — 'single mother', 'single woman', 'I am a woman and I am alone', or any other explicitly female-gendered phrasing — because Colombia's genetic-material requirement specifically restricts that path (see FAQ F_SW_MX), not a generic single-parent one. Normalize a single father, or any answer that does not specify the lead's gender, to 'single_parent' instead — that category is NOT the default for every solo answer; couple answers to 'couple'; uncertainty to 'not_sure'."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Vas a realizar el proceso como padre soltero, madre soltera o en pareja?"
+          "Will you perform the process as a single father, a single mother, or as a couple?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2501,7 +2626,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Tranquilo, no tienes que definirlo ya. En Family Aims acompañamos padres solteros, parejas del mismo sexo, parejas heterosexuales y, en algunos casos, mujeres solteras según el destino adecuado."
+          "Don't worry, you don't have to define it yet. At Family Aims, we accompany single fathers, single mothers, same-sex couples, heterosexual couples, and, in some cases, single women depending on the suitable destination."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2528,7 +2653,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Has realizado tratamientos de fertilidad convencional o de subrogación previamente, o estás iniciando desde cero?"
+          "Have you performed conventional fertility or surrogacy treatments previously, or are you starting from scratch?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2557,7 +2682,7 @@
         "node_id": "CL__CL_DEC_PRIOR",
         "node_type": "decision",
         "goal": [
-          "Resolve the prior-treatment stage."
+          "Resolve the prior-treatment answer."
         ],
         "do": [
           "[cl__prior_t_try] = [cl__prior_t_try] + 1"
@@ -2606,12 +2731,12 @@
         "node_id": "CL__CL_ASK_PRIOR_T",
         "node_type": "question",
         "goal": [
-          "Ask for the previous treatment type and normalize it."
+          "Ask what type of prior treatment the lead had."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Qué tipo de tratamiento te realizaste?"
+          "What type of treatment did you have?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2640,7 +2765,7 @@
         "node_id": "CL__CL_DEC_PRIOR_T",
         "node_type": "decision",
         "goal": [
-          "Resolve the previous-treatment-type branch."
+          "Resolve the prior-treatment type."
         ],
         "do": [
           "[cl__prior_t_type_try] = [cl__prior_t_type_try] + 1"
@@ -2696,12 +2821,12 @@
         "node_id": "CL__CL_ASK_EMB",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead already has formed embryos."
+          "Ask if the lead already has embryos formed."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Si el tratamiento previo fue subrogación, ¿tienes embriones formados?"
+          "If the previous treatment was surrogacy, do you have embryos formed?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2730,7 +2855,7 @@
         "node_id": "CL__CL_DEC_EMB",
         "node_type": "decision",
         "goal": [
-          "Resolve the formed-embryos branch."
+          "Resolve the formed-embryos answer."
         ],
         "do": [
           "[cl__emb_try] = [cl__emb_try] + 1"
@@ -2779,12 +2904,12 @@
         "node_id": "CL__CL_ASK_EMB_C",
         "node_type": "question",
         "goal": [
-          "Capture the country where the embryos were formed."
+          "Ask which country the embryos were formed in."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Nos puedes indicar el país donde los formaste?"
+          "Could you indicate the country where you formed them?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2813,7 +2938,7 @@
         "node_id": "CL__CL_DEC_EMB_C",
         "node_type": "decision",
         "goal": [
-          "Validate the embryo-origin country before running the approved gate."
+          "Confirm the embryo-origin country was captured."
         ],
         "do": [
           "[cl__emb_country_try] = [cl__emb_country_try] + 1"
@@ -2855,7 +2980,7 @@
         "node_id": "CL__CL_RUN_EMB",
         "node_type": "action",
         "goal": [
-          "Run the approved country-list gate for the embryo-origin country."
+          "Run the embryo-origin country check via check_visa."
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
@@ -2916,7 +3041,7 @@
         "node_id": "CL__CL_DEC_RUN_EMB",
         "node_type": "decision",
         "goal": [
-          "Resolve the embryo-origin country gate."
+          "Resolve the embryo-origin check result."
         ],
         "do": [
           "[cl__emb_mig_try] = [cl__emb_mig_try] + 1"
@@ -2977,7 +3102,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Los tratamientos de fertilización in vitro los ofrecemos exclusivamente en <IVF_CITY>. ¿Puedes desplazarte a Bogotá - Colombia para realizar este proceso?"
+          "We offer in vitro fertilization treatments exclusively in <IVF_CITY>. Can you travel to Bogotá - Colombia to perform this process?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3006,7 +3131,7 @@
         "node_id": "CL__CL_DEC_GO",
         "node_type": "decision",
         "goal": [
-          "Resolve the Bogotá travel requirement for IVF."
+          "Resolve the Bogotá-travel answer."
         ],
         "do": [
           "[cl__go_try] = [cl__go_try] + 1"
@@ -3055,13 +3180,13 @@
         "node_id": "CL__CL_ASK_IVF_P",
         "node_type": "question",
         "goal": [
-          "Capture the IVF patient profile that determines which treatments should be presented.",
-          "Normalize pareja heterosexual to 'heterosexual_couple', pareja de mujeres to 'women_couple', and mujer soltera to 'single_woman'."
+          "Ask which IVF patient profile applies and capture it as [profile].",
+          "Map heterosexual couple to 'heterosexual_couple', couple of women to 'women_couple', male couple to 'homosexual_couple', single woman to 'single_woman', single man to 'single_man'."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para mostrarte las opciones correctas, ¿tu caso corresponde a una pareja heterosexual, una pareja de mujeres o una mujer soltera?"
+          "To show you the correct options, does your case correspond to a heterosexual couple, a couple of women, a couple of men, a single woman, or a single man?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3071,7 +3196,7 @@
         "capture": [
           [
             "profile",
-            "Literal[heterosexual_couple, women_couple, single_woman, not_sure]"
+            "Literal[heterosexual_couple, women_couple, homosexual_couple, single_woman, single_man, not_sure]"
           ]
         ],
         "eval": "code",
@@ -3090,7 +3215,7 @@
         "node_id": "CL__CL_DEC_IVF_P",
         "node_type": "decision",
         "goal": [
-          "Resolve the IVF patient-profile capture."
+          "Confirm the IVF patient profile was captured and route male couples and single men to surrogacy instead."
         ],
         "do": [
           "[cl__ivf_prof_try] = [cl__ivf_prof_try] + 1"
@@ -3104,31 +3229,17 @@
         "eval": "code",
         "route": [
           {
-            "target": "CL__CL_TO_VI",
-            "condition_text": "IF [profile] == 'heterosexual_couple' -> GO_TO: CL__CL_TO_VI",
+            "target": "CL__CL_NO_IVF",
+            "condition_text": "IF [profile] == 'homosexual_couple' OR [profile] == 'single_man' -> GO_TO: CL__CL_NO_IVF",
             "is_mechanical": true,
-            "python_expression": "profile == 'heterosexual_couple'",
+            "python_expression": "profile == 'homosexual_couple' or profile == 'single_man'",
             "reason": null
           },
           {
             "target": "CL__CL_TO_VI",
-            "condition_text": "IF [profile] == 'women_couple' -> GO_TO: CL__CL_TO_VI",
+            "condition_text": "IF [profile] IS NOT NULL -> GO_TO: CL__CL_TO_VI",
             "is_mechanical": true,
-            "python_expression": "profile == 'women_couple'",
-            "reason": null
-          },
-          {
-            "target": "CL__CL_TO_VI",
-            "condition_text": "IF [profile] == 'single_woman' -> GO_TO: CL__CL_TO_VI",
-            "is_mechanical": true,
-            "python_expression": "profile == 'single_woman'",
-            "reason": null
-          },
-          {
-            "target": "CL__CL_TO_VI",
-            "condition_text": "IF [profile] == 'not_sure' -> GO_TO: CL__CL_TO_VI",
-            "is_mechanical": true,
-            "python_expression": "profile == 'not_sure'",
+            "python_expression": "profile is not None",
             "reason": null
           },
           {
@@ -3150,15 +3261,44 @@
         ]
       },
       {
+        "node_id": "CL__CL_NO_IVF",
+        "node_type": "message",
+        "goal": [
+          "Explain that IVF alone is not offered for a male couple or a single man, and route to the surrogacy classification path instead."
+        ],
+        "do": [
+          "Keep [profile] as captured ('homosexual_couple' or 'single_man') -- CL_DEC_P_ENTRY reuses it later so the family-structure question is not asked twice."
+        ],
+        "trigger": [],
+        "say": [
+          "For a couple of men or a single man, in vitro fertilization alone is not a path we offer, as it does not include an egg donor or a surrogate. Our surrogacy program does cover that, so let's see how it works for your case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_ASK_NAT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "CL__CL_NO_BOGOTA",
         "node_type": "message",
         "goal": [
-          "Close the IVF path kindly when the lead cannot travel to Bogotá."
+          "Decline the IVF path: the lead cannot travel to Bogotá."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Entiendo. Como este tratamiento se realiza exclusivamente en Bogotá, por ahora no sería viable continuar por esta ruta. Gracias por tu tiempo y, si más adelante cambia tu situación, con gusto podemos retomar."
+          "I understand. Since this treatment is performed exclusively in Bogotá, for now, it would not be viable to continue through this route. Thank you for your time and, if your situation changes later, we can gladly resume."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3313,7 +3453,7 @@
         "node_id": "VS__VS_INIT",
         "node_type": "registration",
         "goal": [
-          "Set the shared appointment service before presenting surrogacy value."
+          "Set the appointment service to surrogacy."
         ],
         "do": [
           "[appt_svc] = 'surrogacy'"
@@ -3342,7 +3482,7 @@
         "node_id": "VS__VS_DEC_SC",
         "node_type": "decision",
         "goal": [
-          "Tailor the country message when the surrogacy path is only valid in Mexico for a single woman."
+          "Route to the Mexico-only message for a single woman."
         ],
         "do": [],
         "trigger": [],
@@ -3375,12 +3515,12 @@
         "node_id": "VS__VS_VAL_MX",
         "node_type": "message",
         "goal": [
-          "Present the approved single-woman surrogacy value proposition focused on Mexico only."
+          "Present the surrogacy value proposition for Mexico only."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "En Family Aims te acompañamos en cada paso de tu camino hacia la maternidad. Para tu caso, el programa de gestación subrogada que corresponde se maneja en México, con una ruta diseñada para acompañarte según tus necesidades."
+          "At Family Aims, we accompany you every step of your journey towards motherhood. In your case, the corresponding surrogacy program is handled in Mexico, with a path designed to support you according to your needs."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3402,12 +3542,12 @@
         "node_id": "VS__VS_VAL_1",
         "node_type": "message",
         "goal": [
-          "Present the approved broad surrogacy value proposition."
+          "Present the surrogacy value proposition."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "En Family Aims te acompañamos en cada paso de tu camino hacia la maternidad o paternidad. Nuestros programas de gestación subrogada están disponibles en Colombia, México y Georgia, con alternativas distintas según las necesidades de cada familia."
+          "At Family Aims, we accompany you every step of your journey towards motherhood or fatherhood. Our surrogacy programs are available in Colombia, Mexico, and Georgia, with different alternatives depending on each family's needs."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3429,12 +3569,12 @@
         "node_id": "VS__VS_VAL_2",
         "node_type": "message",
         "goal": [
-          "Explain the approved operational and trust value of the surrogacy path."
+          "State what the surrogacy support includes."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Nuestro acompañamiento es 360°:\n\n- Selección de donantes y formación de embriones\n- Asignación de gestante y transferencia embrionaria\n- Acompañamiento durante embarazo, parto y ruta legal\n- Actualizaciones semanales y atención en español e inglés, con apoyo en mandarín cuando aplica"
+          "Our support is 360°:\n\n- Donor selection and embryo formation\n- Surrogate matching and embryo transfer\n- Support during pregnancy, birth, and legal path\n- Weekly updates and care in Spanish and English, with support in Mandarin when applicable"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3456,7 +3596,7 @@
         "node_id": "VS__VS_TO_SP",
         "node_type": "subflow_change",
         "goal": [
-          "Load the surrogacy-program presentation subflow."
+          "Load the surrogacy-program presentation."
         ],
         "do": [
           "Load the SURROGACY_PROGRAMS subflow before continuing."
@@ -3508,7 +3648,7 @@
         "node_id": "SP__SP_INIT",
         "node_type": "registration",
         "goal": [
-          "Reset program and scheduling counters."
+          "Reset program counters and set the appointment service to surrogacy."
         ],
         "do": [
           "[appt_svc] = 'surrogacy'"
@@ -3541,12 +3681,12 @@
         "node_id": "SP__SP_MENU",
         "node_type": "message",
         "goal": [
-          "Introduce the approved program split and scope."
+          "Introduce the two surrogacy program types."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Contamos con dos tipos de programas: Programa con Garantía Financiera y Programa sin Garantía Financiera. En ambos casos, el alcance va desde los servicios médicos hasta la obtención del certificado civil de nacimiento del bebé."
+          "We have two types of programs: Program with Financial Guarantee and Program without Financial Guarantee. In both cases, the scope ranges from medical services to obtaining the baby's civil birth certificate."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3568,12 +3708,12 @@
         "node_id": "SP__SP_ASK_DETAIL",
         "node_type": "question",
         "goal": [
-          "Ask whether the lead wants the detailed breakdown of both programs, or prefers to go straight to scheduling the consultation."
+          "Ask if the lead wants the program details explained."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Te interesa que te cuente más sobre estos programas?"
+          "Are you interested in me telling you more about these programs?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3602,7 +3742,7 @@
         "node_id": "SP__SP_DEC_DETAIL",
         "node_type": "decision",
         "goal": [
-          "Resolve whether to show the detailed program breakdown or go straight to the scheduling pitch."
+          "Resolve whether to show program details."
         ],
         "do": [
           "[sp__detail_try] = [sp__detail_try] + 1"
@@ -3656,7 +3796,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Programa con Garantía Financiera:\n\n- Repite los procedimientos médicos necesarios dentro del plazo del programa\n- Busca lograr el embarazo dentro de 24 meses\n- Si el retraso depende del proceso o de factores clínicos, el programa se amplía hasta culminar la prestación del servicio\n- El ingreso depende de la calidad espermática validada por el laboratorio"
+          "Program with Financial Guarantee:\n\n- Repeats necessary medical procedures within the program timeframe\n- Seeks to achieve pregnancy within 24 months\n- If the delay depends on the process or clinical factors, the program is extended until the service delivery is completed\n- Admission depends on sperm quality validated by the laboratory"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3683,7 +3823,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Programa sin Garantía Financiera:\n\n- Tiene un número determinado de transferencias seleccionadas\n- Si no se logra embarazo y se desea continuar, requiere pago adicional\n- Si ya hay embriones formados, el costo adicional corresponde a las transferencias\n- Si no hay embriones, puede requerirse nueva aspiración, formación embrionaria o cambio de gestante según el caso"
+          "Program without Financial Guarantee:\n\n- Has a fixed number of selected transfers\n- If pregnancy is not achieved and you wish to continue, it requires additional payment\n- If there are already embryos formed, the additional cost corresponds to the transfers\n- If there are no embryos, new aspiration, embryo formation, or change of surrogate may be required depending on the case"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3743,7 +3883,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Sobre el proceso:\n\n- La duración estimada es de <PROCESS_DURATION_MONTHS>, aunque puede variar según cada caso\n- En Colombia, al menos uno de los padres de intención debe aportar carga genética\n- En México puede existir doble donación, siempre que el país de origen no exija prueba de ADN para el registro"
+          "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- In Colombia, at least one of the intended parents must provide genetic material\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3770,7 +3910,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Sobre el proceso:\n\n- La duración estimada es de <PROCESS_DURATION_MONTHS>, aunque puede variar según cada caso\n- Para tu ruta, el acompañamiento se realiza en México\n- En México puede existir doble donación, siempre que el país de origen no exija prueba de ADN para el registro"
+          "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- For your route, the support is carried out in Mexico\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3797,7 +3937,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Todo anhelo de tener una familia empieza con un primer paso.\n\nTe animamos a que programes una cita con <HUMAN_SURROGACY_ADVISOR_NAME>, nuestra asesora comercial especializada en gestación subrogada. Ella podrá conocer tu historia, escuchar tus necesidades y explicarte de qué manera podemos apoyarte en cada fase."
+          "Every desire to have a family starts with a first step.\n\nWe encourage you to schedule an appointment with <HUMAN_SURROGACY_ADVISOR_NAME>, our specialized commercial advisor in gestational surrogacy. She will be able to get to know your story, listen to your needs, and explain how we can support you in each phase."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3824,7 +3964,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Te gustaría que revisemos disponibilidad para agendar esa cita ahora?"
+          "Would you like us to check availability to schedule that appointment now?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3983,7 +4123,7 @@
         "node_id": "VI__VI_INIT",
         "node_type": "registration",
         "goal": [
-          "Initialize IVF value delivery and set the shared appointment service."
+          "Reset IVF counters and set the appointment service to IVF."
         ],
         "do": [
           "[appt_svc] = 'ivf'"
@@ -4018,7 +4158,7 @@
         "node_id": "VI__VI_DEC_P",
         "node_type": "decision",
         "goal": [
-          "Choose the correct IVF option set from the shared patient profile."
+          "Choose the IVF option menu for the lead's profile."
         ],
         "do": [],
         "trigger": [],
@@ -4057,12 +4197,12 @@
         "node_id": "VI__VI_MENU_S",
         "node_type": "message",
         "goal": [
-          "Present the IVF treatments relevant to heterosexual couples and single women."
+          "Present IVF options for heterosexual couples and single women."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Entre las alternativas disponibles se encuentran:\n\n- Fecundación in vitro convencional\n- Fecundación in vitro con óvulos donados"
+          "Among the available alternatives are:\n\n- Conventional in vitro fertilization\n- In vitro fertilization with donated eggs"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4084,12 +4224,12 @@
         "node_id": "VI__VI_MENU_R",
         "node_type": "message",
         "goal": [
-          "Present the IVF treatments relevant to couples of women."
+          "Present IVF options for couples of women."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para este perfil, las alternativas disponibles son:\n\n- Método ROPA\n- IVF tradicional\n- IVF con óvulo donado"
+          "For this profile, the available alternatives are:\n\n- ROPA Method\n- Traditional IVF\n- IVF with donated egg"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4116,7 +4256,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Cuál de esos tratamientos te interesa más en este momento?"
+          "Which of those treatments interests you most at this moment?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4150,7 +4290,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Cuál de esos tratamientos te interesa más en este momento?"
+          "Which of those treatments interests you most at this moment?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4269,7 +4409,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Ya conoces en qué consiste esa opción?"
+          "Do you already know what that option consists of?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4303,7 +4443,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Ya conoces en qué consisten esas opciones o quieres que te las explique brevemente?"
+          "Do you already know what those options consist of or would you like me to briefly explain them to you?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4421,7 +4561,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Te explico brevemente:\n\n- El Método ROPA, también conocido como doble maternidad, está diseñado para parejas de mujeres que desean participar ambas en el proceso reproductivo\n- La IVF tradicional facilita la unión de óvulos y espermatozoides en el laboratorio para obtener embriones y luego transferirlos al útero\n- La IVF con óvulo donado se utiliza cuando existe compromiso de la reserva ovárica o alguna condición genética que hace recomendable trabajar con donación"
+          "I'll explain briefly:\n\n- The ROPA Method, also known as dual motherhood, is designed for female couples who both wish to participate in the reproductive process.\n- Traditional IVF facilitates the joining of eggs and sperm in the laboratory to obtain embryos and then transfer them to the uterus.\n- IVF with donated eggs is used when ovarian reserve is compromised or some genetic condition makes it advisable to work with donation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4448,7 +4588,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Te explico brevemente:\n\n- La Fecundación In Vitro Convencional facilita la unión de óvulos y espermatozoides en el laboratorio para obtener embriones y luego transferirlos al útero\n- La Fecundación In Vitro con Óvulos Donados se utiliza cuando existe compromiso de la reserva ovárica o alguna condición genética que hace recomendable trabajar con donación"
+          "I'll explain briefly:\n\n- Conventional In Vitro Fertilization facilitates the joining of eggs and sperm in the laboratory to obtain embryos and then transfer them to the uterus.\n- In Vitro Fertilization with Donated Eggs is used when ovarian reserve is compromised or some genetic condition makes it advisable to work with donation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4475,7 +4615,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "La Fecundación In Vitro Convencional es una técnica de reproducción asistida de alta complejidad destinada a facilitar la unión de óvulos y espermatozoides en el laboratorio para obtener embriones y luego transferirlos al útero."
+          "Conventional In Vitro Fertilization is a high-complexity assisted reproduction technique aimed at facilitating the joining of eggs and sperm in the laboratory to obtain embryos and then transfer them to the uterus."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4502,7 +4642,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "La Fecundación In Vitro con Óvulos Donados se practica cuando existe compromiso de la reserva ovárica o alguna enfermedad genética que la paciente podría transmitir. En ese caso se trabaja con el programa de donación de óvulos."
+          "In Vitro Fertilization with Donated Eggs is practiced when the ovarian reserve is compromised or there is some genetic disease that the patient could transmit. In that case, we work with the egg donation program."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4529,7 +4669,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "El Método ROPA, también conocido como doble maternidad, está diseñado para parejas de mujeres que desean participar ambas en el proceso reproductivo."
+          "The ROPA Method, also known as dual motherhood, is designed for female couples who both wish to participate in the reproductive process."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4556,7 +4696,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Te invitamos a agendar una cita con <HUMAN_IVF_ADVISOR_NAME>, nuestra asesora comercial especializada en fertilización in vitro, quien estará encantada de conocerte, resolver tus dudas y explicarte las opciones disponibles para tu caso.\n\nSerá un placer acompañarte en este primer paso hacia tu sueño de formar una familia."
+          "We invite you to schedule an appointment with <HUMAN_IVF_ADVISOR_NAME>, our specialized commercial advisor in in vitro fertilization, who will be happy to meet you, answer your questions, and explain the available options for your case.\n\nIt will be a pleasure to accompany you on this first step towards your dream of forming a family."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4583,7 +4723,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Te gustaría que revisemos disponibilidad para agendar esa cita ahora?"
+          "Would you like us to check availability to schedule that appointment now?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4742,7 +4882,7 @@
         "node_id": "OB__OB_INIT",
         "node_type": "registration",
         "goal": [
-          "Reset the objection flow counters."
+          "Reset objection-flow counters."
         ],
         "do": [
           "[ob__obj_try] = 0",
@@ -4773,13 +4913,13 @@
         "node_id": "OB__OB_ASK",
         "node_type": "question",
         "goal": [
-          "Ask for the main blocker and normalize it to the approved objection categories.",
-          "Normalize price and cost questions to 'price'; 'necesito pensarlo' to 'need_think'; questions about whether the appointment has a cost to 'appointment_cost'; travel or living far away to 'distance'; legal-fit questions for single women in Colombia to 'single_woman_legal'; broad information requests to 'more_info'; and timing deferrals to 'not_now'."
+          "Ask the lead's main blocker and capture it as [ob__obj].",
+          "Map price/program-cost questions to 'price'; wanting time to decide to 'need_think'; whether the appointment itself has a fee to 'appointment_cost'; distance/travel concerns to 'distance'; legal fit for single women in Colombia to 'single_woman_legal'; general info requests to 'more_info'; timing deferrals to 'not_now'."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Entendemos que quizás este no sea el momento para agendar. ¿Qué te gustaría conocer o resolver antes de dar el siguiente paso?"
+          "We understand that this might not be the right time to schedule. What would you like to know or resolve before taking the next step?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4808,7 +4948,7 @@
         "node_id": "OB__OB_DEC",
         "node_type": "decision",
         "goal": [
-          "Resolve the objection and route to the correct approved response."
+          "Route to the response matching [ob__obj]."
         ],
         "do": [
           "[ob__obj_try] = [ob__obj_try] + 1"
@@ -4899,12 +5039,12 @@
         "node_id": "OB__OB_PRICE",
         "node_type": "message",
         "goal": [
-          "Respond to the price objection with the approved commercial framing."
+          "Address the price objection."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Entendemos que el costo es un factor importante. Nuestros tratamientos son personalizados y por eso la asesoría comercial es el espacio adecuado para revisar con claridad el programa que mejor se ajusta a tu caso."
+          "We understand that cost is an important factor. Our treatments are personalized, and that's why the commercial advisory session is the right place to clearly review the program that best fits your case."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4926,12 +5066,12 @@
         "node_id": "OB__OB_THINK",
         "node_type": "message",
         "goal": [
-          "Respond when the lead needs time to think."
+          "Address the need-to-think objection."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Es totalmente válido querer pensarlo. La asesoría comercial justamente sirve para resolver dudas y entender mejor tu caso antes de tomar una decisión."
+          "It's completely valid to want to think about it. The commercial advisory session is exactly intended to resolve doubts and better understand your case before making a decision."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4958,7 +5098,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "La asesoría comercial nos permite entender tu caso y definir el mejor programa para ti. La cita médica de valoración con el especialista sí tiene un costo, pero esta asesoría comercial es el paso inicial para orientarte."
+          "The commercial advisory session allows us to understand your case and define the best program for you. The medical assessment appointment with the specialist does have a cost, but this commercial advisory session is the initial step to guide you."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4980,12 +5120,12 @@
         "node_id": "OB__OB_DISTANCE",
         "node_type": "message",
         "goal": [
-          "Handle the distance objection with the approved remote-guidance framing."
+          "Address the distance objection with remote guidance."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Justamente por eso ofrecemos asesorías virtuales. Podemos guiarte a distancia y coordinar tu viaje solo cuando sea necesario según el programa."
+          "That's exactly why we offer virtual advisory sessions. We can guide you remotely and coordinate your trip only when necessary according to the program."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5007,12 +5147,12 @@
         "node_id": "OB__OB_MX",
         "node_type": "message",
         "goal": [
-          "Handle the single-woman legal-fit objection by redirecting to Mexico."
+          "Redirect the single-woman legal objection to Mexico."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para ese caso puntual, el destino que mejor se ajusta es nuestro programa en México, donde sí es posible acompañar procesos de mujeres solteras sin esa restricción legal."
+          "For that specific case, the destination that best fits is our program in Mexico, where it is possible to accompany single women's processes without that legal restriction."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5034,12 +5174,12 @@
         "node_id": "OB__OB_INFO",
         "node_type": "message",
         "goal": [
-          "Handle broad requests for more information before scheduling."
+          "Answer general questions before scheduling."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Claro. Podemos seguir resolviendo tus dudas aquí de forma general, y la asesoría comercial te permite aterrizar la información a tu caso específico."
+          "Of course. We can continue resolving your doubts here in a general way, and the commercial advisory session allows you to apply the information to your specific case."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5061,12 +5201,12 @@
         "node_id": "OB__OB_OTHER",
         "node_type": "message",
         "goal": [
-          "Handle an unclassified objection briefly and safely."
+          "Acknowledge an unclassified objection briefly."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Gracias por contármelo. Si una conversación personalizada te ayuda a decidir, puedo ayudarte a dejar la asesoría agendada o solicitar un callback para más adelante."
+          "Thank you for telling me. If a personalized conversation helps you decide, I can help you schedule the advisory session or request a callback for later."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5088,12 +5228,12 @@
         "node_id": "OB__OB_ASK_FINAL",
         "node_type": "question",
         "goal": [
-          "Offer the final approved options after objection handling."
+          "Offer to schedule now or request a callback."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Te gustaría agendar ahora, o prefieres que nuestro equipo te contacte más adelante?"
+          "Would you like to schedule now, or would you prefer our team to contact you later?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5178,7 +5318,7 @@
         "node_id": "OB__OB_TO_SC",
         "node_type": "subflow_change",
         "goal": [
-          "Load scheduling from objections."
+          "Load scheduling."
         ],
         "do": [
           "Load the SCHEDULING subflow before continuing."
@@ -5205,7 +5345,7 @@
         "node_id": "OB__OB_TO_C",
         "node_type": "subflow_change",
         "goal": [
-          "Load callback from objections."
+          "Load callback."
         ],
         "do": [
           "Load the CALLBACK subflow before continuing."
@@ -5237,7 +5377,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Entiendo. Gracias por tu tiempo. Si más adelante deseas retomar el proceso, con gusto te ayudaremos."
+          "I understand. Thank you for your time. If you wish to resume the process later, we will gladly help you."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5259,7 +5399,7 @@
         "node_id": "SC__SC_S",
         "node_type": "start",
         "goal": [
-          "Entry point for the commercial scheduling subflow."
+          "Enter scheduling."
         ],
         "do": [],
         "trigger": [],
@@ -5284,7 +5424,7 @@
         "node_id": "SC__SC_INIT",
         "node_type": "registration",
         "goal": [
-          "Reset counters and clear volatile scheduling memory before capturing new data."
+          "Reset scheduling counters and clear volatile data."
         ],
         "do": [
           "Set every retry counter to 0 and every volatile scheduling slot to NULL. Contact data is resolved later against the CRM."
@@ -5333,12 +5473,12 @@
         "node_id": "SC__SC_ASK_TZ",
         "node_type": "question",
         "goal": [
-          "Single job: capture the contact's current country and city exactly as they say them. Do NOT convert to a timezone here; SC_NORM_TZ does that."
+          "Ask for the contact's current country and city."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Antes de revisar la disponibilidad, ¿en qué país y ciudad te encuentras en este momento?"
+          "Before checking availability, what country and city are you in at the moment?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5367,7 +5507,7 @@
         "node_id": "SC__SC_NORM_TZ",
         "node_type": "registration",
         "goal": [
-          "Single job: convert the country and city in [user_timezone] to a real IANA timezone identifier."
+          "Convert the reported location to an IANA timezone."
         ],
         "do": [
           "Convert [user_timezone] to a real IANA timezone identifier from the reported country and city. Most are continent/city (e.g. America/Bogota), but some countries need the longer continent/country/city form — always use it when that is the real identifier (e.g. Argentina -> America/Argentina/Buenos_Aires, not America/Buenos_Aires, which does not exist). If the country is Colombia, use America/Bogota. Never use abbreviations such as EST or COT, and never shorten a three-part identifier to two parts."
@@ -5394,7 +5534,7 @@
         "node_id": "SC__SC_DEC_TZ",
         "node_type": "decision",
         "goal": [
-          "Single job: validate that [user_timezone] has the shape of an IANA identifier and route."
+          "Validate the timezone format and route."
         ],
         "do": [
           "[sc__tz_try] = [sc__tz_try] + 1"
@@ -5443,7 +5583,7 @@
         "node_id": "SC__SC_DEC_N",
         "node_type": "decision",
         "goal": [
-          "If the contact's name was already captured this session, skip ahead; otherwise check the CRM in a separate, isolated decision (SC_DEC_N_CRM) -- kept apart on purpose: a single LLM-judged decision mixing a plain [sc__slot] null-check with a CRM merge-field check reliably confused the model into answering NONE for both, even though each one alone resolves correctly every time (found live, 2026-09-21)."
+          "Check if the name is already captured; otherwise check the CRM."
         ],
         "do": [],
         "trigger": [],
@@ -5476,7 +5616,7 @@
         "node_id": "SC__SC_DEC_N_CRM",
         "node_type": "decision",
         "goal": [
-          "Check whether the contact's name is available from the CRM."
+          "Check the CRM for the contact's name."
         ],
         "do": [
           "Treat the literal unresolved placeholder '{{contact.name}}' as missing data, not as a valid name."
@@ -5511,7 +5651,7 @@
         "node_id": "SC__SC_ST_N",
         "node_type": "registration",
         "goal": [
-          "Use the name available in the CRM as the confirmed name for scheduling."
+          "Use the CRM name for scheduling."
         ],
         "do": [
           "[sc__c_name] = {{contact.name}}"
@@ -5540,12 +5680,12 @@
         "node_id": "SC__SC_ASK_N",
         "node_type": "question",
         "goal": [
-          "Ask for the contact's full name when it is not available for scheduling."
+          "Ask for the contact's full name."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para crear la cita, ¿me podrías confirmar tu nombre completo?"
+          "To create the appointment, could you confirm your full name?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5574,7 +5714,7 @@
         "node_id": "SC__SC_DEC_NC",
         "node_type": "decision",
         "goal": [
-          "Validate that the contact's name was captured."
+          "Confirm the contact's name was captured."
         ],
         "do": [
           "[sc__c_name_try] = [sc__c_name_try] + 1"
@@ -5623,7 +5763,7 @@
         "node_id": "SC__SC_DEC_P",
         "node_type": "decision",
         "goal": [
-          "If the contact's phone was already captured this session, skip ahead; otherwise check the CRM in a separate, isolated decision (SC_DEC_P_CRM) -- see SC_DEC_N's own goal for why this is split in two."
+          "Check if the phone number is already captured; otherwise check the CRM."
         ],
         "do": [],
         "trigger": [],
@@ -5656,7 +5796,7 @@
         "node_id": "SC__SC_DEC_P_CRM",
         "node_type": "decision",
         "goal": [
-          "Check whether the contact's phone number is available from the CRM."
+          "Check the CRM for the contact's phone number."
         ],
         "do": [
           "Treat the literal unresolved placeholder '{{contact.phone}}' as missing data, not as a valid phone number."
@@ -5691,7 +5831,7 @@
         "node_id": "SC__SC_ST_P",
         "node_type": "registration",
         "goal": [
-          "Use the phone number available in the CRM as the confirmed phone number for scheduling."
+          "Use the CRM phone number for scheduling."
         ],
         "do": [
           "[sc__c_phone] = {{contact.phone}}"
@@ -5720,12 +5860,12 @@
         "node_id": "SC__SC_ASK_P",
         "node_type": "question",
         "goal": [
-          "Ask for the contact's phone number when it is not available for scheduling."
+          "Ask for the contact's phone number."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Cuál es tu número de teléfono, incluyendo el código del país?"
+          "What is your phone number, including the country code?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5754,7 +5894,7 @@
         "node_id": "SC__SC_DEC_PC",
         "node_type": "decision",
         "goal": [
-          "Validate that the contact's phone number was captured."
+          "Confirm the contact's phone number was captured."
         ],
         "do": [
           "[sc__c_phone_try] = [sc__c_phone_try] + 1"
@@ -5803,7 +5943,7 @@
         "node_id": "SC__SC_DEC_E",
         "node_type": "decision",
         "goal": [
-          "If the contact's email was already captured this session, skip ahead; otherwise check the CRM in a separate, isolated decision (SC_DEC_E_CRM) -- see SC_DEC_N's own goal for why this is split in two."
+          "Check if the email is already captured; otherwise check the CRM."
         ],
         "do": [],
         "trigger": [],
@@ -5836,7 +5976,7 @@
         "node_id": "SC__SC_DEC_E_CRM",
         "node_type": "decision",
         "goal": [
-          "Check whether the contact's email address is available from the CRM."
+          "Check the CRM for the contact's email."
         ],
         "do": [
           "Treat the literal unresolved placeholder '{{contact.email}}' as missing data, not as a valid email address."
@@ -5871,7 +6011,7 @@
         "node_id": "SC__SC_ST_E",
         "node_type": "registration",
         "goal": [
-          "Use the email address available in the CRM as the confirmed email address for scheduling."
+          "Use the CRM email for scheduling."
         ],
         "do": [
           "[sc__c_email] = {{contact.email}}"
@@ -5900,12 +6040,12 @@
         "node_id": "SC__SC_ASK_E",
         "node_type": "question",
         "goal": [
-          "Ask for the contact's email address when it is not available for scheduling."
+          "Ask for the contact's email address."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿A qué dirección de correo electrónico deberíamos enviar la confirmación de la cita?"
+          "To which email address should we send the appointment confirmation?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5934,7 +6074,7 @@
         "node_id": "SC__SC_DEC_EC",
         "node_type": "decision",
         "goal": [
-          "Validate that the contact's email address was captured."
+          "Confirm the contact's email was captured."
         ],
         "do": [
           "[sc__c_email_try] = [sc__c_email_try] + 1"
@@ -6111,12 +6251,12 @@
         "node_id": "SC__SC_NO_AV",
         "node_type": "message",
         "goal": [
-          "Inform that there is no availability right now and route to objections for a continuity path."
+          "Report no availability and route to objections."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "En este momento no encuentro disponibilidad para los próximos días. Si lo deseas, podemos dejar una solicitud de contacto y avisarte cuando tengamos un espacio adecuado."
+          "At this moment I can't find availability for the next few days. If you wish, we can leave a contact request and notify you when we have a suitable space."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6138,14 +6278,13 @@
         "node_id": "SC__SC_DAYS",
         "node_type": "message",
         "goal": [
-          "First present the available days and ask the contact to choose one.",
-          "Use only the date part of start_local from each object in [sc__available_slots].",
-          "If [sc__available_slots] is missing or no longer traceable to the latest call, do not present this message and return to SC_DEC_T."
+          "Present the available days from [sc__available_slots] and ask the contact to choose one.",
+          "Use only the date part of start_local; if [sc__available_slots] is stale, return to SC_DEC_T."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Tengo disponibilidad en estas fechas:\n\n[sc__available_slots]"
+          "I have availability on these dates:\n\n[sc__available_slots]"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -6167,12 +6306,12 @@
         "node_id": "SC__SC_ASK_D",
         "node_type": "question",
         "goal": [
-          "Capture the day chosen by the contact before showing that day's times."
+          "Capture the day the contact chooses."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Qué día te viene mejor?"
+          "Which day works best for you?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6201,7 +6340,7 @@
         "node_id": "SC__SC_DEC_D",
         "node_type": "decision",
         "goal": [
-          "Validate that the chosen day exists literally in the date part of start_local in [sc__available_slots]."
+          "Validate the chosen day against [sc__available_slots]."
         ],
         "do": [
           "[sc__day_try] = [sc__day_try] + 1",
@@ -6251,15 +6390,13 @@
         "node_id": "SC__SC_HOURS",
         "node_type": "message",
         "goal": [
-          "Present only the times for the chosen day.",
-          "Filter [sc__available_slots] by [sc__day] and use only the time part of start_local.",
-          "Group consecutive times: list 3 or fewer; summarize long blocks as ranges; separate distinct blocks.",
-          "If [sc__day] has no valid objects in [sc__available_slots], return to SC_DEC_T."
+          "Present the available times for [sc__day], filtered from [sc__available_slots].",
+          "Group consecutive times into short ranges; if [sc__day] has no valid slots, return to SC_DEC_T."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "Para el [sc__day], estos son los horarios disponibles (formato de 24 horas):\n\n[sc__available_slots]"
+          "For [sc__day], these are the available times (24-hour format):\n\n[sc__available_slots]"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -6281,12 +6418,12 @@
         "node_id": "SC__SC_ASK_S",
         "node_type": "question",
         "goal": [
-          "Capture the time chosen by the contact within the filtered day."
+          "Capture the time the contact chooses."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "¿Cuál de estos horarios te viene mejor?"
+          "Which of these times works best for you?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6315,7 +6452,7 @@
         "node_id": "SC__SC_DEC_S",
         "node_type": "decision",
         "goal": [
-          "Validate that the chosen time corresponds to an exact object in [sc__available_slots] with a non-null start_co."
+          "Validate the chosen time against [sc__available_slots]."
         ],
         "do": [
           "[sc__slot_try] = [sc__slot_try] + 1",
@@ -6365,7 +6502,7 @@
         "node_id": "SC__SC_MORE",
         "node_type": "decision",
         "goal": [
-          "Check whether unoffered objects remain in [sc__available_slots] before routing to objections."
+          "Check for remaining unoffered slots before routing to objections."
         ],
         "do": [],
         "trigger": [],
@@ -6456,7 +6593,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Antes de crear la cita, confirmo el resumen:\n\n- Horario: [sc__slot] (formato 24 horas)\n- Nombre: [sc__c_name]\n- Teléfono: [sc__c_phone]\n- Correo: [sc__c_email]"
+          "Before creating the appointment, I confirm the summary:\n\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6483,7 +6620,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Confirmas que esta información es correcta para crear la cita?"
+          "Do you confirm that this information is correct to create the appointment?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6573,7 +6710,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Claro. ¿Qué dato te gustaría corregir?"
+          "Sure. Which detail would you like to correct?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6914,7 +7051,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Lo siento, no fue posible crear la cita en este momento. ¿Te gustaría que intentemos con otra opción de disponibilidad?"
+          "I'm sorry, it was not possible to create the appointment at this time. Would you like us to try with another availability option?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6941,7 +7078,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "¿Te gustaría que busquemos otra opción de disponibilidad ahora?"
+          "Would you like us to look for another availability option now?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7017,7 +7154,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Perfecto, tu cita quedó agendada para el [sc__slot].\n\nTe enviaremos la confirmación a [sc__c_email]. Recuerda confirmar tu asistencia y agendarla en tu calendario."
+          "Perfect, your appointment is scheduled for [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7071,7 +7208,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Muchas gracias. Seguimos disponibles si tienes alguna pregunta adicional."
+          "Thank you very much. We remain available if you have any additional questions."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7100,7 +7237,7 @@
         ],
         "trigger": [],
         "say": [
-          "¿Hay algo más en lo que te pueda ayudar?"
+          "Is there anything else I can help you with?"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -7180,7 +7317,7 @@
         "node_id": "CL__CL_END",
         "node_type": "terminal",
         "goal": [
-          "Close the classification flow after a definitive migration ineligibility result."
+          "Close classification: migration ineligibility is final."
         ],
         "do": [],
         "trigger": [],
@@ -7237,15 +7374,15 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "quiero ser gestante",
-          "quiero ser madre subrogada",
-          "quiero aplicar como gestante",
-          "quiero trabajar como gestante",
+          "I want to be a surrogate",
+          "I want to be a surrogate mother",
+          "I want to apply as a surrogate",
+          "I want to work as a surrogate",
           "how can I become a surrogate",
           "I want to become a surrogate"
         ],
         "say": [
-          "Gracias por contarnos. En este momento esta línea no gestiona postulaciones para ser gestante. Agradecemos tu interés y por ahora cerraremos la conversación."
+          "Thank you for letting us know. At this time, this line does not handle surrogate applications. We appreciate your interest and for now, we will close the conversation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7269,14 +7406,12 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "quiero subrogación",
-          "quiero gestación subrogada",
-          "me interesa subrogación",
           "I want surrogacy",
+          "I want gestational surrogacy",
           "I am interested in surrogacy"
         ],
         "say": [
-          "Perfecto, vayamos directo por esa ruta."
+          "Perfect, let's go straight through that path."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7300,15 +7435,13 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "quiero fiv",
-          "me interesa fiv",
-          "quiero fertilización in vitro",
-          "quiero método ropa",
           "I want IVF",
-          "I want in vitro fertilization"
+          "I am interested in IVF",
+          "I want in vitro fertilization",
+          "I want ROPA method"
         ],
         "say": [
-          "Perfecto, vayamos directo por esa ruta."
+          "Perfect, let's go straight through that path."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7332,14 +7465,12 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "no me interesa",
-          "no quiero continuar",
-          "prefiero no seguir",
           "I am not interested",
-          "I don't want to continue"
+          "I don't want to continue",
+          "I prefer not to follow"
         ],
         "say": [
-          "Entiendo. Si te parece, podemos revisar brevemente qué te frena y definir el mejor siguiente paso."
+          "I understand. If you like, we can briefly review what is holding you back and define the best next step."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7370,12 +7501,12 @@
           "can I change my appointment time",
           "I want to see my appointments",
           "cancel my meeting",
-          "reprogramar cita",
-          "cancelar cita",
-          "cambiar hora de mi cita"
+          "reschedule appointment",
+          "cancel appointment",
+          "change my appointment time"
         ],
         "say": [
-          "Puedo ayudarte con eso."
+          "I can help you with that."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7412,7 +7543,7 @@
           "what did you mean"
         ],
         "say": [
-          "Claro, te lo repito."
+          "Sure, I'll repeat it for you."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7435,14 +7566,14 @@
       {
         "faq_id": "F_LGBTQ",
         "match": [
-          "pareja gay",
-          "pareja del mismo sexo",
-          "aceptan parejas del mismo sexo",
+          "gay couple",
+          "same-sex couple",
+          "do you accept same-sex couples",
           "homoparental",
           "lgbt"
         ],
         "say": [
-          "Sí. Acompañamos parejas del mismo sexo dentro de los programas aprobados por Family Aims."
+          "Yes. We accompany same-sex couples within the programs approved by Family Aims."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7450,13 +7581,13 @@
       {
         "faq_id": "F_SOLO",
         "match": [
-          "padre soltero",
-          "persona soltera",
-          "puedo hacerlo sola",
-          "puedo hacerlo solo"
+          "single father",
+          "single mother",
+          "single person",
+          "can I do it alone"
         ],
         "say": [
-          "Sí. Family Aims acompaña perfiles en pareja y también algunos perfiles individuales, según el programa y el país más adecuado."
+          "Yes. Family Aims accompanies both couples and some individual profiles, such as single fathers or single mothers, depending on the program and the most suitable country."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7464,12 +7595,12 @@
       {
         "faq_id": "F_SW_MX",
         "match": [
-          "mujer soltera",
-          "soy una mujer soltera",
-          "doble donación"
+          "single woman",
+          "I am a single woman",
+          "double donation"
         ],
         "say": [
-          "Para el caso de mujer soltera, el destino que mejor se ajusta es México, donde sí es posible acompañar ese proceso."
+          "For single women, the destination that best fits is Mexico, where it is possible to accompany that process."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7477,14 +7608,13 @@
       {
         "faq_id": "F_VISA",
         "match": [
-          "necesito visa",
-          "puedo entrar a colombia",
-          "visa colombia",
-          "passport eligible",
-          "do I need a visa"
+          "do I need a visa",
+          "can I enter Colombia",
+          "Colombia visa",
+          "passport eligible"
         ],
         "say": [
-          "La elegibilidad migratoria para subrogación en Colombia se revisa según la nacionalidad reportada y, en algunos casos, según si cuentas con visa vigente de Estados Unidos o Schengen."
+          "Migration eligibility for surrogacy in Colombia is reviewed based on the reported nationality and, in some cases, whether you have a valid USA or Schengen visa."
         ],
         "say_verbatim": false,
         "resume_to": null
@@ -7492,13 +7622,13 @@
       {
         "faq_id": "F_FOREIGN",
         "match": [
-          "vivo fuera de colombia",
-          "soy extranjero",
+          "I live outside Colombia",
+          "I am a foreigner",
           "I live abroad",
           "I am outside Colombia"
         ],
         "say": [
-          "Sí. Acompañamos tanto pacientes internacionales como residentes locales, siempre dentro de las condiciones aprobadas para cada programa."
+          "Yes. We accompany both international patients and local residents, always within the conditions approved for each program."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7506,12 +7636,12 @@
       {
         "faq_id": "F_REQ_DOCS",
         "match": [
-          "qué documentos necesitan",
-          "requisitos iniciales",
-          "qué necesito para empezar"
+          "what documents do you need",
+          "initial requirements",
+          "what do I need to start"
         ],
         "say": [
-          "Para empezar, primero necesitamos ubicar tu caso en el programa correcto. Los documentos específicos se revisan contigo durante la asesoría."
+          "To start, we first need to place your case in the correct program. Specific documents are reviewed with you during the advisory session."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7519,13 +7649,13 @@
       {
         "faq_id": "F_GUARANTEE",
         "match": [
-          "garantizan el resultado",
-          "garantizan bebé",
-          "garantía médica",
-          "garantía legal"
+          "do you guarantee the result",
+          "guaranteed baby",
+          "medical guarantee",
+          "legal guarantee"
         ],
         "say": [
-          "Ningún programa médico o legal puede garantizar resultados absolutos. Cada caso se analiza de forma individual para orientarte con honestidad."
+          "No medical or legal program can guarantee absolute results. Each case is analyzed individually to guide you honestly."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7533,13 +7663,13 @@
       {
         "faq_id": "F_ADVISOR",
         "match": [
-          "quién me ayuda",
-          "asesor humano",
-          "persona real",
-          "human advisor"
+          "who helps me",
+          "human advisor",
+          "real person",
+          "human specialist"
         ],
         "say": [
-          "Yo soy un asistente de IA que ayuda con la orientación inicial y el agendamiento. La asesoría personalizada la lidera una especialista humana del equipo comercial."
+          "I am an AI assistant that helps with initial orientation and scheduling. Personalized advisory is led by a human specialist from the commercial team."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7547,13 +7677,13 @@
       {
         "faq_id": "F_CALLBACK",
         "match": [
-          "no puedo ahora",
-          "me llaman después",
+          "I can't right now",
+          "call me later",
           "call later",
           "I am not available now"
         ],
         "say": [
-          "Claro. Podemos retomar por mensaje más adelante o dejar solicitado un callback para otro momento."
+          "Of course. We can resume via message later or request a callback for another time."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7561,13 +7691,12 @@
       {
         "faq_id": "F_WHO",
         "match": [
-          "quién eres",
-          "quién me escribe",
-          "quién me contacta",
-          "who are you"
+          "who are you",
+          "who is writing to me",
+          "who is contacting me"
         ],
         "say": [
-          "Soy <AGENT_NAME>, un asistente de IA de <COMPANY_NAME>. Estoy aquí para guiar la conversación inicial y ayudarte a definir el siguiente paso con el equipo comercial."
+          "I am <AGENT_NAME>, an AI assistant for <COMPANY_NAME>. I am here to guide the initial conversation and help you define the next step with the commercial team."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7575,12 +7704,12 @@
       {
         "faq_id": "F_WHY",
         "match": [
-          "por qué me escribes",
-          "por qué me contactan",
+          "why are you writing to me",
+          "why am I being contacted",
           "what is the reason for the message"
         ],
         "say": [
-          "Te escribo porque recibimos tu información y sabemos que estás interesado o interesada en conocer más sobre nuestros tratamientos de fertilidad."
+          "I am writing to you because we received your information and we know you are interested in learning more about our fertility treatments."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7588,13 +7717,12 @@
       {
         "faq_id": "F_FIV",
         "match": [
-          "qué es fiv",
-          "qué es fertilización in vitro",
-          "método ropa",
-          "ivf"
+          "what is IVF",
+          "what is in vitro fertilization",
+          "ROPA method"
         ],
         "say": [
-          "La fecundación in vitro es una técnica de reproducción asistida en la que los óvulos y los espermatozoides se unen en el laboratorio para formar embriones.\n\nSegún el caso, puede realizarse con material genético propio o donado."
+          "In vitro fertilization is an assisted reproduction technique in which eggs and sperm are joined in the laboratory to form embryos.\n\nDepending on the case, it can be performed with own or donated genetic material."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7602,14 +7730,14 @@
       {
         "faq_id": "F_SUR",
         "match": [
-          "qué es subrogación",
-          "gestación subrogada",
-          "subrogación en colombia",
-          "subrogación en méxico",
+          "what is surrogacy",
+          "gestational surrogacy",
+          "surrogacy in Colombia",
+          "surrogacy in Mexico",
           "how does surrogacy work"
         ],
         "say": [
-          "La subrogación es un proceso de reproducción asistida en el que una gestante lleva el embarazo para la persona o pareja que desea formar su familia. El camino exacto depende del caso y del país adecuado."
+          "Surrogacy is an assisted reproduction process in which a surrogate carries the pregnancy for the person or couple who wishes to form their family. The exact path depends on the case and the suitable country."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7617,13 +7745,13 @@
       {
         "faq_id": "F_COSTS",
         "match": [
-          "cuánto cuesta",
-          "precio del proceso",
-          "valor de subrogación",
+          "how much does it cost",
+          "price of the process",
+          "value of surrogacy",
           "surrogacy prices"
         ],
         "say": [
-          "Los valores dependen del programa y de las necesidades específicas de cada caso. Por eso se revisan con detalle durante la asesoría comercial."
+          "Values depend on the program and the specific needs of each case. That is why they are reviewed in detail during the commercial advisory session."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7631,20 +7759,20 @@
       {
         "faq_id": "F_TIME",
         "match": [
-          "cuánto dura la subrogación",
-          "tiempo del proceso",
-          "duración del tratamiento",
-          "cuánto dura el fiv",
-          "tiempo de estimulación",
+          "how long does surrogacy last",
+          "process time",
+          "treatment duration",
+          "how long does IVF take",
+          "stimulation time",
           "surrogacy timeline",
           "process duration"
         ],
         "say": [
-          "La duración estimada del proceso depende del tratamiento:",
-          "- Subrogación: aproximadamente 24 meses.",
-          "- FIV (estimulación en Colombia): entre 20 y 30 días, incluyendo la extracción.",
-          "- FIV (si ya vienes estimulada): entre 10 y 15 días.",
-          "En los tratamientos de FIV, la segunda fase es la transferencia embrionaria."
+          "The estimated duration of the process depends on the treatment:",
+          "- Surrogacy: approximately 24 months.",
+          "- IVF (stimulation in Colombia): between 20 and 30 days, including extraction.",
+          "- IVF (if already stimulated): between 10 and 15 days.",
+          "In IVF treatments, the second phase is the embryo transfer."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7653,13 +7781,12 @@
         "faq_id": "F_ERROR",
         "match": [
           "network error",
-          "error de red",
-          "problema de conexión",
-          "no funciona",
+          "connection problem",
+          "not working",
           "technical error"
         ],
         "say": [
-          "Lamento los inconvenientes. Si experimentas un error de red o técnico, por favor intenta actualizar la conversación. Si el problema persiste, nuestro equipo humano te contactará pronto para darte soporte."
+          "I apologize for the inconvenience. If you experience a network or technical error, please try refreshing the conversation. If the problem persists, our human team will contact you soon for support."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7667,13 +7794,12 @@
       {
         "faq_id": "F_PRIV",
         "match": [
-          "mis datos",
-          "privacidad",
-          "cómo manejan mi información",
+          "my data",
+          "privacy",
           "how do you handle my information"
         ],
         "say": [
-          "Tus datos se manejan de forma confidencial según <DATA_LAW_REFERENCE> en Colombia y se usan solo para gestionar tu atención."
+          "Your data is handled confidentially according to <DATA_LAW_REFERENCE> in Colombia and is used only to manage your care."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7681,15 +7807,13 @@
       {
         "faq_id": "F_NEXT_STEPS",
         "match": [
-          "qué pasos debo seguir",
-          "cómo empiezo",
-          "qué sigue después de esto",
-          "cuáles son los siguientes pasos",
-          "what are the next steps",
-          "how do I start"
+          "what steps should I follow",
+          "how do I start",
+          "what comes next after this",
+          "what are the next steps"
         ],
         "say": [
-          "Los próximos pasos son sencillos: hablás con tu asesor sobre tu situación puntual, te resuelve todas las dudas específicas, y ahí definen juntos cómo seguir — por eso es tan importante agendar esa primera charla."
+          "The next steps are simple: you talk to your advisor about your specific situation, they resolve all your specific doubts, and then you define together how to proceed — that's why it's so important to schedule that first talk."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7697,14 +7821,13 @@
       {
         "faq_id": "F_PROCESS_DURATION",
         "match": [
-          "cuánto dura el proceso",
-          "cuánto tiempo toma",
-          "cuánto tiempo tarda todo esto",
           "how long does the process take",
-          "how long does it take"
+          "how much time does it take",
+          "how long does all this take",
+          "how long is the process"
         ],
         "say": [
-          "El tiempo varía según el programa: en gestación subrogada el estimado es de <PROCESS_DURATION_MONTHS>, aunque puede cambiar según cada caso; en FIV, tu asesor te da el tiempo estimado según tu situación puntual en la primera charla."
+          "The time varies depending on the program: in gestational surrogacy, the estimate is <PROCESS_DURATION_MONTHS>, although it may change according to each case; in IVF, your advisor gives you the estimated time according to your specific situation in the first talk."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -7918,12 +8041,12 @@
     },
     {
       "name": "check_visa",
-      "description": "Revisa si una o varias nacionalidades requieren visa para ingresar a Colombia como turista.",
+      "description": "Checks if one or more nationalities require a visa to enter Colombia as a tourist.",
       "inputs": [
         {
           "name": "nationalities",
           "required": true,
-          "description": "Una o más nacionalidades a revisar. Ejemplos: 'USA', 'China, India', ['Spain', 'AFG'].",
+          "description": "One or more nationalities to check. Examples: 'USA', 'China, India', ['Spain', 'AFG'].",
           "type_expr": "str",
           "examples": [
             "USA",
@@ -7935,50 +8058,50 @@
         {
           "name": "success",
           "required": true,
-          "description": "Valor booleano que indica si la herramienta se ejecutó correctamente.",
+          "description": "Boolean value indicating if the tool executed correctly.",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "nationality",
           "required": true,
-          "description": "Nombre de la(s) nacionalidad(es) revisada(s), limpia de espacios.",
+          "description": "Name of the checked nationality(ies), cleared of spaces.",
           "type_expr": "str",
           "examples": []
         },
         {
           "name": "requires_visa",
           "required": true,
-          "description": "Indica si la persona requiere visa para entrar a Colombia (bool).",
+          "description": "Indicates if the person requires a visa to enter Colombia (bool).",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "conditional_visa",
           "required": true,
-          "description": "Indica si el requisito está condicionado a visa USA/Schengen (bool).",
+          "description": "Indicates if the requirement is conditioned on a USA/Schengen visa (bool).",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "summary",
           "required": true,
-          "description": "Resumen legible de los requisitos encontrados.",
+          "description": "Readable summary of the requirements found.",
           "type_expr": "free_text",
           "examples": []
         },
         {
           "name": "errors",
           "required": true,
-          "description": "Mensaje de error técnico si la consulta falló. null en caso de éxito.",
+          "description": "Technical error message if the query failed. null on success.",
           "type_expr": "str",
           "examples": []
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto mencione su nacionalidad o pregunte si necesita visa para viajar a Colombia.",
-        "ARGUMENT RULE: nationalities puede ser un string separado por comas ('USA, China') o una lista de strings (['USA', 'China']). Soporta nombres comunes o códigos ISO 3166-1 alfa-3.",
-        "SOURCE OF TRUTH RULE: usa nationality, requires_visa y conditional_visa (no un array) para decidir el resultado de la consulta. Revisa conditional_visa para casos como China o India donde se requiere visa a menos que tengan visa USA/Schengen."
+        "MANDATORY EXECUTION TRIGGER: execute it when the contact mentions their nationality or asks if they need a visa to travel to Colombia.",
+        "ARGUMENT RULE: nationalities can be a comma-separated string ('USA, China') or a list of strings (['USA', 'China']). Supports common names or ISO 3166-1 alpha-3 codes.",
+        "SOURCE OF TRUTH RULE: use nationality, requires_visa, and conditional_visa (not an array) to decide the query result. Check conditional_visa for cases like China or India where a visa is required unless they have a USA/Schengen visa."
       ]
     },
     {
@@ -8170,33 +8293,33 @@
     },
     {
       "name": "find_appointment",
-      "description": "Herramienta autorizada para buscar citas existentes de un contacto por su nombre o correo en los calendarios de Family Aims.",
+      "description": "Authorized tool to search for existing appointments of a contact by their name or email in Family Aims calendars.",
       "inputs": [
         {
           "name": "contact_name",
           "required": false,
-          "description": "Nombre completo del contacto para realizar la búsqueda.",
+          "description": "Contact's full name to perform the search.",
           "type_expr": "person_name",
           "examples": []
         },
         {
           "name": "contact_email",
           "required": false,
-          "description": "Correo electrónico del contacto para realizar la búsqueda.",
+          "description": "Contact's email to perform the search.",
           "type_expr": "email",
           "examples": []
         },
         {
           "name": "calendar_type",
           "required": true,
-          "description": "Filtro de calendario: 'IVF' o 'SUR'.",
+          "description": "Calendar filter: 'IVF' or 'SUR'.",
           "type_expr": "Literal[IVF, SUR]",
           "examples": []
         },
         {
           "name": "iana_timezone",
           "required": false,
-          "description": "Zona horaria IANA para mostrar las horas de las citas encontradas. Defecto: America/Bogota.",
+          "description": "IANA timezone to show the times of the appointments found. Default: America/Bogota.",
           "type_expr": "str",
           "examples": [
             "America/Bogota"
@@ -8205,7 +8328,7 @@
         {
           "name": "language",
           "required": false,
-          "description": "Idioma para formatear los resultados. Defecto: ES.",
+          "description": "Language to format the results. Default: ES.",
           "type_expr": "str",
           "examples": [
             "ES"
@@ -8216,55 +8339,55 @@
         {
           "name": "success",
           "required": true,
-          "description": "Booleano indicando si la búsqueda se completó.",
+          "description": "Boolean indicating if the search was completed.",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "appointments",
           "required": true,
-          "description": "Lista de objetos con información de las citas encontradas (event_id, summary, start_time, calendar_type).",
+          "description": "List of objects with information of the appointments found (event_id, summary, start_time, calendar_type).",
           "type_expr": "list[Appointment]",
           "examples": []
         },
         {
           "name": "errors",
           "required": true,
-          "description": "Mensaje de error si la búsqueda falló.",
+          "description": "Error message if the search failed.",
           "type_expr": "str",
           "examples": []
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto quiera consultar, verificar o conocer los detalles de una cita que ya cree haber agendado.",
-        "ARGUMENT RULE: contact_name debe ser el nombre completo del contacto tal como figura en el CRM o como se registró en la cita.",
-        "ARGUMENT RULE: contact_email es el correo electrónico del contacto. Úsalo preferentemente si el nombre es ambiguo o para mayor precisión.",
-        "ARGUMENT RULE: calendar_type permite filtrar por 'IVF' o 'SUR'. Debe coincidir con el tipo de proceso del contacto.",
-        "SOURCE OF TRUTH RULE: el array 'appointments' contiene la lista de citas encontradas. Si está vacío, informa al contacto que no se encontraron registros bajo ese nombre o correo."
+        "MANDATORY EXECUTION TRIGGER: execute it when the contact wants to consult, verify, or know the details of an appointment they believe they have already scheduled.",
+        "ARGUMENT RULE: contact_name must be the contact's full name as it appears in the CRM or as it was registered in the appointment.",
+        "ARGUMENT RULE: contact_email is the contact's email. Use it preferably if the name is ambiguous or for greater precision.",
+        "ARGUMENT RULE: calendar_type allows filtering by 'IVF' or 'SUR'. It must match the contact's process type.",
+        "SOURCE OF TRUTH RULE: the 'appointments' array contains the list of appointments found. If it is empty, inform the contact that no records were found under that name or email."
       ]
     },
     {
       "name": "cancel_appointment",
-      "description": "Herramienta autorizada para cancelar/eliminar una cita existente en los calendarios de Family Aims.",
+      "description": "Authorized tool to cancel/delete an existing appointment in Family Aims calendars.",
       "inputs": [
         {
           "name": "event_id",
           "required": true,
-          "description": "Identificador único del evento de Google Calendar a cancelar.",
+          "description": "Unique identifier of the Google Calendar event to cancel.",
           "type_expr": "str",
           "examples": []
         },
         {
           "name": "calendar_type",
           "required": true,
-          "description": "Tipo de calendario donde reside la cita: 'IVF' o 'SUR'.",
+          "description": "Type of calendar where the appointment resides: 'IVF' or 'SUR'.",
           "type_expr": "Literal[IVF, SUR]",
           "examples": []
         },
         {
           "name": "iana_timezone",
           "required": false,
-          "description": "Zona horaria IANA del contacto.",
+          "description": "Contact's IANA timezone.",
           "type_expr": "str",
           "examples": [
             "America/Bogota"
@@ -8275,46 +8398,46 @@
         {
           "name": "success",
           "required": true,
-          "description": "Booleano indicando si la cancelación fue exitosa.",
+          "description": "Boolean indicating if the cancellation was successful.",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "errors",
           "required": true,
-          "description": "Mensaje de error si la cancelación falló.",
+          "description": "Error message if the cancellation failed.",
           "type_expr": "str",
           "examples": []
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: ejecútala únicamente cuando el contacto solicite explitamente cancelar su cita y proporcione o confirme el event_id (obtenido previamente vía find_appointment).",
-        "ABSOLUTE EXECUTION RULE: no confirmes la cancelación antes de recibir success == true.",
-        "ARGUMENT RULE: event_id debe ser el ID exacto devuelto por la API. calendar_type debe ser 'IVF' o 'SUR' según corresponda a la cita."
+        "MANDATORY EXECUTION TRIGGER: execute it only when the contact explicitly requests to cancel their appointment and provides or confirms the event_id (previously obtained via find_appointment).",
+        "ABSOLUTE EXECUTION RULE: do not confirm the cancellation before receiving success == true.",
+        "ARGUMENT RULE: event_id must be the exact ID returned by the API. calendar_type must be 'IVF' or 'SUR' as corresponds to the appointment."
       ]
     },
     {
       "name": "edit_appointment",
-      "description": "Herramienta autorizada para modificar o reprogramar una cita existente en los calendarios de Family Aims.",
+      "description": "Authorized tool to modify or reschedule an existing appointment in Family Aims calendars.",
       "inputs": [
         {
           "name": "event_id",
           "required": true,
-          "description": "Identificador único del evento de Google Calendar a modificar.",
+          "description": "Unique identifier of the Google Calendar event to modify.",
           "type_expr": "str",
           "examples": []
         },
         {
           "name": "calendar_type",
           "required": true,
-          "description": "Tipo de calendario: 'IVF' o 'SUR'.",
+          "description": "Type of calendar: 'IVF' or 'SUR'.",
           "type_expr": "Literal[IVF, SUR]",
           "examples": []
         },
         {
           "name": "new_start_date",
           "required": false,
-          "description": "Nueva fecha y hora en ISO 8601 con offset. Requerido si se cambia el horario.",
+          "description": "New date and time in ISO 8601 with offset. Required if changing the schedule.",
           "type_expr": "str",
           "examples": [
             "2026-06-04T08:00:00-05:00"
@@ -8323,7 +8446,7 @@
         {
           "name": "new_duration",
           "required": false,
-          "description": "Nueva duración en minutos (como string). Requerido si se cambia la duración.",
+          "description": "New duration in minutes (as string). Required if changing the duration.",
           "type_expr": "str",
           "examples": [
             "45"
@@ -8332,7 +8455,7 @@
         {
           "name": "iana_timezone",
           "required": false,
-          "description": "Zona horaria IANA del contacto. Defecto: America/Bogota.",
+          "description": "Contact's IANA timezone. Default: America/Bogota.",
           "type_expr": "str",
           "examples": [
             "America/Bogota"
@@ -8341,7 +8464,7 @@
         {
           "name": "language",
           "required": false,
-          "description": "Idioma para la confirmación. Defecto: ES.",
+          "description": "Language for confirmation. Default: ES.",
           "type_expr": "str",
           "examples": [
             "ES"
@@ -8352,21 +8475,21 @@
         {
           "name": "success",
           "required": true,
-          "description": "Booleano indicando si la modificación fue exitosa.",
+          "description": "Boolean indicating if the modification was successful.",
           "type_expr": "bool",
           "examples": []
         },
         {
           "name": "message",
           "required": false,
-          "description": "Mensaje de confirmación del cambio realizado.",
+          "description": "Confirmation message of the change made.",
           "type_expr": "free_text",
           "examples": []
         },
         {
           "name": "new_start_time",
           "required": false,
-          "description": "Fecha y hora formateada si hubo cambio de horario.",
+          "description": "Formatted date and time if there was a schedule change.",
           "type_expr": "str",
           "examples": [
             "2026-06-04T08:00:00-05:00"
@@ -8375,17 +8498,17 @@
         {
           "name": "errors",
           "required": true,
-          "description": "Mensaje de error si la modificación falló.",
+          "description": "Error message if the modification failed.",
           "type_expr": "str",
           "examples": []
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto solicite cambiar la fecha, hora o duración de una cita ya agendada.",
-        "ABSOLUTE EXECUTION RULE: no confirmes el cambio antes de recibir success == true.",
-        "ARGUMENT RULE: event_id debe ser el ID exacto de la cita. calendar_type debe ser 'IVF' o 'SUR'.",
-        "ARGUMENT RULE: new_start_date debe ser un slot válido obtenido de get_available_slots si se está reprogramando. Si solo se cambia la duración, este campo es opcional.",
-        "VALIDATION RULE: la herramienta verifica automáticamente disponibilidad y horario laboral antes de aplicar el cambio."
+        "MANDATORY EXECUTION TRIGGER: execute it when the contact requests to change the date, time, or duration of an already scheduled appointment.",
+        "ABSOLUTE EXECUTION RULE: do not confirm the change before receiving success == true.",
+        "ARGUMENT RULE: event_id must be the exact ID of the appointment. calendar_type must be 'IVF' or 'SUR'.",
+        "ARGUMENT RULE: new_start_date must be a valid slot obtained from get_available_slots if rescheduling. If only the duration is changed, this field is optional.",
+        "VALIDATION RULE: the tool automatically verifies availability and business hours before applying the change."
       ]
     }
   ],
@@ -8394,13 +8517,13 @@
     "COMPANY_NAME": "Family Aims",
     "MAX_RETRY_ATTEMPTS": "3",
     "END_LISTEN_MAX_ATTEMPTS": "20",
-    "DATA_LAW_REFERENCE": "Law 1266 of 2008, Law 1581 of 2012, and Decree 886 of 2014",
+    "DATA_LAW_REFERENCE": "Law 1581 of 2012 and its regulatory decrees, as well as the international HIPAA and GDPR standards where applicable",
     "HUMAN_SURROGACY_ADVISOR_NAME": "Marcela Arango",
     "HUMAN_IVF_ADVISOR_NAME": "Ayda Chuquizan",
-    "PROCESS_DURATION_MONTHS": "24 meses",
+    "PROCESS_DURATION_MONTHS": "24 months",
     "IVF_CITY": "Bogotá",
     "APPOINTMENT_DURATION_MINUTES": "30",
-    "MIGRATION_POLICY_REASON": "Esta política responde exclusivamente a requisitos migratorios colombianos y tiene como objetivo garantizar que el proceso pueda desarrollarse de manera legal y segura."
+    "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely."
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
@@ -8413,7 +8536,7 @@
     "This is an asynchronous text channel: process the user's full latest message and do not use voice-specific instructions such as call flow, silence handling, interruptions, or audio cues.",
     "If the user asks for more detail, answer concretely and gently return to the next qualification, value, or scheduling step.",
     "Keep each response focused: at most 2 short paragraphs, and end with one clear question when you need to advance the flow.",
-    "Never invent a closing question (e.g. '¿tienes alguna pregunta sobre esto?', '¿te gustaría saber más?') when rephrasing an informational message. Only end with a question if the approved text you are rephrasing already asks one — presenting information is a complete turn on its own and does not need an invented prompt for a reply.",
+    "Never invent a closing question (e.g. 'do you have any questions about this?', 'would you like to know more?') when rephrasing an informational message. Only end with a question if the approved text you are rephrasing already asks one — presenting information is a complete turn on its own and does not need an invented prompt for a reply.",
     "Use short messages for classification questions.",
     "When explaining requirements, programs, or documents, use 3 to 5 brief bullets instead of a dense block.",
     "If approved content is long, split it across two short message turns only when the flow already routes that way.",

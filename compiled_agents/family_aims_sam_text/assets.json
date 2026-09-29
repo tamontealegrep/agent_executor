@@ -159,49 +159,49 @@
   },
   {
     "name": "check_visa",
-    "description": "Revisa si una o varias nacionalidades requieren visa para ingresar a Colombia como turista.",
+    "description": "Checks if one or more nationalities require a visa to enter Colombia as a tourist.",
     "notes": [
-      "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto mencione su nacionalidad o pregunte si necesita visa para viajar a Colombia.",
-      "ARGUMENT RULE: nationalities puede ser un string separado por comas ('USA, China') o una lista de strings (['USA', 'China']). Soporta nombres comunes o códigos ISO 3166-1 alfa-3.",
-      "SOURCE OF TRUTH RULE: usa nationality, requires_visa y conditional_visa (no un array) para decidir el resultado de la consulta. Revisa conditional_visa para casos como China o India donde se requiere visa a menos que tengan visa USA/Schengen."
+      "MANDATORY EXECUTION TRIGGER: execute it when the contact mentions their nationality or asks if they need a visa to travel to Colombia.",
+      "ARGUMENT RULE: nationalities can be a comma-separated string ('USA, China') or a list of strings (['USA', 'China']). Supports common names or ISO 3166-1 alpha-3 codes.",
+      "SOURCE OF TRUTH RULE: use nationality, requires_visa, and conditional_visa (not an array) to decide the query result. Check conditional_visa for cases like China or India where a visa is required unless they have a USA/Schengen visa."
     ],
     "inputs": [
       {
         "name": "nationalities",
         "required": true,
-        "description": "Una o más nacionalidades a revisar. Ejemplos: 'USA', 'China, India', ['Spain', 'AFG']."
+        "description": "One or more nationalities to check. Examples: 'USA', 'China, India', ['Spain', 'AFG']."
       }
     ],
     "outputs": [
       {
         "name": "success",
         "required": true,
-        "description": "Valor booleano que indica si la herramienta se ejecutó correctamente."
+        "description": "Boolean value indicating if the tool executed correctly."
       },
       {
         "name": "nationality",
         "required": true,
-        "description": "Nombre de la(s) nacionalidad(es) revisada(s), limpia de espacios."
+        "description": "Name of the checked nationality(ies), cleared of spaces."
       },
       {
         "name": "requires_visa",
         "required": true,
-        "description": "Indica si la persona requiere visa para entrar a Colombia (bool)."
+        "description": "Indicates if the person requires a visa to enter Colombia (bool)."
       },
       {
         "name": "conditional_visa",
         "required": true,
-        "description": "Indica si el requisito está condicionado a visa USA/Schengen (bool)."
+        "description": "Indicates if the requirement is conditioned on a USA/Schengen visa (bool)."
       },
       {
         "name": "summary",
         "required": true,
-        "description": "Resumen legible de los requisitos encontrados."
+        "description": "Readable summary of the requirements found."
       },
       {
         "name": "errors",
         "required": true,
-        "description": "Mensaje de error técnico si la consulta falló. null en caso de éxito."
+        "description": "Technical error message if the query failed. null on success."
       }
     ]
   },
@@ -340,159 +340,159 @@
   },
   {
     "name": "find_appointment",
-    "description": "Herramienta autorizada para buscar citas existentes de un contacto por su nombre o correo en los calendarios de Family Aims.",
+    "description": "Authorized tool to search for existing appointments of a contact by their name or email in Family Aims calendars.",
     "notes": [
-      "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto quiera consultar, verificar o conocer los detalles de una cita que ya cree haber agendado.",
-      "ARGUMENT RULE: contact_name debe ser el nombre completo del contacto tal como figura en el CRM o como se registró en la cita.",
-      "ARGUMENT RULE: contact_email es el correo electrónico del contacto. Úsalo preferentemente si el nombre es ambiguo o para mayor precisión.",
-      "ARGUMENT RULE: calendar_type permite filtrar por 'IVF' o 'SUR'. Debe coincidir con el tipo de proceso del contacto.",
-      "SOURCE OF TRUTH RULE: el array 'appointments' contiene la lista de citas encontradas. Si está vacío, informa al contacto que no se encontraron registros bajo ese nombre o correo."
+      "MANDATORY EXECUTION TRIGGER: execute it when the contact wants to consult, verify, or know the details of an appointment they believe they have already scheduled.",
+      "ARGUMENT RULE: contact_name must be the contact's full name as it appears in the CRM or as it was registered in the appointment.",
+      "ARGUMENT RULE: contact_email is the contact's email. Use it preferably if the name is ambiguous or for greater precision.",
+      "ARGUMENT RULE: calendar_type allows filtering by 'IVF' or 'SUR'. It must match the contact's process type.",
+      "SOURCE OF TRUTH RULE: the 'appointments' array contains the list of appointments found. If it is empty, inform the contact that no records were found under that name or email."
     ],
     "inputs": [
       {
         "name": "contact_name",
         "required": false,
-        "description": "Nombre completo del contacto para realizar la búsqueda."
+        "description": "Contact's full name to perform the search."
       },
       {
         "name": "contact_email",
         "required": false,
-        "description": "Correo electrónico del contacto para realizar la búsqueda."
+        "description": "Contact's email to perform the search."
       },
       {
         "name": "calendar_type",
         "required": true,
-        "description": "Filtro de calendario: 'IVF' o 'SUR'."
+        "description": "Calendar filter: 'IVF' or 'SUR'."
       },
       {
         "name": "iana_timezone",
         "required": false,
-        "description": "Zona horaria IANA para mostrar las horas de las citas encontradas. Defecto: America/Bogota."
+        "description": "IANA timezone to show the times of the appointments found. Default: America/Bogota."
       },
       {
         "name": "language",
         "required": false,
-        "description": "Idioma para formatear los resultados. Defecto: ES."
+        "description": "Language to format the results. Default: ES."
       }
     ],
     "outputs": [
       {
         "name": "success",
         "required": true,
-        "description": "Booleano indicando si la búsqueda se completó."
+        "description": "Boolean indicating if the search was completed."
       },
       {
         "name": "appointments",
         "required": true,
-        "description": "Lista de objetos con información de las citas encontradas (event_id, summary, start_time, calendar_type)."
+        "description": "List of objects with information of the appointments found (event_id, summary, start_time, calendar_type)."
       },
       {
         "name": "errors",
         "required": true,
-        "description": "Mensaje de error si la búsqueda falló."
+        "description": "Error message if the search failed."
       }
     ]
   },
   {
     "name": "cancel_appointment",
-    "description": "Herramienta autorizada para cancelar/eliminar una cita existente en los calendarios de Family Aims.",
+    "description": "Authorized tool to cancel/delete an existing appointment in Family Aims calendars.",
     "notes": [
-      "MANDATORY EXECUTION TRIGGER: ejecútala únicamente cuando el contacto solicite explitamente cancelar su cita y proporcione o confirme el event_id (obtenido previamente vía find_appointment).",
-      "ABSOLUTE EXECUTION RULE: no confirmes la cancelación antes de recibir success == true.",
-      "ARGUMENT RULE: event_id debe ser el ID exacto devuelto por la API. calendar_type debe ser 'IVF' o 'SUR' según corresponda a la cita."
+      "MANDATORY EXECUTION TRIGGER: execute it only when the contact explicitly requests to cancel their appointment and provides or confirms the event_id (previously obtained via find_appointment).",
+      "ABSOLUTE EXECUTION RULE: do not confirm the cancellation before receiving success == true.",
+      "ARGUMENT RULE: event_id must be the exact ID returned by the API. calendar_type must be 'IVF' or 'SUR' as corresponds to the appointment."
     ],
     "inputs": [
       {
         "name": "event_id",
         "required": true,
-        "description": "Identificador único del evento de Google Calendar a cancelar."
+        "description": "Unique identifier of the Google Calendar event to cancel."
       },
       {
         "name": "calendar_type",
         "required": true,
-        "description": "Tipo de calendario donde reside la cita: 'IVF' o 'SUR'."
+        "description": "Type of calendar where the appointment resides: 'IVF' or 'SUR'."
       },
       {
         "name": "iana_timezone",
         "required": false,
-        "description": "Zona horaria IANA del contacto."
+        "description": "Contact's IANA timezone."
       }
     ],
     "outputs": [
       {
         "name": "success",
         "required": true,
-        "description": "Booleano indicando si la cancelación fue exitosa."
+        "description": "Boolean indicating if the cancellation was successful."
       },
       {
         "name": "errors",
         "required": true,
-        "description": "Mensaje de error si la cancelación falló."
+        "description": "Error message if the cancellation failed."
       }
     ]
   },
   {
     "name": "edit_appointment",
-    "description": "Herramienta autorizada para modificar o reprogramar una cita existente en los calendarios de Family Aims.",
+    "description": "Authorized tool to modify or reschedule an existing appointment in Family Aims calendars.",
     "notes": [
-      "MANDATORY EXECUTION TRIGGER: ejecútala cuando el contacto solicite cambiar la fecha, hora o duración de una cita ya agendada.",
-      "ABSOLUTE EXECUTION RULE: no confirmes el cambio antes de recibir success == true.",
-      "ARGUMENT RULE: event_id debe ser el ID exacto de la cita. calendar_type debe ser 'IVF' o 'SUR'.",
-      "ARGUMENT RULE: new_start_date debe ser un slot válido obtenido de get_available_slots si se está reprogramando. Si solo se cambia la duración, este campo es opcional.",
-      "VALIDATION RULE: la herramienta verifica automáticamente disponibilidad y horario laboral antes de aplicar el cambio."
+      "MANDATORY EXECUTION TRIGGER: execute it when the contact requests to change the date, time, or duration of an already scheduled appointment.",
+      "ABSOLUTE EXECUTION RULE: do not confirm the change before receiving success == true.",
+      "ARGUMENT RULE: event_id must be the exact ID of the appointment. calendar_type must be 'IVF' or 'SUR'.",
+      "ARGUMENT RULE: new_start_date must be a valid slot obtained from get_available_slots if rescheduling. If only the duration is changed, this field is optional.",
+      "VALIDATION RULE: the tool automatically verifies availability and business hours before applying the change."
     ],
     "inputs": [
       {
         "name": "event_id",
         "required": true,
-        "description": "Identificador único del evento de Google Calendar a modificar."
+        "description": "Unique identifier of the Google Calendar event to modify."
       },
       {
         "name": "calendar_type",
         "required": true,
-        "description": "Tipo de calendario: 'IVF' o 'SUR'."
+        "description": "Type of calendar: 'IVF' or 'SUR'."
       },
       {
         "name": "new_start_date",
         "required": false,
-        "description": "Nueva fecha y hora en ISO 8601 con offset. Requerido si se cambia el horario."
+        "description": "New date and time in ISO 8601 with offset. Required if changing the schedule."
       },
       {
         "name": "new_duration",
         "required": false,
-        "description": "Nueva duración en minutos (como string). Requerido si se cambia la duración."
+        "description": "New duration in minutes (as string). Required if changing the duration."
       },
       {
         "name": "iana_timezone",
         "required": false,
-        "description": "Zona horaria IANA del contacto. Defecto: America/Bogota."
+        "description": "Contact's IANA timezone. Default: America/Bogota."
       },
       {
         "name": "language",
         "required": false,
-        "description": "Idioma para la confirmación. Defecto: ES."
+        "description": "Language for confirmation. Default: ES."
       }
     ],
     "outputs": [
       {
         "name": "success",
         "required": true,
-        "description": "Booleano indicando si la modificación fue exitosa."
+        "description": "Boolean indicating if the modification was successful."
       },
       {
         "name": "message",
         "required": false,
-        "description": "Mensaje de confirmación del cambio realizado."
+        "description": "Confirmation message of the change made."
       },
       {
         "name": "new_start_time",
         "required": false,
-        "description": "Fecha y hora formateada si hubo cambio de horario."
+        "description": "Formatted date and time if there was a schedule change."
       },
       {
         "name": "errors",
         "required": true,
-        "description": "Mensaje de error si la modificación falló."
+        "description": "Error message if the modification failed."
       }
     ]
   }
