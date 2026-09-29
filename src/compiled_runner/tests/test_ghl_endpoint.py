@@ -289,6 +289,29 @@ def test_pending_interrupt_resumes_with_command(monkeypatch):
     assert graph.invoke_calls[0].resume == "El martes"
 
 
+@pytest.mark.parametrize("marker", ["<\\>", "</>"])
+def test_reset_marker_forces_a_fresh_conversation_and_strips_itself(monkeypatch, marker):
+    """Either slash direction (pedido directamente, 2026-09-29 -- "<\\>" is
+    what real GHL/WhatsApp payloads actually send, "</>" is kept too so a
+    tester doesn't have to remember which one). Must override even a
+    pending interrupt that would otherwise resume via Command -- the whole
+    point is an easy manual reset mid-conversation."""
+    graph = FakeGraph(values={"current_state": "SC__SC_ASK_D"}, next_=("SC__SC_ASK_D",))
+    app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/test_agent", json=_payload(message=f"{marker}Hola de nuevo", message_id="m10"))
+            await asyncio.sleep(0.3)
+
+    _run(scenario())
+
+    assert len(graph.invoke_calls) == 1
+    assert isinstance(graph.invoke_calls[0], dict)  # fresh_state's stub output, not a Command
+    assert graph.invoke_calls[0]["seed_last_user_message"] == "Hola de nuevo"  # marker stripped
+
+
 def test_empty_graph_reply_sends_no_message(monkeypatch):
     graph = FakeGraph()
     graph.reply_prompt = []  # no __interrupt__ prompt text -> nothing to send
@@ -476,3 +499,37 @@ def test_load_phone_whitelist_enforce_flag_defaults_true_for_anything_else(monke
         monkeypatch.setenv("TEST_ENFORCE", value)
         _, enforce = ghl_endpoint.load_phone_whitelist("TEST_ALLOWED_PHONES", "TEST_ENFORCE")
         assert enforce is True, f"{value!r} should keep enforcement on"
+
+
+# --- _strip_reset_marker (manual-testing "start over" prefix) --------------
+
+
+@pytest.mark.parametrize("marker", ["<\\>", "</>"])
+def test_strip_reset_marker_detects_and_strips_either_spelling(marker):
+    message, reset = ghl_endpoint._strip_reset_marker(f"{marker}Hola")
+    assert reset is True
+    assert message == "Hola"
+
+
+def test_strip_reset_marker_ignores_surrounding_whitespace():
+    message, reset = ghl_endpoint._strip_reset_marker("   <\\>   Hola de nuevo  ")
+    assert reset is True
+    assert message == "Hola de nuevo"
+
+
+def test_strip_reset_marker_with_nothing_after_it():
+    message, reset = ghl_endpoint._strip_reset_marker("<\\>")
+    assert reset is True
+    assert message == ""
+
+
+def test_strip_reset_marker_does_not_trigger_mid_message():
+    message, reset = ghl_endpoint._strip_reset_marker("Hola <\\> como estas")
+    assert reset is False
+    assert message == "Hola <\\> como estas"
+
+
+def test_strip_reset_marker_leaves_a_normal_message_untouched():
+    message, reset = ghl_endpoint._strip_reset_marker("Hola, como estas")
+    assert reset is False
+    assert message == "Hola, como estas"

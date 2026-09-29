@@ -96,6 +96,32 @@ def _normalize_phone(raw: object) -> str:
     return str(raw or "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
 
 
+# Manual-testing reset marker (2026-09-29, pedido directamente): the classic
+# /sam agent had its own version of this ("</>", see agents/helpers/history.py
+# ::DEFAULT_RESET_MARKER), but it's not going to be used going forward and,
+# separately, never actually matched anyway -- a real GHL/WhatsApp payload
+# sends "<\>" (a literal backslash), confirmed live against the exact
+# payload shared this session, not "</>" (forward slash). sam_text doesn't
+# share any code with that agent (never calls agents.helpers.runner or
+# apply_reset_marker -- its "memory" is the LangGraph checkpoint, not
+# re-fetched GHL history), so this is its own, independent mechanism.
+# Both spellings are accepted so a tester doesn't have to remember which
+# slash direction actually reaches the LLM unmangled.
+_RESET_MARKERS = ("<\\>", "</>")
+
+
+def _strip_reset_marker(message: str) -> tuple[str, bool]:
+    """If `message` starts with a reset marker (either slash direction,
+    see _RESET_MARKERS), returns (message with the marker removed, True).
+    Otherwise returns (message unchanged, False). Whitespace around the
+    marker is ignored on both sides."""
+    stripped = message.lstrip()
+    for marker in _RESET_MARKERS:
+        if stripped.startswith(marker):
+            return stripped[len(marker):].strip(), True
+    return message, False
+
+
 GHL_TEXT_HISTORY_MAX_DAYS = float(os.getenv("GHL_TEXT_HISTORY_MAX_DAYS", "7"))
 """Shared across every text agent wired here (2026-09-29, pedido directamente)
 -- unlike debounce_seconds/closing_message_lookback_days, this is deliberately
@@ -288,6 +314,7 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
     async def _run_turn(thread_id: str, turn: _PendingTurn) -> None:
         request = turn.last_request
         combined_message = "\n".join(turn.message_parts).strip()
+        combined_message, reset_requested = _strip_reset_marker(combined_message)
         execution_id = turn.execution_ids[-1]
         if len(turn.execution_ids) > 1:
             logger.info(
@@ -314,6 +341,9 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
                 # nothing to resume, so Command(resume=...) would silently
                 # do nothing. Treat this as the start of a fresh conversation.
                 resolution = "new"
+            if reset_requested:
+                resolution = "new"
+                logger.info("[%s] Reset marker detected -- forcing a fresh conversation.", execution_id)
             logger.info("[%s] thread=%s session=%s", execution_id, thread_id, resolution)
 
             # graph.invoke() is synchronous and blocking; a tool call this
