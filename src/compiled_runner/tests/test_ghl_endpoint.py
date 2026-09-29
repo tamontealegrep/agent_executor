@@ -237,6 +237,39 @@ def test_new_message_after_a_terminal_node_starts_a_fresh_turn(monkeypatch):
     assert graph.invoke_calls[0]["seed_last_user_message"] == "Otra pregunta"
 
 
+def test_session_timeout_uses_the_shared_env_constant_not_the_compiled_artifact(monkeypatch):
+    """GHL_TEXT_HISTORY_MAX_DAYS (.env, shared across every text agent) must
+    be what actually drives staleness now, not whatever session_timeout_minutes
+    the compiled artifact carries -- previously that was baked into each
+    agent's own manifest.yaml, requiring a recompile to change it. The fake
+    artifact here has session_timeout_minutes=None ("never stale" per
+    resolve_session's own docstring) -- if the old code path were still
+    active this conversation would resolve as "continuing"; overriding the
+    threshold to a few milliseconds proves the env-driven constant is what
+    actually gets used instead."""
+    monkeypatch.setattr(ghl_endpoint, "GHL_TEXT_SESSION_TIMEOUT_MINUTES", 0.001)
+
+    from datetime import datetime, timedelta, timezone
+
+    old_last_message_at = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    graph = FakeGraph(
+        values={"current_state": "SC__SC_ASK_D", "last_message_at": old_last_message_at},
+        next_=("SC__SC_ASK_D",),  # a pending interrupt exists -- would normally mean "continuing"
+    )
+    app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/test_agent", json=_payload(message="Hola de nuevo", message_id="m9"))
+            await asyncio.sleep(0.3)
+
+    _run(scenario())
+
+    assert len(graph.invoke_calls) == 1
+    assert isinstance(graph.invoke_calls[0], dict)  # fresh_state, not Command -- treated as stale
+
+
 def test_pending_interrupt_resumes_with_command(monkeypatch):
     """snapshot.next non-empty means the graph is mid-conversation, waiting
     on this exact reply -- must resume via Command, not start fresh."""

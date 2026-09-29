@@ -96,6 +96,23 @@ def _normalize_phone(raw: object) -> str:
     return str(raw or "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
 
 
+GHL_TEXT_HISTORY_MAX_DAYS = float(os.getenv("GHL_TEXT_HISTORY_MAX_DAYS", "7"))
+"""Shared across every text agent wired here (2026-09-29, pedido directamente)
+-- unlike debounce_seconds/closing_message_lookback_days, this is deliberately
+ONE .env var for all of them, not one per agent. How many days of inactivity
+before resolve_session treats the next inbound message as a brand-new
+conversation instead of resuming the existing one.
+
+Previously this was each agent's own compiled session_timeout_minutes
+(manifest.yaml -- content, requires a recompile to change). This env var is
+now the authoritative source for the real GHL webhook pipeline (_run_turn
+below); each agent's own artifact.session_timeout_minutes is left as-is in
+the DSL and still governs compiled_runner/endpoint.py's generic test-chat
+tool, which isn't text-agent-specific and has nothing to do with GHL."""
+
+GHL_TEXT_SESSION_TIMEOUT_MINUTES = GHL_TEXT_HISTORY_MAX_DAYS * 24 * 60
+
+
 _FALSE_STRINGS = {"0", "false", "no", "off"}
 
 
@@ -289,7 +306,7 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
             message_buffer.set(buffer)
 
             snapshot = graph.get_state(config)
-            resolution = resolve_session(snapshot.values, artifact.session_timeout_minutes)
+            resolution = resolve_session(snapshot.values, GHL_TEXT_SESSION_TIMEOUT_MINUTES)
             if resolution == "continuing" and not snapshot.next:
                 # resolve_session only knows elapsed time, not whether the
                 # graph actually has a pending interrupt -- a thread that
