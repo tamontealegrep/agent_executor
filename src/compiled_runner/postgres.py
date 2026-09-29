@@ -1,6 +1,6 @@
 """Postgres wiring for the compiled-agent pipeline: the LangGraph
-checkpointer (conversation replay state) and a small `conversations`
-table we own ourselves.
+checkpointer (conversation replay state), a small `conversations` table we
+own ourselves, and the closing-message sweep that reads it.
 
 Why a separate table when the checkpointer already persists everything:
 LangGraph's own `checkpoints`/`checkpoint_blobs` tables are internal replay
@@ -22,14 +22,17 @@ agent (see compiled_runner/ghl_endpoint.py) -- `agent_slug` plus
 `slots_summary` being a schemaless JSONB, not fixed columns per business
 field, is what lets one table serve agents with completely different slot
 vocabularies (family_aims_sam_text's `vi__treat` vs. some future agent's
-own fields) without a migration per agent.
+own fields) without a migration per agent. It's also the durable source
+`find_conversations_needing_closing_message` sweeps -- durable specifically
+because in-memory timers (like the debounce in ghl_endpoint.py) don't
+survive a process restart, and this one has to survive ~24h.
 """
 
 from __future__ import annotations
 
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -49,12 +52,14 @@ CREATE TABLE IF NOT EXISTS conversations (
     contact_name TEXT,
     contact_phone TEXT,
     contact_email TEXT,
+    channel TEXT,
     preferred_language TEXT,
     current_state TEXT,
     last_user_message TEXT,
     history JSONB NOT NULL DEFAULT '[]',
     slots_summary JSONB NOT NULL DEFAULT '{}',
     last_message_at TIMESTAMPTZ,
+    closing_message_sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -63,21 +68,26 @@ CREATE TABLE IF NOT EXISTS conversations (
 _UPSERT_SQL = """
 INSERT INTO conversations (
     thread_id, agent_slug, location_id, contact_id,
-    contact_name, contact_phone, contact_email,
+    contact_name, contact_phone, contact_email, channel,
     preferred_language, current_state, last_user_message, history,
     slots_summary, last_message_at, updated_at
 )
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
 ON CONFLICT (thread_id) DO UPDATE SET
     contact_name = EXCLUDED.contact_name,
     contact_phone = EXCLUDED.contact_phone,
     contact_email = EXCLUDED.contact_email,
+    channel = EXCLUDED.channel,
     preferred_language = EXCLUDED.preferred_language,
     current_state = EXCLUDED.current_state,
     last_user_message = EXCLUDED.last_user_message,
     history = EXCLUDED.history,
     slots_summary = EXCLUDED.slots_summary,
     last_message_at = EXCLUDED.last_message_at,
+    -- A real turn just happened, so the contact's own 24h WhatsApp window
+    -- restarted from this new last_message_at -- whatever closing-message
+    -- bookkeeping applied to the PREVIOUS window no longer means anything.
+    closing_message_sent_at = NULL,
     updated_at = now();
 """
 
@@ -141,21 +151,60 @@ def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-@lru_cache
-def _connection():
-    import psycopg
+# WhatsApp's own customer-service window: Meta stops allowing a free-form
+# reply once 24h have passed since the CONTACT's last message (ours don't
+# reset it) -- after that you can only reach them again via a pre-approved
+# template. 23:45 leaves a 15-minute safety margin against the sweep's own
+# poll interval and any send latency, so the message goes out before the
+# hard cutoff rather than racing it.
+CLOSING_MESSAGE_INACTIVITY_THRESHOLD = timedelta(hours=23, minutes=45)
 
-    conn = psycopg.connect(DATABASE_URL, autocommit=True, connect_timeout=5)
-    with conn.cursor() as cur:
+
+@lru_cache
+def _pool():
+    """One shared connection pool, used by both the LangGraph checkpointer
+    and every query in this module -- replaces a single long-lived
+    connection reused across concurrently-running turns (each turn runs in
+    its own threadpool thread via run_in_threadpool; a single psycopg
+    connection isn't safe for that). `PostgresSaver` accepts a
+    `ConnectionPool` directly (checked internally via `isinstance(conn,
+    ConnectionPool)`), so nothing else needs its own connection strategy.
+
+    `prepare_threshold=0` matches what `PostgresSaver.from_conn_string`
+    itself uses -- needed for compatibility with a transaction-pooling
+    proxy in front of the real Postgres (common on hosted providers like
+    Supabase/Neon), harmless otherwise.
+    """
+    from psycopg_pool import ConnectionPool
+
+    max_size = int(os.environ.get("DATABASE_POOL_MAX_SIZE", "5"))
+    pool = ConnectionPool(
+        DATABASE_URL,
+        min_size=1,
+        max_size=max_size,
+        open=True,
+        kwargs={"autocommit": True, "prepare_threshold": 0, "connect_timeout": 5},
+    )
+    with pool.connection() as conn, conn.cursor() as cur:
         cur.execute(CONVERSATIONS_TABLE_SQL)
-    return conn
+    return pool
 
 
 def build_postgres_checkpointer():
-    """A single shared PostgresSaver, tables created once via .setup()."""
+    """A `PostgresSaver` backed by the shared pool, tables created once via
+    `.setup()`.
+
+    Bug fixed here (2026-09-29, never caught because this was never run
+    against a real Postgres until now): `PostgresSaver.from_conn_string(...)`
+    is a `@contextmanager` -- calling it without `with` (as this function
+    used to) returns a `_GeneratorContextManager`, not a `PostgresSaver`,
+    so `.setup()` raised `AttributeError` on the very first real call.
+    Constructing `PostgresSaver(pool)` directly sidesteps the contextmanager
+    entirely and gets pooling for free.
+    """
     from langgraph.checkpoint.postgres import PostgresSaver
 
-    checkpointer = PostgresSaver.from_conn_string(DATABASE_URL)
+    checkpointer = PostgresSaver(_pool())
     checkpointer.setup()
     return checkpointer
 
@@ -171,13 +220,17 @@ def upsert_conversation(
     current_state: str | None,
     last_user_message: str | None = None,
     history: list[str] | None = None,
+    channel: str | None = None,
 ) -> None:
     """Best-effort mirror write -- never raises into the caller's turn.
 
     Called after a turn finishes, so it reflects the latest known slots
     (preferred_language, and the business fields in `slots_summary`),
     current_state, and recent conversation preview without needing its own
-    copy of the graph's routing logic.
+    copy of the graph's routing logic. Also the only place
+    `closing_message_sent_at` gets cleared (see `_UPSERT_SQL`'s own
+    comment) -- a real turn is exactly the event that starts a new 24h
+    WhatsApp window.
     """
     if not postgres_enabled():
         return
@@ -186,8 +239,7 @@ def upsert_conversation(
     contact = contact or {}
     slots = slots or {}
     try:
-        conn = _connection()
-        with conn.cursor() as cur:
+        with _pool().connection() as conn, conn.cursor() as cur:
             cur.execute(
                 _UPSERT_SQL,
                 (
@@ -198,6 +250,7 @@ def upsert_conversation(
                     contact.get("name"),
                     contact.get("phone"),
                     contact.get("email"),
+                    channel,
                     slots.get("preferred_language"),
                     current_state,
                     last_user_message,
@@ -211,4 +264,67 @@ def upsert_conversation(
 
         logging.getLogger(__name__).warning(
             "[%s] Failed to upsert conversations row (non-fatal).", thread_id, exc_info=True
+        )
+
+
+def find_conversations_needing_closing_message(agent_slug: str, lookback_days: float) -> list[dict[str, Any]]:
+    """Threads of `agent_slug` whose contact went quiet 23:45+ ago and
+    haven't gotten their closing message for this window yet.
+
+    `lookback_days` bounds the query from below too -- without it, a sweep
+    that was down for a while (a redeploy, a Postgres outage) would catch
+    back up by messaging contacts from long-dead conversations the moment
+    it comes back online, which is exactly the kind of surprise a contact
+    from weeks ago doesn't need. Per-agent because different agents may
+    reasonably want a different tolerance (a slower-moving flow could
+    justify a wider window) -- see `CompiledAgentGhlConfig.closing_message_lookback_days`
+    in ghl_endpoint.py, one .env var per agent, same pattern as debounce.
+    """
+    if not postgres_enabled():
+        return []
+    from psycopg.rows import dict_row
+
+    try:
+        with _pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT thread_id, contact_id, location_id, channel, preferred_language
+                FROM conversations
+                WHERE agent_slug = %s
+                  AND closing_message_sent_at IS NULL
+                  AND last_message_at IS NOT NULL
+                  AND last_message_at <= now() - %s::interval
+                  AND last_message_at >= now() - %s::interval
+                """,
+                (agent_slug, CLOSING_MESSAGE_INACTIVITY_THRESHOLD, f"{lookback_days} days"),
+            )
+            return cur.fetchall()
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "[%s] Failed to query closing-message candidates (non-fatal).", agent_slug, exc_info=True
+        )
+        return []
+
+
+def mark_closing_message_sent(thread_id: str) -> None:
+    """Records that this thread got its closing message for the current
+    24h window -- prevents `find_conversations_needing_closing_message`
+    from picking it up again on the next sweep. Cleared back to NULL by
+    `upsert_conversation` the next time this thread has a real turn (a new
+    window starting from that new message)."""
+    if not postgres_enabled():
+        return
+    try:
+        with _pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE conversations SET closing_message_sent_at = now() WHERE thread_id = %s",
+                (thread_id,),
+            )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "[%s] Failed to mark closing message sent (non-fatal).", thread_id, exc_info=True
         )

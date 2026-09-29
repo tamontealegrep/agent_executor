@@ -75,9 +75,9 @@ def test_upsert_conversation_is_a_noop_without_postgres(monkeypatch):
     monkeypatch.setattr(postgres, "DATABASE_URL", "")
 
     def _fail_if_called():
-        raise AssertionError("_connection() must not be called when postgres is disabled")
+        raise AssertionError("_pool() must not be called when postgres is disabled")
 
-    monkeypatch.setattr(postgres, "_connection", _fail_if_called)
+    monkeypatch.setattr(postgres, "_pool", _fail_if_called)
 
     postgres.upsert_conversation(
         thread_id="t1",
@@ -88,3 +88,31 @@ def test_upsert_conversation_is_a_noop_without_postgres(monkeypatch):
         slots={"vi__treat": "donor_eggs"},
         current_state="SC__SC_END",
     )
+
+
+def test_find_conversations_needing_closing_message_is_a_noop_without_postgres(monkeypatch):
+    monkeypatch.setattr(postgres, "DATABASE_URL", "")
+
+    def _fail_if_called():
+        raise AssertionError("_pool() must not be called when postgres is disabled")
+
+    monkeypatch.setattr(postgres, "_pool", _fail_if_called)
+
+    assert postgres.find_conversations_needing_closing_message("family_aims_sam_text", 3.0) == []
+
+
+def test_mark_closing_message_sent_is_a_noop_without_postgres(monkeypatch):
+    monkeypatch.setattr(postgres, "DATABASE_URL", "")
+
+    def _fail_if_called():
+        raise AssertionError("_pool() must not be called when postgres is disabled")
+
+    monkeypatch.setattr(postgres, "_pool", _fail_if_called)
+
+    postgres.mark_closing_message_sent("family_aims_sam_text:loc:contact")  # must not raise
+
+
+def test_closing_message_inactivity_threshold_is_23h45m():
+    """The 15-minute safety margin before WhatsApp's hard 24h cutoff is the
+    whole point of this feature -- pin the exact value."""
+    assert postgres.CLOSING_MESSAGE_INACTIVITY_THRESHOLD.total_seconds() == 23 * 3600 + 45 * 60

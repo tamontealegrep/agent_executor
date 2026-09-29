@@ -33,6 +33,11 @@ ALLOWED_TEST_PHONES = frozenset(
 
 DEBOUNCE_SECONDS = float(os.getenv("SAM_TEXT_DEBOUNCE_SECONDS", "15"))
 
+# How many days back the closing-message sweep still considers a thread --
+# NOT the trigger itself (always ~23h45m of inactivity, a WhatsApp platform
+# constant), just a safety bound. See CompiledAgentGhlConfig's own docstring.
+CLOSING_MESSAGE_LOOKBACK_DAYS = float(os.getenv("SAM_TEXT_CLOSING_SWEEP_LOOKBACK_DAYS", "3"))
+
 
 router = build_compiled_agent_router(
     CompiledAgentGhlConfig(
@@ -40,6 +45,7 @@ router = build_compiled_agent_router(
         path="/sam_text",
         allowed_phones=ALLOWED_TEST_PHONES,
         debounce_seconds=DEBOUNCE_SECONDS,
+        closing_message_lookback_days=CLOSING_MESSAGE_LOOKBACK_DAYS,
         # config/ghl_defaults.json -- agent-agnostic, not the classic Sam's
         # agent.json (see that file's own note on why this was split out).
         ghl_client_config=default_ghl_client_config,

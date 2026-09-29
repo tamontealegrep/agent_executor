@@ -245,3 +245,134 @@ def test_empty_graph_reply_sends_no_message(monkeypatch):
 
     assert len(upserts) == 1  # the turn still ran and got mirrored
     assert replies == []  # but nothing was sent to GHL
+
+
+# --- closing-message sweep (WhatsApp's 24h window) -------------------------
+
+
+def _cfg(**overrides):
+    defaults = dict(
+        slug="test_agent",
+        path="/test_agent",
+        allowed_phones=frozenset({"+573215616921"}),
+        debounce_seconds=0.05,
+        ghl_client_config=lambda: object(),
+    )
+    defaults.update(overrides)
+    return CompiledAgentGhlConfig(**defaults)
+
+
+def test_closing_message_text_uses_language_specific_default():
+    cfg = _cfg()
+    assert ghl_endpoint._closing_message_text(cfg, "es").startswith("Gracias")
+    assert ghl_endpoint._closing_message_text(cfg, "en").startswith("Thank you")
+    assert ghl_endpoint._closing_message_text(cfg, "pt").startswith("Obrigado")
+
+
+def test_closing_message_text_falls_back_to_spanish_for_unknown_or_missing_language():
+    cfg = _cfg()
+    assert ghl_endpoint._closing_message_text(cfg, None).startswith("Gracias")
+    assert ghl_endpoint._closing_message_text(cfg, "fr").startswith("Gracias")
+
+
+def test_closing_message_text_string_override_ignores_language():
+    cfg = _cfg(closing_message="Custom text")
+    assert ghl_endpoint._closing_message_text(cfg, "en") == "Custom text"
+
+
+def test_closing_message_text_dict_override_is_looked_up_by_language():
+    cfg = _cfg(closing_message={"es": "Hola custom", "en": "Hi custom"})
+    assert ghl_endpoint._closing_message_text(cfg, "en") == "Hi custom"
+    assert ghl_endpoint._closing_message_text(cfg, "fr") == "Hola custom"  # falls back to es
+
+
+def test_run_closing_sweep_once_sends_and_marks_each_candidate(monkeypatch):
+    candidates = [
+        {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
+        {"thread_id": "t2", "contact_id": "c2", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "en"},
+    ]
+    marked: list[str] = []
+    sent: list[dict] = []
+
+    async def fake_send(**kwargs):
+        sent.append(kwargs)
+        return {}
+
+    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", marked.append)
+    monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
+
+    count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
+
+    assert count == 2
+    assert marked == ["t1", "t2"]
+    assert sent[0]["contact_id"] == "c1"
+    assert sent[0]["message"].startswith("Gracias")  # es
+    assert sent[1]["contact_id"] == "c2"
+    assert sent[1]["message"].startswith("Thank you")  # en
+
+
+def test_run_closing_sweep_once_keeps_going_after_one_candidate_fails(monkeypatch):
+    candidates = [
+        {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
+        {"thread_id": "t2", "contact_id": "c2", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
+    ]
+    marked: list[str] = []
+
+    async def fake_send(**kwargs):
+        if kwargs["contact_id"] == "c1":
+            raise RuntimeError("GHL send failed")
+        return {}
+
+    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", marked.append)
+    monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
+
+    count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
+
+    assert count == 1  # only t2 succeeded
+    assert marked == ["t2"]  # t1's failure must not be marked sent -- it should be retried next sweep
+
+
+def test_run_closing_sweep_once_passes_lookback_days_and_slug_through(monkeypatch):
+    seen = {}
+
+    def fake_find(slug, lookback_days):
+        seen["slug"] = slug
+        seen["lookback_days"] = lookback_days
+        return []
+
+    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", fake_find)
+
+    asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg(slug="babynova_triage_obstetrico_text", closing_message_lookback_days=5.0)))
+
+    assert seen == {"slug": "babynova_triage_obstetrico_text", "lookback_days": 5.0}
+
+
+def test_closing_sweep_starts_only_when_postgres_is_enabled(monkeypatch):
+    """The startup hook must not spin up the sweep loop at all when
+    DATABASE_URL is unset -- nothing for it to read anyway."""
+    started: list[object] = []
+
+    async def fake_loop(cfg):
+        started.append(cfg)
+
+    monkeypatch.setattr(ghl_endpoint, "_closing_sweep_loop", fake_loop)
+
+    for enabled in (False, True):
+        started.clear()
+        monkeypatch.setattr(ghl_endpoint, "postgres_enabled", lambda: enabled)
+        app = FastAPI()
+        app.include_router(build_compiled_agent_router(_cfg(slug=f"sweep_test_{enabled}")))
+
+        # Run the app's registered startup handlers directly -- the same
+        # mechanism uvicorn triggers on real boot -- rather than a full
+        # ASGI lifespan protocol dance, since that's the one thing under
+        # test here (whether the sweep loop gets scheduled at all).
+        async def run_startup():
+            for handler in app.router.on_startup:
+                await handler()
+            await asyncio.sleep(0)  # let asyncio.create_task's scheduled task actually run once
+
+        asyncio.run(run_startup())
+        assert len(started) == (1 if enabled else 0)

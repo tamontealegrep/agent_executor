@@ -41,6 +41,11 @@ ALLOWED_TEST_PHONES = frozenset(
 
 DEBOUNCE_SECONDS = float(os.getenv("BABYNOVA_TRIAGE_DEBOUNCE_SECONDS", "15"))
 
+# How many days back the closing-message sweep still considers a thread --
+# NOT the trigger itself (always ~23h45m of inactivity, a WhatsApp platform
+# constant), just a safety bound. See CompiledAgentGhlConfig's own docstring.
+CLOSING_MESSAGE_LOOKBACK_DAYS = float(os.getenv("BABYNOVA_TRIAGE_CLOSING_SWEEP_LOOKBACK_DAYS", "3"))
+
 
 router = build_compiled_agent_router(
     CompiledAgentGhlConfig(
@@ -48,6 +53,7 @@ router = build_compiled_agent_router(
         path="/triage_text",
         allowed_phones=ALLOWED_TEST_PHONES,
         debounce_seconds=DEBOUNCE_SECONDS,
+        closing_message_lookback_days=CLOSING_MESSAGE_LOOKBACK_DAYS,
         # config/ghl_defaults.json -- agent-agnostic, same shared GHL config
         # every compiled agent reuses (base_url, timeouts, channel map).
         ghl_client_config=default_ghl_client_config,
