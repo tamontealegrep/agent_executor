@@ -46,12 +46,19 @@ class CompiledAgentGhlConfig:
     path: str
     """Route path, e.g. "/sam_text" -> mounted as POST {path}."""
     allowed_phones: frozenset[str]
-    """Normalized (no spaces/dashes/parens) E.164 numbers this pilot accepts."""
+    """Normalized (no spaces/dashes/parens) E.164 numbers this pilot accepts.
+    Ignored entirely when `enforce_phone_whitelist` is False."""
     debounce_seconds: float
     ghl_client_config: Callable[[], GhlClientConfig]
     """Returns the GhlClientConfig to send replies with -- typically reuses
     an existing agent.json's ghl/runtime/messaging sections (base_url,
     token env var, channel map -- none of that is agent-specific)."""
+    enforce_phone_whitelist: bool = True
+    """Kill switch for the pilot gate, per agent -- False lets every phone
+    through regardless of `allowed_phones` (e.g. once an agent is cleared
+    to go live). Defaults to True so an agent stays gated unless a caller
+    explicitly opts out; see each agent's own text.py for the .env var
+    that drives this (load_phone_whitelist's own docstring)."""
     closing_message_lookback_days: float = 3.0
     """How many days back `run_closing_sweep_once` still considers a
     candidate -- a safety bound, not the trigger itself (that's always
@@ -87,6 +94,41 @@ def _closing_message_text(cfg: CompiledAgentGhlConfig, preferred_language: "str 
 
 def _normalize_phone(raw: object) -> str:
     return str(raw or "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+
+
+_FALSE_STRINGS = {"0", "false", "no", "off"}
+
+
+def load_phone_whitelist(
+    list_env_var: str, enforce_env_var: str, default_phones: str = ""
+) -> tuple[frozenset[str], bool]:
+    """Reads one agent's phone pilot gate from two .env vars, instead of a
+    hardcoded frozenset in that agent's own text.py -- moved here 2026-09-29
+    so the actual numbers (and whether the gate applies at all) can change
+    without touching code or redeploying.
+
+    `list_env_var`: comma-separated E.164 numbers, e.g.
+        "+573215616921,+573007011593". Spaces around commas are trimmed;
+        each number is normalized the same way an inbound request's phone
+        is (see _normalize_phone) so formatting differences never cause a
+        silent mismatch.
+    `enforce_env_var`: "true"/"false" (also accepts 1/0, yes/no, on/off,
+        case-insensitive). Defaults to enforcing (True) if unset or
+        unrecognized -- an agent stays gated unless a caller explicitly
+        opts out, never the other way around by accident. This is the
+        switch to flip when an agent is cleared to go live: set it to
+        false and every phone gets through, no code change needed.
+    `default_phones`: used only if `list_env_var` isn't set in .env at all
+        -- lets a caller keep working with zero .env setup, same as
+        before this moved out of hardcoded Python.
+    """
+    raw_phones = os.getenv(list_env_var, default_phones)
+    phones = frozenset(_normalize_phone(p) for p in raw_phones.split(",") if p.strip())
+
+    raw_enforce = os.getenv(enforce_env_var, "true").strip().lower()
+    enforce = raw_enforce not in _FALSE_STRINGS  # anything unrecognized defaults to enforcing, not open
+
+    return phones, enforce
 
 
 @dataclass
@@ -173,7 +215,7 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
     @router.post(cfg.path, status_code=status.HTTP_202_ACCEPTED)
     async def endpoint(request: GhlAgentRequest):
         phone = _normalize_phone((request.contact or {}).get("phone"))
-        if phone not in cfg.allowed_phones:
+        if cfg.enforce_phone_whitelist and phone not in cfg.allowed_phones:
             logger.info("Ignoring message from non-allowed phone: %s", phone)
             return {"status": "ignored", "reason": "phone_not_allowed"}
 

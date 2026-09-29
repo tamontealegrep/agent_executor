@@ -57,7 +57,13 @@ def _payload(contact_id="c1", location_id="loc1", phone="+573215616921", message
     return body
 
 
-def _build_router(monkeypatch, graph, debounce_seconds=0.05, allowed_phones=frozenset({"+573215616921"})):
+def _build_router(
+    monkeypatch,
+    graph,
+    debounce_seconds=0.05,
+    allowed_phones=frozenset({"+573215616921"}),
+    enforce_phone_whitelist=True,
+):
     upserts = []
     replies = []
 
@@ -88,6 +94,7 @@ def _build_router(monkeypatch, graph, debounce_seconds=0.05, allowed_phones=froz
         path="/test_agent",
         allowed_phones=allowed_phones,
         debounce_seconds=debounce_seconds,
+        enforce_phone_whitelist=enforce_phone_whitelist,
         ghl_client_config=lambda: object(),
     )
     router = build_compiled_agent_router(cfg)
@@ -123,6 +130,25 @@ def test_non_allowlisted_phone_is_ignored_without_touching_the_graph(monkeypatch
     response = _run(scenario())
     assert response.status_code == 202
     assert response.json() == {"status": "ignored", "reason": "phone_not_allowed"}
+
+
+def test_enforce_phone_whitelist_false_lets_any_phone_through(monkeypatch):
+    """The go-live kill switch: enforce_phone_whitelist=False must let a
+    phone NOT in allowed_phones through anyway -- it's the whole point of
+    the flag."""
+    graph = FakeGraph()
+    app, _, _ = _build_router(
+        monkeypatch, graph, allowed_phones=frozenset({"+573215616921"}), enforce_phone_whitelist=False
+    )
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.post("/test_agent", json=_payload(phone="+15555550000"))
+
+    response = _run(scenario())
+    assert response.status_code == 202
+    assert response.json()["status"] == "accepted"
 
 
 def test_missing_location_or_contact_id_is_ignored(monkeypatch):
@@ -376,3 +402,44 @@ def test_closing_sweep_starts_only_when_postgres_is_enabled(monkeypatch):
 
         asyncio.run(run_startup())
         assert len(started) == (1 if enabled else 0)
+
+
+# --- load_phone_whitelist (.env-driven pilot gate) --------------------------
+
+
+def test_load_phone_whitelist_parses_comma_separated_list(monkeypatch):
+    monkeypatch.setenv("TEST_ALLOWED_PHONES", "+573215616921,+573007011593")
+    monkeypatch.delenv("TEST_ENFORCE", raising=False)
+    phones, enforce = ghl_endpoint.load_phone_whitelist("TEST_ALLOWED_PHONES", "TEST_ENFORCE")
+    assert phones == frozenset({"+573215616921", "+573007011593"})
+    assert enforce is True  # unset -> defaults to enforcing
+
+
+def test_load_phone_whitelist_trims_spaces_and_drops_empties(monkeypatch):
+    monkeypatch.setenv("TEST_ALLOWED_PHONES", " +573215616921 , , +573007011593,")
+    phones, _ = ghl_endpoint.load_phone_whitelist("TEST_ALLOWED_PHONES", "TEST_ENFORCE")
+    assert phones == frozenset({"+573215616921", "+573007011593"})
+
+
+def test_load_phone_whitelist_uses_default_when_env_var_unset(monkeypatch):
+    monkeypatch.delenv("TEST_ALLOWED_PHONES", raising=False)
+    phones, _ = ghl_endpoint.load_phone_whitelist(
+        "TEST_ALLOWED_PHONES", "TEST_ENFORCE", default_phones="+573215616921"
+    )
+    assert phones == frozenset({"+573215616921"})
+
+
+def test_load_phone_whitelist_enforce_flag_recognizes_falsy_strings(monkeypatch):
+    monkeypatch.setenv("TEST_ALLOWED_PHONES", "+573215616921")
+    for falsy in ("false", "False", "0", "no", "off"):
+        monkeypatch.setenv("TEST_ENFORCE", falsy)
+        _, enforce = ghl_endpoint.load_phone_whitelist("TEST_ALLOWED_PHONES", "TEST_ENFORCE")
+        assert enforce is False, f"{falsy!r} should disable enforcement"
+
+
+def test_load_phone_whitelist_enforce_flag_defaults_true_for_anything_else(monkeypatch):
+    monkeypatch.setenv("TEST_ALLOWED_PHONES", "+573215616921")
+    for value in ("true", "True", "1", "yes", "garbage"):
+        monkeypatch.setenv("TEST_ENFORCE", value)
+        _, enforce = ghl_endpoint.load_phone_whitelist("TEST_ALLOWED_PHONES", "TEST_ENFORCE")
+        assert enforce is True, f"{value!r} should keep enforcement on"
