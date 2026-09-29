@@ -1,9 +1,5 @@
 """Builds a real `langgraph.graph.StateGraph` from a `RuntimeArtifact`.
 
-# resync-test-marker (2026-09-29): trivial line added to verify
-# resync_vendored_agent_compiler.py propagates an incremental change
-# end-to-end; reverted right after the test.
-
 Consumes the `RuntimeArtifact` `targets.langgraph.runtime_artifact` emits
 (a plain, JSON-serializable bundle of the graph definition, global-router
 definition, tool contracts, and constants) and builds one LangGraph node
