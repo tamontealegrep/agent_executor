@@ -83,9 +83,20 @@ from pathlib import Path
 from typing import Any, Protocol
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / "src"
 SCRIPTS_ROOT = Path(__file__).resolve().parent
-for candidate in (PROJECT_ROOT, SRC_ROOT, SCRIPTS_ROOT):
+# Deliberately NOT PROJECT_ROOT/"src" (2026-09-29): that now also contains
+# the vendored, frozen copy of agent_compiler (see src/agent_compiler/'s
+# own history -- vendored via git subtree from agent_runtime, for a
+# self-contained Render deploy). Putting it on this script's sys.path
+# would shadow the live sibling ../agent_runtime editable install that
+# sync_agent_runtime_engine() below refreshes -- exactly the silent-
+# staleness bug that function's own docstring was written to prevent
+# (found live 2026-09-21: a source fix never reached a running process
+# because it kept loading a stale on-disk copy). This script and
+# compiled_agent_tui.py are local-iteration tools; they're meant to run
+# against whatever agent_compiler change you just made, not a frozen
+# deploy snapshot.
+for candidate in (PROJECT_ROOT, SCRIPTS_ROOT):
     candidate_str = str(candidate)
     if candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)

@@ -51,6 +51,15 @@ def _find_project_root(start=_here):
     return _here.parents[1]
 
 PROJECT_ROOT = _find_project_root()
+# Deliberately PROJECT_ROOT/"src" (the workspace root's, which doesn't
+# exist) and not agent_executor/src -- the latter now also holds the
+# vendored, frozen copy of agent_compiler (see src/agent_compiler/'s own
+# history, vendored via git subtree from agent_runtime for a self-
+# contained Render deploy). Putting agent_executor/src on this script's
+# path would shadow the live sibling ../agent_runtime editable install
+# that sync_agent_runtime_engine() below refreshes -- see
+# persona_conversation_tester.py's own comment on the same point for the
+# staleness bug that would reintroduce. Leave this pointed at nothing.
 SRC_ROOT = PROJECT_ROOT / "src"
 for candidate in (PROJECT_ROOT, SRC_ROOT):
     candidate_str = str(candidate)

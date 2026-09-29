@@ -9,6 +9,13 @@ questionary==2.1.1
 rich==15.0.0
 langchain-core==1.6.0
 langchain-openai==1.6.0
+# Used directly by the vendored src/agent_compiler/runtime/llm_client.py
+# (OpenAILLMClient -- `from openai import OpenAI`). Previously only ever
+# arrived transitively via langchain-openai, which happened to resolve to
+# a compatible version in this shared dev venv -- pinned explicitly now
+# that agent_executor is meant to be self-contained (a fresh Render build
+# has no reason to land on the same transitive version by chance).
+openai==3.13.0
 langgraph==1.2.11
 langgraph-checkpoint-sqlite==3.1.1
 langgraph-checkpoint-postgres==3.1.2
