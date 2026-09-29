@@ -100,14 +100,17 @@ def _normalize_phone(raw: object) -> str:
 # /sam agent had its own version of this ("</>", see agents/helpers/history.py
 # ::DEFAULT_RESET_MARKER), but it's not going to be used going forward and,
 # separately, never actually matched anyway -- a real GHL/WhatsApp payload
-# sends "<\>" (a literal backslash), confirmed live against the exact
+# sends "<\>" (one literal backslash), confirmed live against the exact
 # payload shared this session, not "</>" (forward slash). sam_text doesn't
 # share any code with that agent (never calls agents.helpers.runner or
 # apply_reset_marker -- its "memory" is the LangGraph checkpoint, not
 # re-fetched GHL history), so this is its own, independent mechanism.
-# Both spellings are accepted so a tester doesn't have to remember which
-# slash direction actually reaches the LLM unmangled.
-_RESET_MARKERS = ("<\\>", "</>")
+# Three spellings accepted, so a tester doesn't have to remember which one
+# actually reaches the LLM unmangled: "<\>" (what a real payload sends),
+# "<\\>" (two backslashes -- what typing the JSON-escaped form seen in a
+# logged payload literally into WhatsApp produces), and "</>" (forward
+# slash, kept for muscle memory from the classic agent's own marker).
+_RESET_MARKERS = ("<\\>", "<\\\\>", "</>")
 
 
 def _strip_reset_marker(message: str) -> tuple[str, bool]:

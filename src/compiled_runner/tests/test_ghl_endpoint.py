@@ -289,13 +289,14 @@ def test_pending_interrupt_resumes_with_command(monkeypatch):
     assert graph.invoke_calls[0].resume == "El martes"
 
 
-@pytest.mark.parametrize("marker", ["<\\>", "</>"])
+@pytest.mark.parametrize("marker", ["<\\>", "<\\\\>", "</>"])
 def test_reset_marker_forces_a_fresh_conversation_and_strips_itself(monkeypatch, marker):
-    """Either slash direction (pedido directamente, 2026-09-29 -- "<\\>" is
-    what real GHL/WhatsApp payloads actually send, "</>" is kept too so a
-    tester doesn't have to remember which one). Must override even a
-    pending interrupt that would otherwise resume via Command -- the whole
-    point is an easy manual reset mid-conversation."""
+    """All three spellings (pedido directamente, 2026-09-29 -- "<\\>" is
+    what real GHL/WhatsApp payloads actually send, "<\\\\>" is what typing
+    the JSON-escaped form seen in a logged payload literally produces,
+    "</>" is kept for muscle memory from the classic agent's own marker).
+    Must override even a pending interrupt that would otherwise resume via
+    Command -- the whole point is an easy manual reset mid-conversation."""
     graph = FakeGraph(values={"current_state": "SC__SC_ASK_D"}, next_=("SC__SC_ASK_D",))
     app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
 
@@ -504,7 +505,7 @@ def test_load_phone_whitelist_enforce_flag_defaults_true_for_anything_else(monke
 # --- _strip_reset_marker (manual-testing "start over" prefix) --------------
 
 
-@pytest.mark.parametrize("marker", ["<\\>", "</>"])
+@pytest.mark.parametrize("marker", ["<\\>", "<\\\\>", "</>"])
 def test_strip_reset_marker_detects_and_strips_either_spelling(marker):
     message, reset = ghl_endpoint._strip_reset_marker(f"{marker}Hola")
     assert reset is True
