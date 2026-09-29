@@ -8,6 +8,8 @@ in that exclusion rule so a future edit can't quietly narrow it again.
 
 import time
 
+import pytest
+
 from compiled_runner import postgres
 
 
@@ -172,3 +174,53 @@ def test_pool_construction_is_single_flight_under_concurrent_first_access(monkey
         t.join()
 
     assert _FakeConnectionPool.construction_count == 1
+
+
+@pytest.mark.skipif(not postgres.postgres_enabled(), reason="needs a real DATABASE_URL (e.g. local Docker Postgres)")
+def test_upsert_conversation_does_not_let_a_leaner_turn_erase_known_contact_fields():
+    """Found live (2026-09-29): a contact's email was present on the first
+    inbound webhook of a conversation, then came back NULL after the next
+    turn -- GHL's own "message received" event doesn't always resend the
+    full contact profile (apparently only the very first event for a
+    thread does). Before this fix, contact_name/contact_phone/contact_email/
+    channel were a blind overwrite on every turn, so a later, leaner
+    payload silently erased what an earlier one had already established.
+    Only runs against a real Postgres (COALESCE-in-ON-CONFLICT behavior
+    can't be verified through a mock)."""
+    thread_id = "_coalesce_test:loc:contact"
+    try:
+        postgres.upsert_conversation(
+            thread_id=thread_id,
+            agent_slug="family_aims_sam_text",
+            location_id="loc",
+            contact_id="contact",
+            contact={"name": "Tomas Montealegre", "phone": "+573215616921", "email": "montealegre.tomas@outlook.com"},
+            slots={"preferred_language": "es"},
+            current_state="O__OP_GREET",
+            channel="WHATSAPP",
+        )
+        # A leaner second turn -- no email key at all, like the real payload found live.
+        postgres.upsert_conversation(
+            thread_id=thread_id,
+            agent_slug="family_aims_sam_text",
+            location_id="loc",
+            contact_id="contact",
+            contact={"name": "Tomas Montealegre", "phone": "+573215616921"},
+            slots={"preferred_language": "es", "svc": "surrogacy"},
+            current_state="CL__CL_DEC_SVC",
+            channel="WHATSAPP",
+        )
+
+        with postgres._pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT contact_name, contact_email, current_state FROM conversations WHERE thread_id = %s",
+                (thread_id,),
+            )
+            name, email, current_state = cur.fetchone()
+
+        assert email == "montealegre.tomas@outlook.com"  # survived the leaner turn
+        assert name == "Tomas Montealegre"
+        assert current_state == "CL__CL_DEC_SVC"  # still updates normally
+    finally:
+        with postgres._pool().connection() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM conversations WHERE thread_id = %s", (thread_id,))

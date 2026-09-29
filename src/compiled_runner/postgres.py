@@ -74,10 +74,22 @@ INSERT INTO conversations (
 )
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
 ON CONFLICT (thread_id) DO UPDATE SET
-    contact_name = EXCLUDED.contact_name,
-    contact_phone = EXCLUDED.contact_phone,
-    contact_email = EXCLUDED.contact_email,
-    channel = EXCLUDED.channel,
+    -- COALESCE, not a blind overwrite: these four come straight off each
+    -- inbound webhook's raw payload, which isn't guaranteed to carry the
+    -- same fields on every turn (found live, 2026-09-29: a contact's
+    -- email showed up on the first message of a conversation, then went
+    -- NULL after the next turn -- GHL's own "message received" webhook
+    -- doesn't always resend the full contact profile, apparently only
+    -- the first event for a thread does). A later turn with less info
+    -- must never erase what an earlier turn already established.
+    -- current_state/last_user_message/history/slots_summary below stay a
+    -- plain overwrite on purpose -- those come from the graph's own
+    -- cumulative state (LangGraph's checkpointer), not the raw request,
+    -- so they're always consistent turn to turn.
+    contact_name = COALESCE(EXCLUDED.contact_name, conversations.contact_name),
+    contact_phone = COALESCE(EXCLUDED.contact_phone, conversations.contact_phone),
+    contact_email = COALESCE(EXCLUDED.contact_email, conversations.contact_email),
+    channel = COALESCE(EXCLUDED.channel, conversations.channel),
     preferred_language = EXCLUDED.preferred_language,
     current_state = EXCLUDED.current_state,
     last_user_message = EXCLUDED.last_user_message,
