@@ -36,12 +36,17 @@ def test_normalize_language_recognizes_portuguese_variants(raw):
 
 
 @pytest.mark.parametrize("raw", ["French", "fr", "de", "xx", "not a language"])
-def test_normalize_language_returns_none_for_unsupported_languages(raw):
-    """Never guesses -- a caller with a fallback (like inferring from the
-    user's own message) needs to know nothing matched."""
-    assert normalize_language(raw) is None
+def test_normalize_language_defaults_to_english_for_unsupported_languages(raw):
+    """A value was actually stated, just not one of the 3 supported
+    languages -- default to English rather than leave the conversation
+    with no language signal at all."""
+    assert normalize_language(raw) == "en"
 
 
 @pytest.mark.parametrize("raw", [None, "", "   "])
 def test_normalize_language_returns_none_for_empty_input(raw):
+    """No value at all is different from an unsupported one -- a caller
+    with its own fallback (opening.yaml infers from the user's first
+    message when [contact.language] is missing) needs to know nothing was
+    said, not silently get handed the English default."""
     assert normalize_language(raw) is None

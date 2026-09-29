@@ -32,12 +32,15 @@ def test_contact_language_prefers_root_field_over_custom_data():
     assert req.contact["language"] == "en"
 
 
-def test_contact_language_is_none_when_nothing_recognized():
+def test_contact_language_defaults_to_english_when_a_language_is_stated_but_not_supported():
     req = GhlAgentRequest(**_base_payload(contact_language="Klingon"))
-    assert req.contact["language"] is None
+    assert req.contact["language"] == "en"
 
 
 def test_contact_language_is_none_when_no_source_present():
+    """No language field anywhere in the payload -- distinct from an
+    unsupported one: opening.yaml's own fallback (infer from the user's
+    first message) is meant to run here, not get skipped by a default."""
     req = GhlAgentRequest(**_base_payload())
     assert req.contact["language"] is None
 

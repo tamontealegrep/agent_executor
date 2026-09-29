@@ -29,6 +29,9 @@ _LANGUAGE_ALIASES = {
 }
 
 
+DEFAULT_LANGUAGE = "en"
+
+
 def normalize_language(value: Any) -> Optional[str]:
     """Normalizes a free-form language value (GHL's `contact_language` or
     `customData.language`, or anywhere else) to this project's canonical
@@ -36,15 +39,25 @@ def normalize_language(value: Any) -> Optional[str]:
     accent-insensitive, and accepts locale-style codes (en-US, es_CO,
     pt-BR -- only the primary subtag before "-"/"_" matters).
 
-    Returns None for anything unrecognized -- deliberately never guesses;
-    a caller with a fallback (like inferring from the user's own message)
-    needs to know nothing matched, not silently get handed a default.
+    Two different "doesn't match" cases, deliberately not collapsed into
+    one:
+    - No value at all (None/empty/whitespace) -> returns None. A caller
+      with its own fallback (like opening.yaml's "if [contact.language]
+      is missing, infer it from the user's latest message") needs to know
+      nothing was said, not silently get handed a default -- collapsing
+      this into DEFAULT_LANGUAGE would skip that inference for every
+      contact GHL has no language on file for, even ones actually writing
+      in Spanish or Portuguese.
+    - A real value that just isn't one of the 3 supported languages (e.g.
+      French, German) -> returns DEFAULT_LANGUAGE ("en"). Here a language
+      *was* stated, there's nothing left to infer from, and defaulting
+      beats leaving the conversation with no language signal at all.
     """
     text = normalize_text(value)
     if not text:
         return None
     primary = re.split(r"[-_]", text)[0]
-    return _LANGUAGE_ALIASES.get(primary)
+    return _LANGUAGE_ALIASES.get(primary, DEFAULT_LANGUAGE)
 
 
 def is_affirmative_message(message: str) -> bool:
