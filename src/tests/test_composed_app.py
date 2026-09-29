@@ -49,6 +49,24 @@ def test_selective_log_filter_allows_http_and_tool_logs_only():
     assert log_filter.filter(agent_record) is False
 
 
+def test_selective_log_filter_allows_postgres_connection_warnings():
+    """Found live (2026-09-29): a Postgres connection failure in
+    upsert_conversation/the closing-message sweep only ever logs through
+    compiled_runner.postgres -- silently dropped before, indistinguishable
+    from "everything's fine" in Render's logs."""
+    log_filter = SelectiveLogFilter()
+    postgres_record = logging.LogRecord(
+        name="compiled_runner.postgres",
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg="[some_thread] Failed to upsert conversations row (non-fatal).",
+        args=(),
+        exc_info=None,
+    )
+    assert log_filter.filter(postgres_record) is True
+
+
 def test_composed_app_mounts_novafem_surrogacy_tools_under_its_slug():
     response = client.post("/novafem_surrogacy/v1/surrogate-classification", json={"age": "45"})
     assert response.status_code == 200

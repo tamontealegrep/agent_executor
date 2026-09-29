@@ -39,6 +39,13 @@ class SelectiveLogFilter(logging.Filter):
             return True
         if logger_name.startswith("compiled_runner.ghl_endpoint."):
             return True
+        if logger_name == "compiled_runner.postgres":
+            # Found live (2026-09-29): a Postgres connection failure here
+            # (upsert_conversation, the closing-message sweep) only ever
+            # logs a warning through this logger -- silently dropped by
+            # this same filter before, making a broken DATABASE_URL
+            # indistinguishable from "everything's fine" in production.
+            return True
         if logger_name == "agents.family_aims_sam.agent":
             if message.startswith("[") and (
                 "Executing tool " in message
