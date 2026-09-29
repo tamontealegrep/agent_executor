@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from agents.helpers.history import filter_recent_messages, history_cutoff, parse_date_added
 from agents.helpers.text import normalize_channel
 
 # agent_executor root: src/agents/helpers/ghl.py -> helpers -> agents -> src -> root
@@ -122,47 +121,6 @@ def get_ghl_headers(config: GhlClientConfig) -> Dict[str, str]:
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
-
-
-async def fetch_messages_async(conversation_id: str, config: GhlClientConfig) -> List[Dict[str, Any]]:
-    """Fetches GHL conversation messages, paginating newest-to-oldest via
-    `lastMessageId` (confirmed empirically against the real API: each page is
-    strictly older than the previous one). Stops as soon as a page contains a
-    message older than `history_max_days`, instead of always paginating the
-    entire conversation before filtering - for a long-running contact this is
-    the difference between 1-2 requests and dozens.
-    """
-    last_message_id = None
-    all_messages: List[Dict[str, Any]] = []
-    headers = get_ghl_headers(config)
-    cutoff = history_cutoff(config.history_max_days)
-
-    async with httpx.AsyncClient(timeout=config.history_timeout_seconds) as client:
-        while True:
-            url = f"{config.base_url}/conversations/{conversation_id}/messages?limit={config.message_history_page_size}"
-            if last_message_id:
-                url += f"&lastMessageId={last_message_id}"
-
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-
-            container = data.get("messages", {}) or {}
-            page_messages = container.get("messages", []) or []
-            all_messages.extend(page_messages)
-
-            next_page = container.get("nextPage", False)
-            last_message_id = container.get("lastMessageId")
-
-            reached_cutoff = cutoff is not None and any(
-                parse_date_added(message.get("dateAdded")) < cutoff for message in page_messages
-            )
-
-            if not next_page or not last_message_id or reached_cutoff:
-                break
-
-    all_messages.sort(key=lambda message: parse_date_added(message.get("dateAdded")))
-    return filter_recent_messages(all_messages, config.history_max_days)
 
 
 async def search_conversation_async(

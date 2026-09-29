@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 
-from agents.family_aims_sam.settings import get_agent_definition
 from agents.helpers.ghl import (
     GHL_FILTER_TYPE_MAP,
     GHL_OUTBOUND_CHANNEL_MAP,
@@ -23,11 +22,8 @@ GHL_VERSION = os.getenv("GHL_VERSION", "v3")
 
 @lru_cache
 def _allowed_phones() -> set[str]:
-    runtime_settings = get_agent_definition().get("runtime", {})
-    configured_numbers = runtime_settings.get("allowed_phones", [])
-    if not isinstance(configured_numbers, list):
-        return set()
-    return {str(number).strip() for number in configured_numbers if str(number).strip()}
+    raw = os.getenv("ECHO_ALLOWED_PHONES", "")
+    return {number.strip() for number in raw.split(",") if number.strip()}
 
 def _resolve_ghl_token() -> str:
     token = (os.getenv("GHL_TOKEN") or "").strip()

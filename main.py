@@ -20,14 +20,6 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 
-ALLOWED_TOOL_LOG_SNIPPETS = (
-    "Executing tool ",
-    "Tool requested:",
-    "Tool ",
-    "end_call acknowledged locally.",
-)
-
-
 class SelectiveLogFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         logger_name = record.name or ""
@@ -46,18 +38,6 @@ class SelectiveLogFilter(logging.Filter):
             # this same filter before, making a broken DATABASE_URL
             # indistinguishable from "everything's fine" in production.
             return True
-        if logger_name == "agents.family_aims_sam.agent":
-            if message.startswith("[") and (
-                "Executing tool " in message
-                or "Tool requested:" in message
-                or " payload:" in message
-                or "succeeded summary=" in message
-                or "failed with HTTP" in message
-                or "raised an exception:" in message
-                or "end_call acknowledged locally." in message
-            ):
-                return True
-            return False
 
         return False
 

@@ -13,7 +13,7 @@ from main import SelectiveLogFilter, app
 client = TestClient(app)
 
 
-def test_selective_log_filter_allows_http_and_tool_logs_only():
+def test_selective_log_filter_allows_http_and_ghl_endpoint_logs_only():
     log_filter = SelectiveLogFilter()
 
     http_record = logging.LogRecord(
@@ -25,8 +25,8 @@ def test_selective_log_filter_allows_http_and_tool_logs_only():
         args=(),
         exc_info=None,
     )
-    tool_record = logging.LogRecord(
-        name="agents.family_aims_sam.agent",
+    ghl_endpoint_record = logging.LogRecord(
+        name="compiled_runner.ghl_endpoint.sam_text",
         level=logging.INFO,
         pathname=__file__,
         lineno=1,
@@ -34,19 +34,19 @@ def test_selective_log_filter_allows_http_and_tool_logs_only():
         args=(),
         exc_info=None,
     )
-    agent_record = logging.LogRecord(
-        name="agents.family_aims_sam.agent",
+    unrelated_record = logging.LogRecord(
+        name="agents.helpers.ghl",
         level=logging.INFO,
         pathname=__file__,
         lineno=1,
-        msg="[sam_x] System prompt loaded.",
+        msg="Searching conversation for contact_id=abc",
         args=(),
         exc_info=None,
     )
 
     assert log_filter.filter(http_record) is True
-    assert log_filter.filter(tool_record) is True
-    assert log_filter.filter(agent_record) is False
+    assert log_filter.filter(ghl_endpoint_record) is True
+    assert log_filter.filter(unrelated_record) is False
 
 
 def test_selective_log_filter_allows_postgres_connection_warnings():
@@ -202,17 +202,19 @@ def test_validation_errors_do_not_echo_request_body():
     assert "body" not in response.json()
 
 
-def test_echo_reads_allowed_phones_from_agent_json():
+def test_echo_reads_allowed_phones_from_env_var(monkeypatch):
     from tools.utils.api.v1.endpoints import echo as echo_endpoint
 
+    monkeypatch.setenv("ECHO_ALLOWED_PHONES", "+573215616921, +573103725324 ,+573016804227")
     echo_endpoint._allowed_phones.cache_clear()
 
     assert echo_endpoint._allowed_phones() == {
         "+573215616921",
         "+573103725324",
         "+573016804227",
-        "+573007011593",
     }
+
+    echo_endpoint._allowed_phones.cache_clear()
 
 
 def test_composed_app_mounts_novafem_surrogacy_booking_tool_under_its_slug():
