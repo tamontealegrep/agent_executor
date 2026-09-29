@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from agents.helpers.ghl import GHL_INBOUND_TYPE_MAP
+from agents.helpers.text import normalize_language
 
 
 class GhlAgentRequest(BaseModel):
@@ -63,7 +64,19 @@ class GhlAgentRequest(BaseModel):
         contact_obj["name"] = normalized.get("full_name") or contact_obj.get("name") or custom_data.get("contact_full_name")
         contact_obj["email"] = normalized.get("email") or contact_obj.get("email") or custom_data.get("contact_email")
         contact_obj["phone"] = normalized.get("phone") or contact_obj.get("phone") or custom_data.get("contact_phone")
-        
+        # Bug real encontrado (2026-09-29): contact.language nunca se llenaba
+        # acá, aunque opening.yaml's OP_INIT explícitamente hace
+        # "Infer [preferred_language] from {{contact.language}} first" -- esa
+        # referencia nunca tenía nada que leer, así que el agente siempre
+        # terminaba infiriendo el idioma del primer mensaje del usuario en
+        # vez de usar el dato que GHL ya manda. normalize_language acepta
+        # "English"/"Ingles"/"EN"/"en" (y las mismas variantes para
+        # español/português) -- cualquier cosa no reconocida queda en None,
+        # no en un default adivinado.
+        contact_obj["language"] = normalize_language(
+            normalized.get("contact_language") or custom_data.get("language") or contact_obj.get("language")
+        )
+
         normalized["contact"] = contact_obj
 
         # 4. IDs de Sesión/Workflow (Fallbacks)

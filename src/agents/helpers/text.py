@@ -16,6 +16,37 @@ def normalize_text(value: Any) -> str:
     return strip_accents(str(value or "")).lower().strip()
 
 
+# Every alias a CRM/webhook might send for one of the 3 languages every
+# text agent actually supports (see e.g. opening.yaml's
+# "[preferred_language] = 'es' | 'en' | 'pt'") -- keys are already
+# accent-stripped/lowercased, matched against normalize_text's own output,
+# so "Español"/"espanol" and "Português"/"portugues" share one entry each
+# instead of needing both spellings listed.
+_LANGUAGE_ALIASES = {
+    "en": "en", "eng": "en", "english": "en", "ingles": "en",
+    "es": "es", "esp": "es", "spa": "es", "spanish": "es", "espanol": "es", "castellano": "es",
+    "pt": "pt", "por": "pt", "portuguese": "pt", "portugues": "pt",
+}
+
+
+def normalize_language(value: Any) -> Optional[str]:
+    """Normalizes a free-form language value (GHL's `contact_language` or
+    `customData.language`, or anywhere else) to this project's canonical
+    2-letter code -- "es"/"en"/"pt", never anything else. Case- and
+    accent-insensitive, and accepts locale-style codes (en-US, es_CO,
+    pt-BR -- only the primary subtag before "-"/"_" matters).
+
+    Returns None for anything unrecognized -- deliberately never guesses;
+    a caller with a fallback (like inferring from the user's own message)
+    needs to know nothing matched, not silently get handed a default.
+    """
+    text = normalize_text(value)
+    if not text:
+        return None
+    primary = re.split(r"[-_]", text)[0]
+    return _LANGUAGE_ALIASES.get(primary)
+
+
 def is_affirmative_message(message: str) -> bool:
     normalized = re.sub(r"[^a-z0-9 ]+", " ", normalize_text(message))
     tokens = [token for token in normalized.split() if token]
