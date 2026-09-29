@@ -35,8 +35,44 @@ import re
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import quote
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+def _build_database_url() -> str:
+    """Prefers DATABASE_HOST/PORT/USER/PASSWORD/NAME (+ optional
+    DATABASE_REGION) over a single DATABASE_URL, when a host is actually
+    set -- pedido directamente (2026-09-29) para no duplicar la
+    contraseña entre dos connection strings completos (interno/externo de
+    Render). DATABASE_REGION es lo unico que distingue uno del otro:
+    el host interno de Render es solo el id corto de la instancia
+    (dpg-xxxxx-a); el externo es ese mismo id con un sufijo de region
+    (dpg-xxxxx-a.oregon-postgres.render.com) -- vacio = interno, seteado
+    = externo.
+
+    Sigue soportando DATABASE_URL tal cual (un solo string) si
+    DATABASE_HOST no esta seteado -- no rompe nada de lo que ya
+    funcionaba (el dashboard de Render, por ejemplo, puede seguir con su
+    propio DATABASE_URL sin tocarlo).
+
+    user/password se url-encodean (urllib.parse.quote) antes de armar el
+    string -- a mano, un caracter especial en la contraseña rompe el
+    parseo de la URL; con esto no importa que caracteres tenga.
+    """
+    host = os.environ.get("DATABASE_HOST", "").strip()
+    if not host:
+        return os.environ.get("DATABASE_URL", "").strip()
+
+    region = os.environ.get("DATABASE_REGION", "").strip()
+    full_host = f"{host}.{region}" if region else host
+    port = os.environ.get("DATABASE_PORT", "5432").strip()
+    user = quote(os.environ.get("DATABASE_USER", "").strip(), safe="")
+    password = quote(os.environ.get("DATABASE_PASSWORD", "").strip(), safe="")
+    name = os.environ.get("DATABASE_NAME", "").strip()
+
+    return f"postgresql://{user}:{password}@{full_host}:{port}/{name}"
+
+
+DATABASE_URL = _build_database_url()
 
 
 def postgres_enabled() -> bool:

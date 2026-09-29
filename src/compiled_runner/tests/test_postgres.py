@@ -13,6 +13,72 @@ import pytest
 from compiled_runner import postgres
 
 
+# --- _build_database_url (component env vars vs. a single DATABASE_URL) ----
+
+
+def _clear_database_env(monkeypatch):
+    for var in ("DATABASE_URL", "DATABASE_HOST", "DATABASE_PORT", "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_NAME", "DATABASE_REGION"):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_build_database_url_falls_back_to_database_url_when_no_host_set(monkeypatch):
+    _clear_database_env(monkeypatch)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://someone:pw@example.com:5432/db")
+    assert postgres._build_database_url() == "postgresql://someone:pw@example.com:5432/db"
+
+
+def test_build_database_url_from_components_without_region_is_internal_style(monkeypatch):
+    _clear_database_env(monkeypatch)
+    monkeypatch.setenv("DATABASE_HOST", "dpg-d81lvig3kofs73a639dg-a")
+    monkeypatch.setenv("DATABASE_USER", "admin")
+    monkeypatch.setenv("DATABASE_PASSWORD", "secret123")
+    monkeypatch.setenv("DATABASE_NAME", "GHL_AGENTS")
+    assert postgres._build_database_url() == "postgresql://admin:secret123@dpg-d81lvig3kofs73a639dg-a:5432/GHL_AGENTS"
+
+
+def test_build_database_url_from_components_with_region_is_external_style(monkeypatch):
+    _clear_database_env(monkeypatch)
+    monkeypatch.setenv("DATABASE_HOST", "dpg-d81lvig3kofs73a639dg-a")
+    monkeypatch.setenv("DATABASE_REGION", "oregon-postgres.render.com")
+    monkeypatch.setenv("DATABASE_USER", "admin")
+    monkeypatch.setenv("DATABASE_PASSWORD", "secret123")
+    monkeypatch.setenv("DATABASE_NAME", "GHL_AGENTS")
+    assert postgres._build_database_url() == (
+        "postgresql://admin:secret123@dpg-d81lvig3kofs73a639dg-a.oregon-postgres.render.com:5432/GHL_AGENTS"
+    )
+
+
+def test_build_database_url_respects_custom_port(monkeypatch):
+    _clear_database_env(monkeypatch)
+    monkeypatch.setenv("DATABASE_HOST", "myhost")
+    monkeypatch.setenv("DATABASE_PORT", "6543")
+    monkeypatch.setenv("DATABASE_USER", "u")
+    monkeypatch.setenv("DATABASE_PASSWORD", "p")
+    monkeypatch.setenv("DATABASE_NAME", "n")
+    assert postgres._build_database_url() == "postgresql://u:p@myhost:6543/n"
+
+
+def test_build_database_url_url_encodes_special_characters_in_password(monkeypatch):
+    """A hand-assembled connection string breaks on a password containing
+    @, :, /, etc. -- this is exactly the gotcha component-based config was
+    supposed to sidestep, so it must actually be encoded, not just
+    concatenated."""
+    _clear_database_env(monkeypatch)
+    monkeypatch.setenv("DATABASE_HOST", "myhost")
+    monkeypatch.setenv("DATABASE_USER", "admin")
+    monkeypatch.setenv("DATABASE_PASSWORD", "p@ss/word:with#special?chars")
+    monkeypatch.setenv("DATABASE_NAME", "n")
+
+    url = postgres._build_database_url()
+
+    from urllib.parse import unquote, urlparse
+
+    parsed = urlparse(url)
+    assert unquote(parsed.password) == "p@ss/word:with#special?chars"
+    assert unquote(parsed.username) == "admin"
+    assert parsed.hostname == "myhost"
+
+
 def test_keeps_real_captured_business_data():
     slots = {"cl__nat": "colombiana", "vi__treat": "donor_eggs", "ob__obj": "cost"}
     assert postgres.build_slots_summary(slots) == slots
