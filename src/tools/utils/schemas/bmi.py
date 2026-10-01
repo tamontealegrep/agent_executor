@@ -11,4 +11,5 @@ class CalculateBmiRequest(BaseModel):
 class CalculateBmiResponse(BaseModel):
     success: bool
     bmi: Optional[float] = None
+    imc: Optional[float] = None
     errors: Optional[str] = None

@@ -1357,6 +1357,7 @@
         "execute": null,
         "store": [
           "[o__svc_try] = 0",
+          "[o__consent_try] = 0",
           "[svc] = NULL",
           "[preferred_language] = 'es' | 'en' | 'pt' derived from {{contact.language}} or inferred from the user's message"
         ],
@@ -1402,14 +1403,97 @@
       },
       {
         "node_id": "O__OP_PRIVACY",
-        "node_type": "message",
+        "node_type": "question",
         "goal": [
-          "State that continuing the conversation implies acceptance of the privacy policy."
+          "State that continuing the conversation implies acceptance of the privacy policy and ask for consent."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "By continuing this conversation, you accept the Privacy and Personal Data Protection Policy of <COMPANY_NAME>, which is given in compliance with <DATA_LAW_REFERENCE>."
+          "By continuing this conversation, you accept the Privacy and Personal Data Protection Policy of <COMPANY_NAME>, which is given in compliance with <DATA_LAW_REFERENCE>. Do you wish to continue?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__consent] = [o__consent]"
+        ],
+        "capture": [
+          [
+            "o__consent",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_DEC_CONSENT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_DEC_CONSENT",
+        "node_type": "decision",
+        "goal": [
+          "Evaluate if the user granted consent to continue."
+        ],
+        "do": [
+          "[o__consent_try] = [o__consent_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BYE_NO_CONSENT",
+            "condition_text": "IF [o__consent_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_BYE_NO_CONSENT",
+            "is_mechanical": true,
+            "python_expression": "o__consent_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "O__OP_ASK",
+            "condition_text": "IF [o__consent] == 'yes' -> GO_TO: O__OP_ASK",
+            "is_mechanical": true,
+            "python_expression": "o__consent == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_BYE_NO_CONSENT",
+            "condition_text": "IF [o__consent] == 'no' -> GO_TO: O__OP_BYE_NO_CONSENT",
+            "is_mechanical": true,
+            "python_expression": "o__consent == 'no'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_PRIVACY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_BYE_NO_CONSENT",
+        "node_type": "message",
+        "goal": [
+          "Say goodbye if the user does not consent."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I understand. We cannot continue without your consent. Thank you for your time and have a great day."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1418,7 +1502,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_ASK",
+            "target": "MESSAGE_END",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3494,8 +3578,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "VS__VS_VAL_MX",
-            "condition_text": "IF [profile] == 'single_woman' -> GO_TO: VS__VS_VAL_MX",
+            "target": "VS__VS_VAL_MEX",
+            "condition_text": "IF [profile] == 'single_woman' -> GO_TO: VS__VS_VAL_MEX",
             "is_mechanical": true,
             "python_expression": "profile == 'single_woman'",
             "reason": null
@@ -3503,7 +3587,7 @@
         ],
         "fallback": [
           {
-            "target": "VS__VS_VAL_1",
+            "target": "VS__VS_VAL_GLO",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3512,7 +3596,7 @@
         ]
       },
       {
-        "node_id": "VS__VS_VAL_MX",
+        "node_id": "VS__VS_VAL_MEX",
         "node_type": "message",
         "goal": [
           "Present the surrogacy value proposition for Mexico only."
@@ -3529,7 +3613,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "VS__VS_VAL_2",
+            "target": "VS__VS_VAL_SUPP",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3539,7 +3623,7 @@
         "fallback": []
       },
       {
-        "node_id": "VS__VS_VAL_1",
+        "node_id": "VS__VS_VAL_GLO",
         "node_type": "message",
         "goal": [
           "Present the surrogacy value proposition."
@@ -3556,7 +3640,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "VS__VS_VAL_2",
+            "target": "VS__VS_VAL_SUPP",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3566,7 +3650,7 @@
         "fallback": []
       },
       {
-        "node_id": "VS__VS_VAL_2",
+        "node_id": "VS__VS_VAL_SUPP",
         "node_type": "message",
         "goal": [
           "State what the surrogacy support includes."
@@ -3576,7 +3660,7 @@
         "say": [
           "Our support is 360°:\n\n- Donor selection and embryo formation\n- Surrogate matching and embryo transfer\n- Support during pregnancy, birth, and legal path\n- Weekly updates and care in Spanish and English, with support in Mandarin when applicable"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],

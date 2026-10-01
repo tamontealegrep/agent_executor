@@ -359,13 +359,15 @@ def find_conversations_needing_closing_message(agent_slug: str, lookback_days: f
         with _pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT thread_id, contact_id, location_id, channel, preferred_language
+                SELECT DISTINCT ON (contact_id, location_id)
+                       thread_id, contact_id, location_id, channel, preferred_language
                 FROM conversations
                 WHERE agent_slug = %s
                   AND closing_message_sent_at IS NULL
                   AND last_message_at IS NOT NULL
                   AND last_message_at <= now() - %s::interval
                   AND last_message_at >= now() - %s::interval
+                ORDER BY contact_id, location_id, last_message_at DESC
                 """,
                 (agent_slug, CLOSING_MESSAGE_INACTIVITY_THRESHOLD, f"{lookback_days} days"),
             )
@@ -379,23 +381,30 @@ def find_conversations_needing_closing_message(agent_slug: str, lookback_days: f
         return []
 
 
-def mark_closing_message_sent(thread_id: str) -> None:
-    """Records that this thread got its closing message for the current
-    24h window -- prevents `find_conversations_needing_closing_message`
-    from picking it up again on the next sweep. Cleared back to NULL by
-    `upsert_conversation` the next time this thread has a real turn (a new
-    window starting from that new message)."""
+def mark_closing_message_sent(agent_slug: str, location_id: str, contact_id: str) -> None:
+    """Records that this contact got its closing message for the current
+    24h window across ALL their threads for this agent -- prevents
+    `find_conversations_needing_closing_message` from picking up any of
+    them on the next sweep. Cleared back to NULL by `upsert_conversation`
+    the next time any thread has a real turn.
+    """
     if not postgres_enabled():
         return
     try:
         with _pool().connection() as conn, conn.cursor() as cur:
             cur.execute(
-                "UPDATE conversations SET closing_message_sent_at = now() WHERE thread_id = %s",
-                (thread_id,),
+                """
+                UPDATE conversations
+                SET closing_message_sent_at = now()
+                WHERE agent_slug = %s AND location_id = %s AND contact_id = %s
+                  AND closing_message_sent_at IS NULL
+                """,
+                (agent_slug, location_id, contact_id),
             )
     except Exception:
         import logging
 
         logging.getLogger(__name__).warning(
-            "[%s] Failed to mark closing message sent (non-fatal).", thread_id, exc_info=True
+            "[%s:%s:%s] Failed to mark closing message sent (non-fatal).",
+            agent_slug, location_id, contact_id, exc_info=True
         )

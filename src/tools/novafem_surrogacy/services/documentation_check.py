@@ -44,10 +44,23 @@ _APPROVED_REASONS = {
 
 
 def _split_document_types(raw: Optional[Union[str, List[str]]]) -> List[str]:
-    """Normaliza el input (string separado por comas, o lista) a una lista de strings sin vacios."""
+    """Normaliza el input (string separado por comas, 'y' o 'and', o lista) a una lista de strings sin vacios."""
     if raw is None:
         return []
-    items = raw if isinstance(raw, list) else str(raw).split(",")
+    
+    # Separadores comunes en lenguaje natural
+    pattern = re.compile(r",\s*|\s+y\s+|\s+and\s+", re.IGNORECASE)
+    
+    if isinstance(raw, list):
+        items = []
+        for item in raw:
+            # Flatten potential separated strings inside the list
+            if isinstance(item, str):
+                items.extend(pattern.split(item))
+            else:
+                items.append(str(item))
+    else:
+        items = pattern.split(str(raw))
     return [str(item).strip() for item in items if str(item).strip()]
 
 

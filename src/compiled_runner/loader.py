@@ -52,6 +52,7 @@ _TOOLS_APP_BY_SLUG: dict[str, str] = {
     "family_aims_sam_es_voice": "family_aims",
     "family_aims_sam_pt_voice": "family_aims",
     "babynova_surrogate_questions_voice": "novafem_surrogacy",
+    "babynova_surrogate_questions_text": "novafem_surrogacy",
     "babynova_triage_obstetrico_text": "novafem_surrogacy",
 }
 

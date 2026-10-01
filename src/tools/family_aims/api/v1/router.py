@@ -11,7 +11,7 @@ from tools.family_aims.api.v1.endpoints import (
     customer_reply,
     sam_text,
 )
-from tools.utils.api.v1.endpoints import callback_request, time_now
+from tools.utils.api.v1.endpoints import calculate_bmi, callback_request, time_now
 
 api_router = APIRouter()
 api_router.include_router(get_available_slots.router, tags=["get_available_slots"])
@@ -91,4 +91,8 @@ api_router.add_api_route(
 api_router.add_api_route(
     "/callback", callback_request.request_callback_endpoint,
     methods=["POST"], response_model=callback_request.CallbackRequestResponse, tags=["callback"],
+)
+api_router.add_api_route(
+    "/calculate_bmi", calculate_bmi.calculate_bmi,
+    methods=["POST"], response_model=calculate_bmi.CalculateBmiResponse, tags=["calculate_bmi"],
 )

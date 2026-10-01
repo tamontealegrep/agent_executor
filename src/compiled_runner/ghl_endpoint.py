@@ -224,7 +224,7 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
                 location_id=row["location_id"],
                 logger=logger,
             )
-            await run_in_threadpool(mark_closing_message_sent, thread_id)
+            await run_in_threadpool(mark_closing_message_sent, cfg.slug, row["location_id"], row["contact_id"])
             logger.info("[%s] Closing message sent after ~24h of inactivity.", thread_id)
             sent += 1
         except Exception:

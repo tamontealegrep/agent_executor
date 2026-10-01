@@ -119,13 +119,25 @@ class ReturnToLauncher(Exception):
     pass
 
 
-def _tools_base_url() -> str:
+def _tools_base_url(slug: str) -> str:
     import os
 
     host = os.getenv("HOST", "127.0.0.1")
     port = os.getenv("PORT", "8010")
     probe_host = "127.0.0.1" if host == "0.0.0.0" else host
-    return f"http://{probe_host}:{port}/family_aims/v1"
+
+    # Mapeo de slugs a sus respectivos backends de herramientas
+    mapping = {
+        "family_aims_sam_text": "family_aims",
+        "family_aims_sam_en_voice": "family_aims",
+        "family_aims_sam_es_voice": "family_aims",
+        "family_aims_sam_pt_voice": "family_aims",
+        "babynova_surrogate_questions_voice": "novafem_surrogacy",
+        "babynova_surrogate_questions_text": "novafem_surrogacy",
+        "babynova_triage_obstetrico_text": "novafem_surrogacy",
+    }
+    app = mapping.get(slug, "family_aims")
+    return f"http://{probe_host}:{port}/{app}/v1"
 
 
 @dataclass
@@ -271,7 +283,7 @@ class CompiledAgentHarness:
         self.graph = build_graph(
             self.artifact,
             llm_client,
-            tools_base_url=_tools_base_url(),
+            tools_base_url=_tools_base_url(agent_slug),
             tool_http_client=tracing_client,
             checkpointer=checkpointer,
             say_callback=self._say_buffer.append,
