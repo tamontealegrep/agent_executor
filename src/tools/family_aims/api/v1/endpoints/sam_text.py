@@ -1,1 +1,1 @@
-from agents.family_aims_sam.text import router
+from instances.family_aims_sam.text import router

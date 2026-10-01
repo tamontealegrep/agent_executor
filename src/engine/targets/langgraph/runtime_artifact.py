@@ -26,8 +26,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from agent_compiler.dsl.schemas import AgentSpec, ToolContract
-from agent_compiler.targets.langgraph.graph_renderer import (
+from engine.dsl.schemas import AgentSpec, ToolContract
+from engine.targets.langgraph.graph_renderer import (
     FaqNode,
     GlobalRouterDefinition,
     GraphDefinition,

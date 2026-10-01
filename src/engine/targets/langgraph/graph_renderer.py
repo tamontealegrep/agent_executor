@@ -20,9 +20,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from agent_compiler.dsl.schemas import AgentSpec, FAQModel, FlowObjectBase, SubflowTemplate
-from agent_compiler.dsl.utils import extract_goto_targets
-from agent_compiler.targets.langgraph.condition_parser import classify_rule
+from engine.dsl.schemas import AgentSpec, FAQModel, FlowObjectBase, SubflowTemplate
+from engine.dsl.utils import extract_goto_targets
+from engine.targets.langgraph.condition_parser import classify_rule
 
 
 @dataclass(frozen=True, slots=True)

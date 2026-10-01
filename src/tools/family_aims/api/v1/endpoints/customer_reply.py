@@ -7,9 +7,9 @@ from fastapi import APIRouter, HTTPException
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from agents.helpers.ghl import GHL_OUTBOUND_CHANNEL_MAP
-from agents.helpers.ghl_request import GhlAgentRequest
-from agents.helpers.text import normalize_channel
+from instances.helpers.ghl import GHL_OUTBOUND_CHANNEL_MAP
+from instances.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.text import normalize_channel
 
 router = APIRouter()
 

@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from agent_compiler.dsl.capture_types import classify_type_expr
+from engine.dsl.capture_types import classify_type_expr
 
 if TYPE_CHECKING:
     # Forward references resolved by the type checker only. The runtime

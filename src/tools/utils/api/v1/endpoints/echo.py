@@ -7,12 +7,12 @@ from typing import Any, Dict, List, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 
-from agents.helpers.ghl import (
+from instances.helpers.ghl import (
     GHL_FILTER_TYPE_MAP,
     GHL_OUTBOUND_CHANNEL_MAP,
 )
-from agents.helpers.ghl_request import GhlAgentRequest
-from agents.helpers.text import normalize_channel
+from instances.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.text import normalize_channel
 
 router = APIRouter()
 

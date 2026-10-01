@@ -11,7 +11,7 @@ imports of `agent_compiler.targets.langgraph.type_parser` keep working.
 
 from __future__ import annotations
 
-from agent_compiler.dsl.capture_types import (
+from engine.dsl.capture_types import (
     PASCAL_CASE_RE,
     SCALAR_TYPES,
     SEMANTIC_SCALAR_REGISTRY,

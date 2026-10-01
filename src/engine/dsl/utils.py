@@ -22,7 +22,7 @@ from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agent_compiler.dsl.schemas import AgentSpec, FlowObjectBase, ToolContract
+    from engine.dsl.schemas import AgentSpec, FlowObjectBase, ToolContract
 
 
 # ---------------------------------------------------------------------------

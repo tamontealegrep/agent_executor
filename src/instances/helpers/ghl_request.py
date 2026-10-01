@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from agents.helpers.ghl import GHL_INBOUND_TYPE_MAP
-from agents.helpers.text import normalize_language
+from instances.helpers.ghl import GHL_INBOUND_TYPE_MAP
+from instances.helpers.text import normalize_language
 
 
 class GhlAgentRequest(BaseModel):

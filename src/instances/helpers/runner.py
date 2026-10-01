@@ -1,6 +1,6 @@
 import hashlib
 
-from agents.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.ghl_request import GhlAgentRequest
 
 
 def derive_execution_id(request: GhlAgentRequest, prefix: str) -> str:

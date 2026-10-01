@@ -8,7 +8,7 @@ could plausibly send, so a future edit can't quietly narrow the list.
 
 import pytest
 
-from agents.helpers.text import normalize_language
+from instances.helpers.text import normalize_language
 
 
 @pytest.mark.parametrize(

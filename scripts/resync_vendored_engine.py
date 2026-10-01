@@ -44,8 +44,8 @@ WORKSPACE_ROOT = AGENT_EXECUTOR_ROOT.parent
 AGENT_COMPILER_ROOT = WORKSPACE_ROOT / "agent_compiler"
 AGENT_RUNTIME_ROOT = WORKSPACE_ROOT / "agent_runtime"
 EXPORT_SCRIPT = AGENT_COMPILER_ROOT / "scripts" / "export_runtime.py"
-VENDOR_PREFIX = "src/agent_engine"
-TEMP_REMOTE_NAME = "_resync_agent_engine_tmp"
+VENDOR_PREFIX = "src/engine"
+TEMP_REMOTE_NAME = "_resync_engine_tmp"
 
 
 def _run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:

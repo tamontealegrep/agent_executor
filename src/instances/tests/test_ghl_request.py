@@ -3,7 +3,7 @@ mapping fixed 2026-09-29 (see its own comment: opening.yaml's
 "{{contact.language}}" reference had nothing to read before this).
 """
 
-from agents.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.ghl_request import GhlAgentRequest
 
 
 def _base_payload(**overrides):

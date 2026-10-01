@@ -4,7 +4,7 @@ import json
 import datetime
 from pathlib import Path
 from tools.utils.schemas.input_payload import InputPayloadResponse
-from agents.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.ghl_request import GhlAgentRequest
 
 router = APIRouter()
 

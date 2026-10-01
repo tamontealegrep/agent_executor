@@ -9,7 +9,7 @@ keep working.
 
 from __future__ import annotations
 
-from agent_compiler.dsl.condition_grammar import (
+from engine.dsl.condition_grammar import (
     NAMED_PREDICATES,
     ParsedRule,
     classify_rule,

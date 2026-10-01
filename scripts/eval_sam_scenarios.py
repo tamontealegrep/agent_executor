@@ -44,14 +44,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / "src"
-for candidate in (PROJECT_ROOT, SRC_ROOT):
+EXECUTOR_SRC = PROJECT_ROOT / "src"
+for candidate in (EXECUTOR_SRC, PROJECT_ROOT):
     candidate_str = str(candidate)
-    if candidate_str not in sys.path:
+    if candidate.exists() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
 from discovery import get_hub_settings  # carga el .env del root antes de leer OPENAI_API_KEY, etc.
-from agents.family_aims_sam import agent as sam_agent
+from instances.family_aims_sam import agent as sam_agent
 from sam_tui import LocalSamHarness, ToolTrace, _new_state  # reusa el mismo harness que la TUI
 
 

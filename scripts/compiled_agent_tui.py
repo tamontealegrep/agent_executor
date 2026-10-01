@@ -60,10 +60,13 @@ PROJECT_ROOT = _find_project_root()
 # that sync_agent_runtime_engine() below refreshes -- see
 # persona_conversation_tester.py's own comment on the same point for the
 # staleness bug that would reintroduce. Leave this pointed at nothing.
-SRC_ROOT = PROJECT_ROOT / "src"
-for candidate in (PROJECT_ROOT, SRC_ROOT):
+EXECUTOR_ROOT = Path(__file__).resolve().parents[1]
+EXECUTOR_SRC = EXECUTOR_ROOT / "src"
+
+# Priorizamos la carpeta src interna para encontrar el agent_compiler vendorizado
+for candidate in (EXECUTOR_SRC, EXECUTOR_ROOT):
     candidate_str = str(candidate)
-    if candidate_str not in sys.path:
+    if candidate.exists() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
 # Carga primero .env en el root del proyecto, luego en agent_executor si existe
@@ -74,10 +77,10 @@ from sync_engine import sync_agent_runtime_engine
 
 sync_agent_runtime_engine()
 
-from agent_compiler.runtime.graph_builder import build_graph, fresh_state
-from agent_compiler.runtime.llm_client import OpenAILLMClient
-from agent_compiler.runtime.session_resolver import resolve_session
-from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
+from engine.runtime.graph_builder import build_graph, fresh_state
+from engine.runtime.llm_client import OpenAILLMClient
+from engine.runtime.session_resolver import resolve_session
+from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 
 console = Console()
 COMPILED_AGENTS_DIR = PROJECT_ROOT / "agent_executor" / "compiled_agents"
@@ -161,9 +164,25 @@ class TracingClient(httpx.Client):
     def __init__(self, *args: Any, trace_sink: List[ToolTrace], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._trace_sink = trace_sink
+        self._local_client = None
+        try:
+            # Intentamos usar TestClient para llamadas in-process si el servidor no está corriendo
+            from main import app
+            from fastapi.testclient import TestClient
+
+            self._local_client = TestClient(app)
+        except Exception:
+            pass
 
     def post(self, url: str, *args: Any, json: Any = None, **kwargs: Any) -> httpx.Response:  # noqa: A002
-        response = super().post(url, *args, json=json, **kwargs)
+        if self._local_client and ("127.0.0.1" in url or "localhost" in url):
+            try:
+                response = self._local_client.post(url, *args, json=json, **kwargs)
+            except Exception:
+                response = super().post(url, *args, json=json, **kwargs)
+        else:
+            response = super().post(url, *args, json=json, **kwargs)
+
         tool_name = url.rstrip("/").rsplit("/", 1)[-1]
         try:
             body = response.json()

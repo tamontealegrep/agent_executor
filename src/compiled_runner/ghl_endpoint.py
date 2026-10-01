@@ -23,11 +23,11 @@ from fastapi import APIRouter, status
 from langgraph.types import Command
 from starlette.concurrency import run_in_threadpool
 
-from agent_compiler.runtime.graph_builder import fresh_state
-from agent_compiler.runtime.session_resolver import resolve_session
-from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
-from agents.helpers.ghl_request import GhlAgentRequest
-from agents.helpers.runner import derive_execution_id
+from engine.runtime.graph_builder import fresh_state
+from engine.runtime.session_resolver import resolve_session
+from instances.helpers.ghl import GhlClientConfig, send_ghl_message_async
+from instances.helpers.ghl_request import GhlAgentRequest
+from instances.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
 from compiled_runner.postgres import (
     find_conversations_needing_closing_message,
@@ -209,10 +209,16 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
     for row in candidates:
         thread_id = row["thread_id"]
         try:
+            # If conversation was widget (LIVE_CHAT), send closing message via WhatsApp
+            # (2026-09-30, pedido directamente)
+            reply_channel = row.get("channel")
+            if reply_channel == "LIVE_CHAT":
+                reply_channel = "WHATSAPP"
+
             await send_ghl_message_async(
                 contact_id=row["contact_id"],
                 message=_closing_message_text(cfg, row.get("preferred_language")),
-                channel=row.get("channel"),
+                channel=reply_channel,
                 exec_id=f"{cfg.slug}:closing:{thread_id}",
                 config=cfg.ghl_client_config(),
                 location_id=row["location_id"],
@@ -386,10 +392,19 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
 
             reply_text = "\n\n".join(buffer).strip()
             if reply_text:
+                # If message came from widget (LIVE_CHAT), respond via WhatsApp
+                # (2026-09-30, pedido directamente)
+                reply_channel = request.channel
+                if reply_channel == "LIVE_CHAT":
+                    logger.info(
+                        "[%s] Inbound channel was widget (LIVE_CHAT), redirecting reply to WHATSAPP.", execution_id
+                    )
+                    reply_channel = "WHATSAPP"
+
                 await send_ghl_message_async(
                     contact_id=request.contact_id,
                     message=reply_text,
-                    channel=request.channel,
+                    channel=reply_channel,
                     exec_id=execution_id,
                     config=cfg.ghl_client_config(),
                     location_id=request.location_id,

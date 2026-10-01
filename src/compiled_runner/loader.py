@@ -16,9 +16,9 @@ import sqlite3
 import threading
 from pathlib import Path
 
-from agent_compiler.runtime.graph_builder import build_graph
-from agent_compiler.runtime.llm_client import OpenAILLMClient
-from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
+from engine.runtime.graph_builder import build_graph
+from engine.runtime.llm_client import OpenAILLMClient
+from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from compiled_runner.postgres import build_postgres_checkpointer, postgres_enabled
@@ -86,7 +86,7 @@ def _build_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
     agent_dir = COMPILED_AGENTS_DIR / slug
     graph_path = agent_dir / "graph.json"
     if not graph_path.exists():
-        raise FileNotFoundError(f"No compiled agent at {graph_path} — expected graph.json from agent_compiler.")
+        raise FileNotFoundError(f"No compiled agent at {graph_path} — expected graph.json from agent_engine.")
 
     artifact = runtime_artifact_from_dict(json.loads(graph_path.read_text(encoding="utf-8")))
 

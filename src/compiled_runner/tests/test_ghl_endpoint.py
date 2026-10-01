@@ -461,6 +461,49 @@ def test_closing_sweep_starts_only_when_postgres_is_enabled(monkeypatch):
         assert len(started) == (1 if enabled else 0)
 
 
+def test_widget_message_is_responded_to_via_whatsapp(monkeypatch):
+    """(2026-09-30, pedido directamente)
+    When a message comes from the widget (LIVE_CHAT), the reply must go
+    to WHATSAPP.
+    """
+    graph = FakeGraph()
+    app, _, replies = _build_router(monkeypatch, graph, debounce_seconds=0.01)
+
+    payload = _payload(message="Hola desde el widget")
+    payload["message"]["type"] = 5  # LIVE_CHAT
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/test_agent", json=payload)
+            await asyncio.sleep(0.05)  # wait for debounce flush
+
+    _run(scenario())
+
+    assert len(replies) == 1
+    assert replies[0]["channel"] == "WHATSAPP"
+
+
+def test_closing_message_for_widget_is_sent_via_whatsapp(monkeypatch):
+    """(2026-09-30, pedido directamente)
+    A closing message sweep for a conversation that started on the widget
+    (LIVE_CHAT) must send the closing message to WHATSAPP.
+    """
+    candidates = [
+        {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "LIVE_CHAT", "preferred_language": "es"},
+    ]
+    sent: list[dict] = []
+
+    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda tid: None)
+    monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", lambda **kw: (sent.append(kw), {})[1])
+
+    asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
+
+    assert len(sent) == 1
+    assert sent[0]["channel"] == "WHATSAPP"
+
+
 # --- load_phone_whitelist (.env-driven pilot gate) --------------------------
 
 

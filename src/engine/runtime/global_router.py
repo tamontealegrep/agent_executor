@@ -19,9 +19,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
-from agent_compiler.dsl.utils import is_dynamic_target
-from agent_compiler.runtime.llm_client import LLMClient, LLMContext
-from agent_compiler.targets.langgraph.graph_renderer import (
+from engine.dsl.utils import is_dynamic_target
+from engine.runtime.llm_client import LLMClient, LLMContext
+from engine.targets.langgraph.graph_renderer import (
     FaqNode,
     GlobalRouterDefinition,
     GraphEdge,

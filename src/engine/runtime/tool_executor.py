@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from agent_compiler.dsl.schemas import ToolContract
+from engine.dsl.schemas import ToolContract
 
 
 class ToolExecutionError(RuntimeError):

@@ -96,9 +96,10 @@ SCRIPTS_ROOT = Path(__file__).resolve().parent
 # compiled_agent_tui.py are local-iteration tools; they're meant to run
 # against whatever agent_compiler change you just made, not a frozen
 # deploy snapshot.
-for candidate in (PROJECT_ROOT, SCRIPTS_ROOT):
+EXECUTOR_SRC = PROJECT_ROOT / "src"
+for candidate in (EXECUTOR_SRC, PROJECT_ROOT, SCRIPTS_ROOT):
     candidate_str = str(candidate)
-    if candidate_str not in sys.path:
+    if candidate.exists() and candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
 from dotenv import load_dotenv  # noqa: E402
@@ -111,10 +112,10 @@ sync_agent_runtime_engine()
 
 from langgraph.types import Command  # noqa: E402
 
-from agent_compiler.runtime.graph_builder import build_graph, fresh_state  # noqa: E402
-from agent_compiler.runtime.llm_client import OpenAILLMClient  # noqa: E402
-from agent_compiler.runtime.session_resolver import resolve_session  # noqa: E402
-from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict  # noqa: E402
+from engine.runtime.graph_builder import build_graph, fresh_state  # noqa: E402
+from engine.runtime.llm_client import OpenAILLMClient  # noqa: E402
+from engine.runtime.session_resolver import resolve_session  # noqa: E402
+from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict  # noqa: E402
 
 from compiled_agent_tui import (  # noqa: E402
     COMPILED_AGENTS_DIR,

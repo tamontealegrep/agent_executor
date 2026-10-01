@@ -10,7 +10,7 @@ script on its own. A source-only fix in agent_compiler's runtime/dsl code
 export happens -- found live (2026-09-21): a compiled-and-redeployed
 graph.json looked fixed, but the *engine* evaluating it was still running
 the pre-fix copy, silently. This has to run before any
-`from agent_compiler...` import in the calling script, since Python binds
+`from agent_engine...` import in the calling script, since Python binds
 a module once, at import time, to whichever file is on disk then.
 """
 

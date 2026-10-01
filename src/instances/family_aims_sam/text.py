@@ -21,7 +21,7 @@ phone once it's cleared to go live, no code change needed.
 
 import os
 
-from agents.helpers.ghl import default_ghl_client_config
+from instances.helpers.ghl import default_ghl_client_config
 from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_agent_router, load_phone_whitelist
 
 SLUG = "family_aims_sam_text"

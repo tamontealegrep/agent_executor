@@ -15,8 +15,8 @@ from langgraph.types import Command
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from agent_compiler.runtime.graph_builder import fresh_state
-from agent_compiler.runtime.session_resolver import resolve_session
+from engine.runtime.graph_builder import fresh_state
+from engine.runtime.session_resolver import resolve_session
 
 from compiled_runner.loader import load_compiled_agent, message_buffer, reload_compiled_agent
 
