@@ -1,12 +1,10 @@
 tool_contracts:
   - name: time_now
-    description: "Herramienta autorizada para obtener la fecha y hora actual en una zona horaria IANA dada. Debe llamarse cuando el flujo necesite una referencia temporal exacta para normalizar una fecha relativa o preparar una comparación dependiente del momento actual."
+    description: "Authorized tool to get current date/time; source of truth for [now]."
     notes:
-      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo necesite una fecha/hora actual exacta antes de derivar una fecha relativa o evaluar una regla dependiente del momento presente."
-      - "ABSOLUTE EXECUTION RULE: no asumas ni estimes la fecha actual por contexto de la conversación, ni reemplaces esta herramienta con la fecha implícita del modelo o razonamiento propio."
-      - "ARGUMENT RULE: timezone acepta un identificador IANA estándar. Si llega vacío, esta implementación usa 'UTC' por defecto; no fija Bogotá como constante."
-      - "SOURCE OF TRUTH RULE: captura el campo now y úsalo como única referencia temporal actual autorizada para esa zona horaria."
-      - "POST-EXECUTION RULE: si success es false, errors describe que la zona horaria no existe o no pudo resolverse; vuelve a capturar un identificador IANA válido antes de continuar."
+      - "MANDATORY EXECUTION: when flow needs an exact current reference."
+      - "ARGUMENTS: timezone = IANA id; default 'UTC' if empty."
+      - "SOURCE OF TRUTH: use [now] only; do not infer from context."
     inputs:
       - name: timezone
         required: false
@@ -26,15 +24,11 @@ tool_contracts:
         description: "Mensaje de error si la consulta falló. null en caso de éxito."
 
   - name: check_days_elapsed
-    description: "Herramienta autorizada para verificar si ya transcurrió un número configurable de días desde una fecha dada. Su resultado es la única fuente autorizada para decidir si ya pasó el umbral consultado."
+    description: "Checks if at least N days have elapsed since a date; source of truth for [elapsed]."
     notes:
-      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando ya cuentes con una fecha normalizada y necesites verificar si han transcurrido suficientes días desde ella."
-      - "ARGUMENT RULE: normaliza date a formato YYYY-MM-DD o YYYY/MM/DD antes de llamar. Convierte cualquier fecha hablada por el usuario a uno de esos formatos antes de ejecutar la herramienta."
-      - "ARGUMENT RULE: days es configurable en esta implementación. Debe ser un entero mayor que 0. Si el flujo necesita exactamente un año, envía 365 explícitamente."
-      - "ABSOLUTE EXECUTION RULE: está prohibido asumir o estimar si ya pasó el umbral sin haber ejecutado esta herramienta."
-      - "SOURCE OF TRUTH RULE: usa elapsed como booleano primitivo y único veredicto autorizado. days_elapsed es el conteo exacto de días calendario, útil como contexto adicional."
-      - "BUSINESS-ERROR RULE: entradas inválidas de negocio no tumban técnicamente la herramienta. En esos casos esta implementación devuelve success == true, elapsed == null y errors explicando el problema."
-      - "POST-EXECUTION RULE: si la fecha aún no puede normalizarse con confianza o el umbral no es válido, vuelve a capturar el dato antes de reintentar en lugar de improvisar un resultado."
+      - "MANDATORY EXECUTION: after having a normalized date, before inferring timing rules."
+      - "ARGUMENTS: date in YYYY-MM-DD or YYYY/MM/DD; days > 0."
+      - "SOURCE OF TRUTH: [elapsed] boolean; [days_elapsed] are supporting details."
     inputs:
       - name: date
         required: true
@@ -57,14 +51,11 @@ tool_contracts:
         description: "Mensaje de error si la fecha o el umbral no eran válidos, o null en caso de éxito."
 
   - name: calculate_bmi
-    description: "Herramienta autorizada para calcular el Índice de Masa Corporal (IMC/BMI). Debe llamarse inmediatamente después de contar con peso y altura válidos, y su resultado es la única fuente autorizada para continuar o no con la evaluación por rango de IMC."
+    description: "Authorized BMI calculator; source of truth for [bmi]."
     notes:
-      - "MANDATORY EXECUTION TRIGGER: ejecútala cuando cuentes con el peso en kg y la altura en cm de la persona."
-      - "ARGUMENT RULE: usa weight_kg en kilogramos y height_cm en centímetros. Si el usuario responde en libras o pies/pulgadas, conviértelos antes de llamar (1 lb = 0.453592 kg; 1 in = 2.54 cm) — no reemplaces la herramienta con un cálculo mental del IMC en sí."
-      - "SOURCE OF TRUTH RULE: usa bmi como único resultado autorizado. Guárdalo tal cual para reutilizarlo después; no lo redondees ni lo recalcules por tu cuenta."
-      - "ROUNDING RULE: esta implementación devuelve el BMI redondeado a 1 decimal con la convención del flujo original."
-      - "BUSINESS-ERROR RULE: si peso o altura son inválidos, faltan o son menores/iguales a 0, la herramienta devuelve success == true, bmi == null y errors explicando el problema."
-      - "POST-EXECUTION RULE: si la herramienta no devuelve un valor numérico en bmi, no avances a la siguiente pregunta hasta resolver la captura o la validación."
+      - "MANDATORY EXECUTION: once weight_kg and height_cm are captured."
+      - "ARGUMENTS: weight_kg (kg), height_cm (cm); convert lbs/ft before calling."
+      - "SOURCE OF TRUTH: [bmi]; do not recompute manually."
     inputs:
       - name: weight_kg
         required: true
@@ -84,8 +75,9 @@ tool_contracts:
         description: "Mensaje de error cuando weight_kg o height_cm no son válidos. null en caso de éxito."
 
   - name: input_payload
-    description: "Herramienta autorizada para recibir y registrar el payload de una página o proceso externo para inspección estructural."
+    description: "Authorized ingestion of external JSON payload for logging/inspection."
     notes:
+      - "ARGUMENTOS: payload = objeto JSON completo a registrar."
       - "MANDATORY EXECUTION TRIGGER: ejecútala cuando necesites capturar y guardar el contenido de un payload JSON recibido de una fuente externa para análisis posterior."
       - "SOURCE OF TRUTH RULE: usa success para confirmar que el payload se guardó correctamente en el servidor."
       - "STORAGE RULE: el servidor guarda el contenido en un archivo de registro para inspección manual."
@@ -105,8 +97,9 @@ tool_contracts:
         description: "Lista de llaves encontradas en el primer nivel del payload."
 
   - name: request_callback
-    description: "Herramienta autorizada para validar y normalizar una solicitud de llamada humana. No envía correos ni crea tareas; solo deja la solicitud lista para que otro paso del flujo la escale."
+    description: "Validates/normalizes a human-callback request; prepares data for escalation."
     notes:
+      - "ARGUMENTOS: contact_name obligatorio; al menos uno entre contact_phone|contact_email; reason ∈ {no_availability, booking_failed, user_requested, ambiguous_data, technical_error}; timezone IANA."
       - "MANDATORY EXECUTION TRIGGER: ejecútala cuando el flujo no puede resolver algo por sí solo, cuando el usuario pida explícitamente hablar con una persona, o cuando necesites dejar normalizada una solicitud de callback para un paso posterior."
       - "ARGUMENT RULE: contact_name siempre es obligatorio. De contact_phone y contact_email debes enviar al menos uno."
       - "ARGUMENT RULE: reason debe ser uno de estos 5 valores exactos: no_availability, booking_failed, user_requested, ambiguous_data, technical_error."
