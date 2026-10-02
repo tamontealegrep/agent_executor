@@ -37,26 +37,26 @@ def normalize_language(value: Any) -> Optional[str]:
     `customData.language`, or anywhere else) to this project's canonical
     2-letter code -- "es"/"en"/"pt", never anything else. Case- and
     accent-insensitive, and accepts locale-style codes (en-US, es_CO,
-    pt-BR -- only the primary subtag before "-"/"_" matters).
+    pt-BR -- only the primary subtag matters).
+
+    Guards against GHL placeholders (e.g. "[[contact.language]]") by
+    returning None for anything containing brackets, allowing a caller
+    to fall back to a different source (like the user's latest message).
 
     Two different "doesn't match" cases, deliberately not collapsed into
     one:
-    - No value at all (None/empty/whitespace) -> returns None. A caller
+    - No value at all (None/empty/placeholder) -> returns None. A caller
       with its own fallback (like opening.yaml's "if [contact.language]
       is missing, infer it from the user's latest message") needs to know
-      nothing was said, not silently get handed a default -- collapsing
-      this into DEFAULT_LANGUAGE would skip that inference for every
-      contact GHL has no language on file for, even ones actually writing
-      in Spanish or Portuguese.
+      nothing was said, not silently get handed a default.
     - A real value that just isn't one of the 3 supported languages (e.g.
-      French, German) -> returns DEFAULT_LANGUAGE ("en"). Here a language
-      *was* stated, there's nothing left to infer from, and defaulting
-      beats leaving the conversation with no language signal at all.
+      French, German) -> returns DEFAULT_LANGUAGE ("en").
     """
     text = normalize_text(value)
-    if not text:
+    if not text or "[" in text or "]" in text or "{{" in text:
         return None
-    primary = re.split(r"[-_]", text)[0]
+    # Split on any non-alphanumeric character (covers spaces, parens, dashes, etc.)
+    primary = re.split(r"[^a-z0-9]", text)[0]
     return _LANGUAGE_ALIASES.get(primary, DEFAULT_LANGUAGE)
 
 

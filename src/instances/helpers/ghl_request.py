@@ -73,9 +73,23 @@ class GhlAgentRequest(BaseModel):
         # "English"/"Ingles"/"EN"/"en" (y las mismas variantes para
         # español/português) -- cualquier cosa no reconocida queda en None,
         # no en un default adivinado.
-        contact_obj["language"] = normalize_language(
-            normalized.get("contact_language") or custom_data.get("language") or contact_obj.get("language")
-        )
+        #
+        # 2026-10-02: Se mejoró para ignorar placeholders de GHL ("[[...]]")
+        # y soportar los nuevos campos runtime_language e initial_language.
+        # Prioridad: runtime_language > initial_language
+        candidates = [
+            normalized.get("runtime_language"),
+            custom_data.get("initial_language"),
+            contact_obj.get("language"),
+        ]
+
+        lang_code = None
+        for candidate in candidates:
+            lang_code = normalize_language(candidate)
+            if lang_code:
+                break
+
+        contact_obj["language"] = lang_code
 
         normalized["contact"] = contact_obj
 
