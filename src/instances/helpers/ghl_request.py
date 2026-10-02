@@ -64,22 +64,8 @@ class GhlAgentRequest(BaseModel):
         contact_obj["name"] = normalized.get("full_name") or contact_obj.get("name") or custom_data.get("contact_full_name")
         contact_obj["email"] = normalized.get("email") or contact_obj.get("email") or custom_data.get("contact_email")
         contact_obj["phone"] = normalized.get("phone") or contact_obj.get("phone") or custom_data.get("contact_phone")
-        # Bug real encontrado (2026-09-29): contact.language nunca se llenaba
-        # acá, aunque opening.yaml's OP_INIT explícitamente hace
-        # "Infer [preferred_language] from {{contact.language}} first" -- esa
-        # referencia nunca tenía nada que leer, así que el agente siempre
-        # terminaba infiriendo el idioma del primer mensaje del usuario en
-        # vez de usar el dato que GHL ya manda. normalize_language acepta
-        # "English"/"Ingles"/"EN"/"en" (y las mismas variantes para
-        # español/português) -- cualquier cosa no reconocida queda en None,
-        # no en un default adivinado.
-        #
-        # 2026-10-02: Se mejoró para ignorar placeholders de GHL ("[[...]]")
-        # y soportar los nuevos campos runtime_language e initial_language.
-        # Prioridad: runtime_language > initial_language
         candidates = [
-            normalized.get("runtime_language"),
-            custom_data.get("initial_language"),
+            normalized.get("language"),
             contact_obj.get("language"),
         ]
 
