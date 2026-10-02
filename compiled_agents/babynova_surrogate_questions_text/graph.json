@@ -1056,9 +1056,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__surrogate_age] = [q__surrogate_age]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__surrogate_age",
@@ -1138,9 +1136,7 @@
         "node_id": "Q__SQ_ASK_CITY",
         "node_type": "question",
         "goal": [
-          "Capture city or municipality of residence.",
-          "Store the raw text in [q__city_raw].",
-          "Store it already normalized to one of: Bogotá, Soacha, Zipaquirá, Chía, Mosquera, Funza, Cajicá, Madrid, La Calera, Cota, Facatativá, Sibaté. Any other city -> Other."
+          "Capture city or municipality of residence and normalize it."
         ],
         "do": [],
         "trigger": [],
@@ -1150,8 +1146,7 @@
         "say_verbatim": true,
         "execute": null,
         "store": [
-          "[q__city_residence] = city normalized to the allowed list, or 'Other' if not on the list",
-          "[q__city_raw] = [q__city_raw]"
+          "[q__city_residence] = [q__city_residence] normalized to the allowed list: <ALLOWED_CITIES>. Any other city -> 'Other'"
         ],
         "capture": [
           [
@@ -1182,14 +1177,15 @@
           "Detect if the city input is suspicious or a potential typo."
         ],
         "do": [
-          "Check if [q__city_raw] looks like a typo of a city in <ALLOWED_CITIES> (e.g. 'socha', 'chia').",
-          "If it is a potential typo, set [q__city_suggestion] to the correct name (e.g. 'Soacha', 'Chía')."
+          "Check if [q__city_raw] looks like a typo of a city in <ALLOWED_CITIES> (e.g. 'socha', 'chia')."
         ],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
         "execute": null,
-        "store": [],
+        "store": [
+          "[q__city_suggestion] = correct name if [q__city_raw] is a potential typo of an allowed city, otherwise NULL"
+        ],
         "capture": [],
         "eval": "llm",
         "route": [
@@ -1231,9 +1227,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__city_confirm] = [q__city_confirm]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__city_confirm",
@@ -1298,14 +1292,13 @@
         "goal": [
           "Accept confirmed city."
         ],
-        "do": [
-          "Update [q__city_residence] to the canonical name if [q__city_raw] was a typo (using [q__city_suggestion]), otherwise keep it."
-        ],
+        "do": [],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [
+          "[q__city_residence] = [q__city_suggestion] if [q__city_suggestion] is NOT NULL, otherwise keep [q__city_residence]",
           "[q__city_confirm] = NULL",
           "[q__city_suggestion] = NULL"
         ],
@@ -1464,9 +1457,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__eps_status] = [q__eps_status]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__eps_status",
@@ -1555,9 +1546,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__children_count] = [q__children_count]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__children_count",
@@ -1648,9 +1637,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__last_birth_date] = [q__last_birth_date]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__last_birth_date",
@@ -1785,9 +1772,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__csections_count] = [q__csections_count]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__csections_count",
@@ -1876,9 +1861,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__abortos] = [q__abortos]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__abortos",
@@ -1967,9 +1950,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__pree] = [q__pree]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__pree",
@@ -2058,9 +2039,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__weight] = [q__weight]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__weight",
@@ -2149,9 +2128,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__height] = [q__height]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__height",
@@ -2337,7 +2314,7 @@
         "say_verbatim": true,
         "execute": null,
         "store": [
-          "[q__nationality] = ISO 3166-1 alpha-3 code in uppercase of the reported nationality"
+          "[q__nationality] = [q__nationality] normalized to ISO 3166-1 alpha-3 code in uppercase"
         ],
         "capture": [
           [
@@ -2436,9 +2413,7 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[q__has_cc] = [q__has_cc]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__has_cc",
@@ -2580,9 +2555,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__uses_drugs] = [q__uses_drugs]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__uses_drugs",
@@ -2999,9 +2972,7 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[q__appt] = [q__appt]"
-        ],
+        "store": [],
         "capture": [
           [
             "q__appt",

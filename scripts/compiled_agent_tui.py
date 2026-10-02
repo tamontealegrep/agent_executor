@@ -148,6 +148,35 @@ class ToolTrace:
     response_body: Any = None
 
 
+class TracingLLMClient:
+    """Wrapper for LLMClient that logs prompts and responses to the console."""
+
+    def __init__(self, real_client: Any) -> None:
+        self.real_client = real_client
+        self.enabled = False
+
+    def complete(self, prompt: str, *, temperature: float = 0.0) -> str:
+        if self.enabled:
+            console.print(Panel(prompt, title="LLM Prompt (complete)", border_style="blue"))
+        res = self.real_client.complete(prompt, temperature=temperature)
+        if self.enabled:
+            console.print(Panel(res, title="LLM Response", border_style="blue"))
+        return res
+
+    def extract_structured(self, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
+        if self.enabled:
+            console.print(Panel(prompt, title="LLM Prompt (extract_structured)", border_style="blue"))
+            console.print(
+                Panel(json.dumps(json_schema, indent=2, ensure_ascii=False), title="Schema", border_style="blue")
+            )
+        res = self.real_client.extract_structured(prompt, json_schema)
+        if self.enabled:
+            console.print(
+                Panel(json.dumps(res, indent=2, ensure_ascii=False), title="LLM Response (JSON)", border_style="blue")
+            )
+        return res
+
+
 @dataclass
 class CompiledSessionState:
     agent_slug: str
@@ -157,6 +186,9 @@ class CompiledSessionState:
     # "agent" (saliente/voz -- el agente habla primero, ej. family_aims_sam_*)
     # or "user" (entrante/texto -- el usuario escribe primero).
     first_speaker: str = "agent"
+    log_llm: bool = False
+    log_http: bool = False
+    initial_slots: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -176,6 +208,7 @@ class TracingClient(httpx.Client):
     def __init__(self, *args: Any, trace_sink: List[ToolTrace], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._trace_sink = trace_sink
+        self.enabled = False
         self._local_client = None
         try:
             # Intentamos usar TestClient para llamadas in-process si el servidor no está corriendo
@@ -187,6 +220,17 @@ class TracingClient(httpx.Client):
             pass
 
     def post(self, url: str, *args: Any, json: Any = None, **kwargs: Any) -> httpx.Response:  # noqa: A002
+        if self.enabled:
+            console.print(f"[dim]HTTP POST {url}[/dim]")
+            if json:
+                console.print(
+                    Panel(
+                        json.dumps(json, indent=2, ensure_ascii=False),
+                        title="HTTP Request Body",
+                        border_style="cyan",
+                    )
+                )
+
         if self._local_client and ("127.0.0.1" in url or "localhost" in url):
             try:
                 response = self._local_client.post(url, *args, json=json, **kwargs)
@@ -194,6 +238,19 @@ class TracingClient(httpx.Client):
                 response = super().post(url, *args, json=json, **kwargs)
         else:
             response = super().post(url, *args, json=json, **kwargs)
+
+        if self.enabled:
+            console.print(f"[dim]HTTP Response {response.status_code}[/dim]")
+            try:
+                console.print(
+                    Panel(
+                        json.dumps(response.json(), indent=2, ensure_ascii=False),
+                        title="HTTP Response Body",
+                        border_style="cyan",
+                    )
+                )
+            except Exception:
+                console.print(Panel(response.text, title="HTTP Response Body", border_style="cyan"))
 
         tool_name = url.rstrip("/").rsplit("/", 1)[-1]
         try:
@@ -260,7 +317,13 @@ class CompiledAgentHarness:
     """Un grafo LangGraph real, construido una sola vez por sesion de TUI,
     reusado turno a turno via el mismo thread_id."""
 
-    def __init__(self, agent_slug: str, contact: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        agent_slug: str,
+        contact: Optional[Dict[str, Any]] = None,
+        log_llm: bool = False,
+        log_http: bool = False,
+    ):
         self.agent_slug = agent_slug
         self.contact = contact or {}
         graph_path = COMPILED_AGENTS_DIR / agent_slug / "graph.json"
@@ -277,14 +340,18 @@ class CompiledAgentHarness:
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         checkpointer = SqliteSaver(conn)
 
-        tracing_client = TracingClient(trace_sink=self._trace_buffer)
-        llm_client = OpenAILLMClient()
+        self.tracing_http_client = TracingClient(trace_sink=self._trace_buffer)
+        self.tracing_http_client.enabled = log_http
+
+        real_llm_client = OpenAILLMClient()
+        self.tracing_llm_client = TracingLLMClient(real_llm_client)
+        self.tracing_llm_client.enabled = log_llm
 
         self.graph = build_graph(
             self.artifact,
-            llm_client,
+            self.tracing_llm_client,
             tools_base_url=_tools_base_url(agent_slug),
-            tool_http_client=tracing_client,
+            tool_http_client=self.tracing_http_client,
             checkpointer=checkpointer,
             say_callback=self._say_buffer.append,
         )
@@ -294,6 +361,7 @@ class CompiledAgentHarness:
         thread_id: str,
         first_speaker: str = "agent",
         opening_message: Optional[str] = None,
+        initial_slots: Optional[Dict[str, Any]] = None,
     ) -> ChatTurnResult:
         """Invoke the very first turn of a brand-new thread.
 
@@ -331,6 +399,9 @@ class CompiledAgentHarness:
                 contact=self.contact,
                 seed_history=[OUTBOUND_ANSWERED_SEED_LINE],
             )
+
+        if initial_slots:
+            state["slots"].update(initial_slots)
 
         result = self.graph.invoke(state, config)
         return self._finish(thread_id, result)
@@ -393,6 +464,9 @@ def _session_payload(state: CompiledSessionState) -> Dict[str, Any]:
         "thread_id": state.thread_id,
         "history": state.history,
         "first_speaker": state.first_speaker,
+        "log_llm": state.log_llm,
+        "log_http": state.log_http,
+        "initial_slots": state.initial_slots,
         "saved_at": _now_iso(),
     }
 
@@ -410,6 +484,9 @@ def load_session(session_file: Path) -> CompiledSessionState:
         history=data.get("history", []),
         last_traces=[],
         first_speaker=data.get("first_speaker", "agent"),
+        log_llm=data.get("log_llm", False),
+        log_http=data.get("log_http", False),
+        initial_slots=data.get("initial_slots", {}),
     )
 
 
@@ -491,6 +568,14 @@ def render_chat_header(state: CompiledSessionState, session_file: Path) -> None:
     console.print(f"thread_id={state.thread_id}")
     speaker_label = "el agente (saliente/voz)" if state.first_speaker == "agent" else "el usuario (entrante/texto)"
     console.print(f"Habla primero: {speaker_label}")
+
+    log_llm_status = "[green]ON[/green]" if state.log_llm else "[red]OFF[/red]"
+    log_http_status = "[green]ON[/green]" if state.log_http else "[red]OFF[/red]"
+    console.print(f"Logs: LLM={log_llm_status}, HTTP={log_http_status}")
+
+    if state.initial_slots:
+        console.print(f"Slots iniciales: {json.dumps(state.initial_slots, ensure_ascii=False)}")
+
     console.print("Comandos: /help  /history  /traces  /state  /save  /new  /back  /exit\n")
 
 
@@ -502,6 +587,8 @@ def render_chat_help() -> None:
     table.add_row("/history", "Muestra el historial actual")
     table.add_row("/traces", "Muestra las tool calls del ultimo turno")
     table.add_row("/state", "Muestra current_state y los slots capturados (estado real del grafo)")
+    table.add_row("/log-llm", "Prende/apaga el log de prompts y respuestas del LLM")
+    table.add_row("/log-http", "Prende/apaga el log de trafico HTTP (tool calls)")
     table.add_row("/save", "Guarda la sesion actual (el historial local -- el estado real ya esta persistido)")
     table.add_row("/new", "Empieza una conversacion nueva (thread_id nuevo)")
     table.add_row("/back", "Guarda y vuelve al selector de agentes")
@@ -522,6 +609,18 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
         return True
     if command == "/state":
         render_state(harness, state)
+        return True
+    if command == "/log-llm":
+        state.log_llm = not state.log_llm
+        harness.tracing_llm_client.enabled = state.log_llm
+        status = "encendido" if state.log_llm else "apagado"
+        console.print(f"[cyan]Log de LLM {status}[/cyan]")
+        return True
+    if command == "/log-http":
+        state.log_http = not state.log_http
+        harness.tracing_http_client.enabled = state.log_http
+        status = "encendido" if state.log_http else "apagado"
+        console.print(f"[cyan]Log de trafico HTTP {status}[/cyan]")
         return True
     if command == "/save":
         save_session(state, session_file)
@@ -563,7 +662,12 @@ def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, s
         state.history.append(_history_entry("inbound", opening_message))
 
     try:
-        result = harness.start(state.thread_id, state.first_speaker, opening_message)
+        result = harness.start(
+            state.thread_id,
+            state.first_speaker,
+            opening_message,
+            initial_slots=state.initial_slots,
+        )
     except Exception as exc:
         console.print(Panel.fit(str(exc), title="Error", border_style="red"))
         return
@@ -579,7 +683,12 @@ def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, s
 
 
 def chat_loop(state: CompiledSessionState, session_file: Path, contact: Optional[Dict[str, Any]] = None) -> None:
-    harness = CompiledAgentHarness(state.agent_slug, contact=contact)
+    harness = CompiledAgentHarness(
+        state.agent_slug,
+        contact=contact,
+        log_llm=state.log_llm,
+        log_http=state.log_http,
+    )
     render_chat_header(state, session_file)
     render_chat_help()
     console.print()
@@ -651,7 +760,23 @@ def run_launcher(args: argparse.Namespace) -> int:
                 return 1
 
             session_file = resolve_session_file(agent_slug, args.session_file)
-            state = load_session(session_file) if session_file.exists() else _new_state(agent_slug)
+            if session_file.exists():
+                state = load_session(session_file)
+            else:
+                state = _new_state(agent_slug)
+                if args.initial_slots:
+                    try:
+                        state.initial_slots = json.loads(args.initial_slots)
+                    except json.JSONDecodeError as e:
+                        console.print(f"[red]Error parseando --initial-slots: {e}[/red]")
+                        return 1
+
+            # Los flags de log de la linea de comandos sobreescriben si se pasan
+            if args.log_llm:
+                state.log_llm = True
+            if args.log_http:
+                state.log_http = True
+
             chat_loop(state, session_file, contact=_contact_from_args(args))
         except ReturnToLauncher:
             args.agent = None  # volver siempre al selector, no repetir el mismo agente en --agent directo
@@ -679,6 +804,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--agent", help="Slug del agente a abrir directo (ver --list). Si se omite, muestra el selector.")
     parser.add_argument("--session-file", help="Ruta del JSON de sesion a retomar/guardar")
     parser.add_argument("--list", action="store_true", help="Lista los agentes compilados disponibles y sale")
+    parser.add_argument(
+        "--initial-slots", help="JSON string con slots iniciales (ej. '{\"name\": \"Tomas\"}')"
+    )
+    parser.add_argument(
+        "--log-llm", action="store_true", help="Habilita el log de LLM (prompts/respuestas) por defecto"
+    )
+    parser.add_argument(
+        "--log-http", action="store_true", help="Habilita el log de trafico HTTP (tool calls) por defecto"
+    )
     parser.add_argument(
         "--contact-name", help="Simula un contacto ya conocido por el CRM -- nombre (resuelve {{contact.name}})."
     )
