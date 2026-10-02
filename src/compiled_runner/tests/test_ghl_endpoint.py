@@ -63,6 +63,7 @@ def _build_router(
     debounce_seconds=0.05,
     allowed_phones=frozenset({"+573215616921"}),
     enforce_phone_whitelist=True,
+    redirect_widget_to_whatsapp=False,
 ):
     upserts = []
     replies = []
@@ -96,6 +97,7 @@ def _build_router(
         debounce_seconds=debounce_seconds,
         enforce_phone_whitelist=enforce_phone_whitelist,
         ghl_client_config=lambda: object(),
+        redirect_widget_to_whatsapp=redirect_widget_to_whatsapp,
     )
     router = build_compiled_agent_router(cfg)
     app = FastAPI()
@@ -382,13 +384,13 @@ def test_run_closing_sweep_once_sends_and_marks_each_candidate(monkeypatch):
         return {}
 
     monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", marked.append)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: marked.append(args))
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
 
     count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
 
     assert count == 2
-    assert marked == ["t1", "t2"]
+    assert marked == [("test_agent", "l1", "c1"), ("test_agent", "l1", "c2")]
     assert sent[0]["contact_id"] == "c1"
     assert sent[0]["message"].startswith("Gracias")  # es
     assert sent[1]["contact_id"] == "c2"
@@ -408,13 +410,13 @@ def test_run_closing_sweep_once_keeps_going_after_one_candidate_fails(monkeypatc
         return {}
 
     monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", marked.append)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: marked.append(args))
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
 
     count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
 
     assert count == 1  # only t2 succeeded
-    assert marked == ["t2"]  # t1's failure must not be marked sent -- it should be retried next sweep
+    assert marked == [("test_agent", "l1", "c2")]  # t1's failure must not be marked sent -- it should be retried next sweep
 
 
 def test_run_closing_sweep_once_passes_lookback_days_and_slug_through(monkeypatch):
@@ -467,7 +469,7 @@ def test_widget_message_is_responded_to_via_whatsapp(monkeypatch):
     to WHATSAPP.
     """
     graph = FakeGraph()
-    app, _, replies = _build_router(monkeypatch, graph, debounce_seconds=0.01)
+    app, _, replies = _build_router(monkeypatch, graph, debounce_seconds=0.01, redirect_widget_to_whatsapp=True)
 
     payload = _payload(message="Hola desde el widget")
     payload["message"]["type"] = 5  # LIVE_CHAT
@@ -495,10 +497,10 @@ def test_closing_message_for_widget_is_sent_via_whatsapp(monkeypatch):
     sent: list[dict] = []
 
     monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda tid: None)
+    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: None)
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", lambda **kw: (sent.append(kw), {})[1])
 
-    asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
+    asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg(redirect_widget_to_whatsapp=True)))
 
     assert len(sent) == 1
     assert sent[0]["channel"] == "WHATSAPP"

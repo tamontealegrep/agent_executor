@@ -75,6 +75,10 @@ class CompiledAgentGhlConfig:
     default entirely -- deliberately generic ("puede ser de cualquiera"),
     since the sweep's only job is to get *something* out before Meta's 24h
     window closes, not to carry flow-specific content."""
+    redirect_widget_to_whatsapp: bool = True
+    """(2026-10-02, pedido directamente) If True, an inbound message from
+    the widget (LIVE_CHAT) is responded to via WhatsApp instead. Enabled
+    by default; el widget solo se usa para el primer contacto."""
 
 
 _DEFAULT_CLOSING_MESSAGES: dict[str, str] = {
@@ -209,10 +213,10 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
     for row in candidates:
         thread_id = row["thread_id"]
         try:
-            # If conversation was widget (LIVE_CHAT), send closing message via WhatsApp
-            # (2026-09-30, pedido directamente)
+            # If conversation was widget (LIVE_CHAT) and the agent is configured
+            # to redirect, send closing message via WhatsApp (2026-09-30)
             reply_channel = row.get("channel")
-            if reply_channel == "LIVE_CHAT":
+            if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
                 reply_channel = "WHATSAPP"
 
             await send_ghl_message_async(
@@ -392,10 +396,10 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
 
             reply_text = "\n\n".join(buffer).strip()
             if reply_text:
-                # If message came from widget (LIVE_CHAT), respond via WhatsApp
-                # (2026-09-30, pedido directamente)
+                # If message came from widget (LIVE_CHAT) and the agent is
+                # configured to redirect, respond via WhatsApp (2026-09-30)
                 reply_channel = request.channel
-                if reply_channel == "LIVE_CHAT":
+                if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
                     logger.info(
                         "[%s] Inbound channel was widget (LIVE_CHAT), redirecting reply to WHATSAPP.", execution_id
                     )
