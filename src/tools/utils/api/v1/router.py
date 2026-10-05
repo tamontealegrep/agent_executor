@@ -7,7 +7,8 @@ from tools.utils.api.v1.endpoints import (
     echo,
     health,
     time_now,
-    input_payload
+    input_payload,
+    update_custom_field
 )
 
 api_router = APIRouter()
@@ -16,6 +17,7 @@ api_router.include_router(check_days_elapsed.router, tags=["check_days_elapsed"]
 api_router.include_router(calculate_bmi.router, tags=["calculate_bmi"])
 api_router.include_router(callback_request.router, tags=["callback_request"])
 api_router.include_router(input_payload.router, tags=["input_payload"])
+api_router.include_router(update_custom_field.router, tags=["update_custom_field"])
 api_router.include_router(echo.router, tags=["echo"])
 api_router.include_router(health.router, tags=["health"])
 
