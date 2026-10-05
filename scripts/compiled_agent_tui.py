@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import os
+import re
 
 import httpx
 import questionary
@@ -189,6 +191,7 @@ class CompiledSessionState:
     log_llm: bool = False
     log_http: bool = False
     initial_slots: Dict[str, Any] = field(default_factory=dict)
+    contact: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -327,7 +330,10 @@ class CompiledAgentHarness:
         self.agent_slug = agent_slug
         self.contact = contact or {}
         graph_path = COMPILED_AGENTS_DIR / agent_slug / "graph.json"
-        self.artifact: RuntimeArtifact = runtime_artifact_from_dict(json.loads(graph_path.read_text(encoding="utf-8")))
+        # Guarda tanto el artifact cargado como el JSON crudo para inspecciones
+        artifact_json = json.loads(graph_path.read_text(encoding="utf-8"))
+        self.artifact: RuntimeArtifact = runtime_artifact_from_dict(artifact_json)
+        self._artifact_dict: Dict[str, Any] = artifact_json
 
         self._say_buffer: List[str] = []
         self._trace_buffer: List[ToolTrace] = []
@@ -355,6 +361,109 @@ class CompiledAgentHarness:
             checkpointer=checkpointer,
             say_callback=self._say_buffer.append,
         )
+
+    # --- Descubrimiento de posibles nombres de slots en el grafo ---
+    def discover_slot_names(self) -> List[str]:
+        """Inspecciona el artifact para sugerir nombres de slots editables.
+
+        - Toma todos los nombres de `capture`.
+        - Extrae identificadores entre corchetes de las líneas `store`.
+        - Incluye los que ya existen en el snapshot actual y en `initial_slots`.
+        - Excluye constantes compiladas (`artifact.constants`).
+        """
+        names: set[str] = set()
+        # 1) Desde nodos del grafo principal
+        for node in getattr(self.artifact.graph, "nodes", []) or []:
+            for cap in getattr(node, "capture", []) or []:
+                try:
+                    names.add(str(cap[0]))
+                except Exception:
+                    pass
+            for line in getattr(node, "store", []) or []:
+                for m in re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)\]", line):
+                    names.add(m)
+        # 2) Desde handlers del global router (si existieran capturas/almacenamientos)
+        for handler in getattr(self.artifact.global_router, "handlers", []) or []:
+            for cap in getattr(handler, "capture", []) or []:
+                try:
+                    names.add(str(cap[0]))
+                except Exception:
+                    pass
+            for line in getattr(handler, "store", []) or []:
+                for m in re.findall(r"\[([A-Za-z_][A-Za-z0-9_]*)\]", line):
+                    names.add(m)
+        # 3) Quita constantes compiladas (no se deben sobreescribir)
+        for const_name in getattr(self.artifact, "constants", {}).keys():
+            names.discard(const_name)
+        return sorted(names)
+
+    def discover_contact_fields(self) -> List[str]:
+        """Intenta descubrir variables `contact.*` para este agente.
+
+        Estrategia:
+          1) Leer agents/definitions/<slug>/input_variables.yaml si existe y
+             extraer los nombres que comienzan por 'contact.'.
+          2) Si no existe o falla el parseo, buscar patrones '{{contact.X}}' en
+             los textos del grafo (say/goal/do/trigger/route/fallback).
+        """
+        fields: set[str] = set()
+        # 1) input_variables.yaml
+        try:
+            import yaml  # type: ignore
+            defs_dir = PROJECT_ROOT / "agents" / "definitions" / self.agent_slug
+            iv_path = defs_dir / "input_variables.yaml"
+            if iv_path.exists():
+                data = yaml.safe_load(iv_path.read_text(encoding="utf-8")) or {}
+                for item in data.get("input_variables", []) or []:
+                    name = str(item.get("name", ""))
+                    if name.startswith("contact."):
+                        fields.add(name.split(".", 1)[1])  # guarda solo la parte despues de 'contact.'
+        except Exception:
+            pass
+
+        # 2) Fallback: escanear strings del artifact
+        if not fields:
+            def _collect_strings(obj: Any):
+                if isinstance(obj, str):
+                    yield obj
+                elif isinstance(obj, list):
+                    for it in obj:
+                        yield from _collect_strings(it)
+                elif isinstance(obj, dict):
+                    for v in obj.values():
+                        yield from _collect_strings(v)
+
+            pattern = re.compile(r"\{\{\s*contact\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
+            for s in _collect_strings(self._artifact_dict):
+                for m in pattern.findall(s):
+                    fields.add(m)
+
+        # Contact conocido via CLI flags
+        known_cli = {"name", "email", "phone", "language"}
+        fields.update(known_cli)
+        return sorted(fields)
+
+    def discover_input_variables(self) -> List[Dict[str, str]]:
+        """Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
+        [{"name": str, "description": str}] de las variables de entrada declaradas.
+        """
+        results: list[dict[str, str]] = []
+        try:
+            import yaml  # type: ignore
+            defs_dir = PROJECT_ROOT / "agents" / "definitions" / self.agent_slug
+            iv_path = defs_dir / "input_variables.yaml"
+            if not iv_path.exists():
+                return results
+            data = yaml.safe_load(iv_path.read_text(encoding="utf-8")) or {}
+            for item in data.get("input_variables", []) or []:
+                name = str(item.get("name", "")).strip()
+                desc = str(item.get("description", "")).strip()
+                if name:
+                    results.append({"name": name, "description": desc})
+        except Exception:
+            # Si hay error de YAML, devolvemos lista vacia silenciosamente
+            return []
+        return results
 
     def start(
         self,
@@ -467,6 +576,7 @@ def _session_payload(state: CompiledSessionState) -> Dict[str, Any]:
         "log_llm": state.log_llm,
         "log_http": state.log_http,
         "initial_slots": state.initial_slots,
+        "contact": state.contact,
         "saved_at": _now_iso(),
     }
 
@@ -487,6 +597,7 @@ def load_session(session_file: Path) -> CompiledSessionState:
         log_llm=data.get("log_llm", False),
         log_http=data.get("log_http", False),
         initial_slots=data.get("initial_slots", {}),
+        contact=data.get("contact", {}),
     )
 
 
@@ -575,6 +686,8 @@ def render_chat_header(state: CompiledSessionState, session_file: Path) -> None:
 
     if state.initial_slots:
         console.print(f"Slots iniciales: {json.dumps(state.initial_slots, ensure_ascii=False)}")
+    if state.contact:
+        console.print(f"Contacto: {json.dumps(state.contact, ensure_ascii=False)}")
 
     console.print("Comandos: /help  /history  /traces  /state  /save  /new  /back  /exit\n")
 
@@ -587,6 +700,14 @@ def render_chat_help() -> None:
     table.add_row("/history", "Muestra el historial actual")
     table.add_row("/traces", "Muestra las tool calls del ultimo turno")
     table.add_row("/state", "Muestra current_state y los slots capturados (estado real del grafo)")
+    table.add_row("/slots", "Muestra los slots actuales (runtime) y los iniciales configurados")
+    table.add_row("/slots-edit", "Asistente interactivo para agregar/editar slots iniciales")
+    table.add_row("/slots-clear", "Limpia todos los slots iniciales configurados en esta sesion")
+    table.add_row("/contact", "Muestra los datos de contacto actuales para esta sesion")
+    table.add_row("/contact-edit", "Asistente interactivo para editar datos de contacto (contact.*)")
+    table.add_row("/contact-clear", "Limpia los datos de contacto configurados en esta sesion")
+    table.add_row("/input", "Lista variables de entrada del agente (input_variables.yaml) y sus valores actuales")
+    table.add_row("/input-edit", "Asistente interactivo para editar variables de entrada (contact.* y otras)")
     table.add_row("/log-llm", "Prende/apaga el log de prompts y respuestas del LLM")
     table.add_row("/log-http", "Prende/apaga el log de trafico HTTP (tool calls)")
     table.add_row("/save", "Guarda la sesion actual (el historial local -- el estado real ya esta persistido)")
@@ -594,6 +715,302 @@ def render_chat_help() -> None:
     table.add_row("/back", "Guarda y vuelve al selector de agentes")
     table.add_row("/exit", "Guarda y cierra el script")
     console.print(table)
+
+
+def _parse_slot_input(raw: str) -> Any:
+    """Intenta parsear el valor ingresado como JSON; si falla, usa texto.
+
+    Reglas:
+      - Cadena vacía -> None (null)
+      - Si `json.loads` funciona -> valor tipado
+      - Si no -> string tal como se ingresó
+    """
+    if raw.strip() == "":
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:
+        return raw
+
+
+def _show_slots(harness: CompiledAgentHarness, state: CompiledSessionState) -> None:
+    snapshot = harness.state_snapshot(state.thread_id)
+    runtime_slots = snapshot.get("slots", {}) if snapshot else {}
+    console.print("[bold cyan]Slots (runtime actual):[/bold cyan]")
+    if runtime_slots:
+        console.print_json(data=runtime_slots)
+    else:
+        console.print("[dim]Sin slots en runtime (el hilo puede no haber iniciado).[/dim]")
+    console.print("\n[bold cyan]Slots iniciales configurados para este hilo:[/bold cyan]")
+    if state.initial_slots:
+        console.print_json(data=state.initial_slots)
+    else:
+        console.print("[dim]Ninguno (se pueden agregar con /slots-edit).[/dim]")
+
+
+def _show_contact(state: CompiledSessionState) -> None:
+    console.print("[bold cyan]Contacto (contact.*) para esta sesion:[/bold cyan]")
+    if state.contact:
+        console.print_json(data=state.contact)
+    else:
+        console.print("[dim]Ninguno (se pueden agregar con /contact-edit).[/dim]")
+
+
+def _edit_contact_interactive(harness: CompiledAgentHarness, state: CompiledSessionState, session_file: Path) -> None:
+    discovered = set(harness.discover_contact_fields())
+    while True:
+        # Construir lista de campos mostrando valor actual
+        all_fields = sorted(discovered.union(state.contact.keys()))
+        choices = []
+        for key in all_fields:
+            cur = state.contact.get(key)
+            label = f"contact.{key} (actual: {cur!r})" if key in state.contact else f"contact.{key} (sin valor)"
+            choices.append(questionary.Choice(label, value=("field", key)))
+        choices.append(questionary.Choice("Agregar campo nuevo…", value=("add-new", None)))
+        choices.append(questionary.Choice("Terminar", value=("done", None)))
+
+        sel = questionary.select(
+            "Selecciona un campo de contacto:",
+            choices=choices,
+            style=STYLE,
+        ).ask()
+        if not sel:
+            break
+        kind, key = sel
+        if kind == "done":
+            break
+        if kind == "add-new":
+            remaining = sorted(discovered.difference(state.contact.keys()))
+            add_choices = [
+                *(questionary.Choice(f"contact.{k}", value=k) for k in remaining),
+                questionary.Choice("Escribir nombre personalizado…", value="__custom__"),
+                questionary.Choice("Cancelar", value=None),
+            ]
+            key = questionary.select(
+                "Elige el campo a agregar:",
+                choices=add_choices,
+                style=STYLE,
+            ).ask()
+            if not key:
+                continue
+            if key == "__custom__":
+                key = questionary.text(
+                    "Nombre del campo (solo la parte despues de contact.):",
+                    style=STYLE,
+                ).ask()
+                if not key:
+                    continue
+                discovered.add(key)
+
+        # Acciones sobre el campo seleccionado
+        action = questionary.select(
+            f"contact.{key} — elige una accion:",
+            choices=[
+                questionary.Choice("Editar valor", value="edit"),
+                questionary.Choice("Vaciar / eliminar", value="clear"),
+                questionary.Choice("Cancelar", value="cancel"),
+            ],
+            style=STYLE,
+        ).ask()
+        if action in (None, "cancel"):
+            continue
+        if action == "clear":
+            state.contact.pop(key, None)
+            console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
+            save_session(state, session_file)
+            continue
+        if action == "edit":
+            if key == "language":
+                lang = questionary.select(
+                    "Elige idioma (es/en/pt) o 'Vaciar':",
+                    choices=[
+                        questionary.Choice("es", value="es"),
+                        questionary.Choice("en", value="en"),
+                        questionary.Choice("pt", value="pt"),
+                        questionary.Choice("Vaciar", value=None),
+                    ],
+                    style=STYLE,
+                ).ask()
+                if lang is None:
+                    state.contact.pop(key, None)
+                    console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
+                else:
+                    state.contact[key] = lang
+                    console.print(f"[cyan]Campo actualizado:[/cyan] contact.{key} = {lang!r}")
+                save_session(state, session_file)
+                continue
+
+            # Otros campos: ofrecer elegir entre escribir o vaciar
+            mode = questionary.select(
+                f"contact.{key} — como quieres actualizar?",
+                choices=[
+                    questionary.Choice("Escribir nuevo valor…", value="write"),
+                    questionary.Choice("Vaciar (dejar sin valor)", value="clear"),
+                    questionary.Choice("Cancelar", value="cancel"),
+                ],
+                style=STYLE,
+            ).ask()
+            if mode == "clear":
+                state.contact.pop(key, None)
+                console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
+                save_session(state, session_file)
+                continue
+            if mode == "write":
+                current = state.contact.get(key)
+                val_raw = questionary.text(
+                    "Valor (texto):",
+                    default=str(current) if current is not None else "",
+                    style=STYLE,
+                ).ask()
+                if val_raw is None:
+                    continue
+                if val_raw.strip() == "":
+                    state.contact.pop(key, None)
+                    console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
+                else:
+                    state.contact[key] = val_raw
+                    console.print(f"[cyan]Campo actualizado:[/cyan] contact.{key} = {val_raw!r}")
+                save_session(state, session_file)
+                continue
+
+    # Persistimos al salir
+    save_session(state, session_file)
+
+
+def _show_input_vars(harness: CompiledAgentHarness, state: CompiledSessionState) -> None:
+    ivs = harness.discover_input_variables()
+    if not ivs:
+        console.print("[yellow]Este agente no declara input_variables.yaml o no tiene variables de entrada.[/yellow]")
+        return
+    table = Table(title="Variables de entrada (input_variables.yaml)")
+    table.add_column("Variable", style="cyan", no_wrap=True)
+    table.add_column("Valor actual")
+    table.add_column("Descripcion", style="dim")
+    for item in ivs:
+        name = item.get("name", "")
+        desc = item.get("description", "")
+        current = None
+        if name.startswith("contact."):
+            key = name.split(".", 1)[1]
+            current = state.contact.get(key)
+        else:
+            # Para variables no-contact, las mostramos desde initial_slots si existen
+            current = state.initial_slots.get(name)
+        val = json.dumps(current, ensure_ascii=False) if not isinstance(current, str) else current
+        table.add_row(name, str(val) if val is not None else "(sin valor)", desc)
+    console.print(table)
+
+
+def _edit_input_vars_interactive(harness: CompiledAgentHarness, state: CompiledSessionState, session_file: Path) -> None:
+    ivs = harness.discover_input_variables()
+    contact_names = [it["name"] for it in ivs if it.get("name", "").startswith("contact.")]
+    other_names = [it["name"] for it in ivs if it.get("name", "") and not it["name"].startswith("contact.")]
+
+    while True:
+        choice = questionary.select(
+            "Variables de entrada — que quieres editar?",
+            choices=[
+                questionary.Choice("contact.* (datos de contacto)", value="contact"),
+                questionary.Choice("Otras variables (se aplican como slots iniciales)", value="other"),
+                questionary.Choice("Terminar", value="done"),
+            ],
+            style=STYLE,
+        ).ask()
+        if choice in (None, "done"):
+            break
+        if choice == "contact":
+            _edit_contact_interactive(harness, state, session_file)
+        elif choice == "other":
+            _edit_slots_interactive(harness, state, session_file, extra_candidates=other_names)
+
+
+def _edit_slots_interactive(
+    harness: CompiledAgentHarness,
+    state: CompiledSessionState,
+    session_file: Path,
+    extra_candidates: Optional[List[str]] = None,
+) -> None:
+    """Editor interactivo de slots iniciales.
+
+    Permite agregar/quitar/editar pares clave/valor. Los valores aceptan JSON
+    (true/false, numeros, objetos, arreglos) o texto plano. Enter vacio -> null.
+    """
+    # Base de candidatos desde el artifact + runtime + configurados
+    candidates = set(harness.discover_slot_names())
+    if extra_candidates:
+        candidates.update(extra_candidates)
+    snapshot = harness.state_snapshot(state.thread_id) or {}
+    candidates.update((snapshot.get("slots") or {}).keys())
+    candidates.update(state.initial_slots.keys())
+    candidates = sorted(candidates)
+
+    while True:
+        choice = questionary.select(
+            "Slots iniciales — que quieres hacer?",
+            choices=[
+                questionary.Choice("Agregar/editar un slot", value="set"),
+                questionary.Choice("Eliminar un slot", value="del"),
+                questionary.Choice("Terminar", value="done"),
+            ],
+            style=STYLE,
+        ).ask()
+        if choice in (None, "done"):
+            break
+
+        if choice == "set":
+            key = questionary.autocomplete(
+                "Nombre del slot (puedes escribir uno nuevo):",
+                choices=candidates,
+                style=STYLE,
+            ).ask()
+            if not key:
+                continue
+            current = state.initial_slots.get(key)
+            default_text = json.dumps(current, ensure_ascii=False) if current is not None else ""
+            val_raw = questionary.text(
+                "Valor (JSON o texto; vacío= null):",
+                default=default_text,
+                style=STYLE,
+            ).ask()
+            value = _parse_slot_input(val_raw if val_raw is not None else "")
+            state.initial_slots[key] = value
+            if key not in candidates:
+                candidates.append(key)
+                candidates.sort()
+            console.print(f"[cyan]Slot actualizado:[/cyan] {key} = {value!r}")
+
+        elif choice == "del":
+            if not state.initial_slots:
+                console.print("[yellow]No hay slots iniciales para eliminar.[/yellow]")
+                continue
+            key = questionary.select(
+                "Elige el slot a eliminar:",
+                choices=sorted(state.initial_slots.keys()),
+                style=STYLE,
+            ).ask()
+            if not key:
+                continue
+            state.initial_slots.pop(key, None)
+            console.print(f"[cyan]Slot eliminado:[/cyan] {key}")
+
+    # Persistimos cambios de la sesion TUI
+    save_session(state, session_file)
+
+    # Si el hilo ya corrio, ofrecer reiniciar para aplicar los nuevos iniciales
+    already_started = bool(snapshot)
+    if already_started:
+        wants_restart = questionary.confirm(
+            "La conversacion ya inició. ¿Reiniciar ahora (/new) para aplicar los slots iniciales?",
+            default=False,
+            style=STYLE,
+        ).ask()
+        if wants_restart:
+            fresh = _new_state(state.agent_slug)
+            state.thread_id = fresh.thread_id
+            state.history = []
+            state.last_traces = []
+            console.print(f"[cyan]Conversacion nueva. thread_id={state.thread_id}[/cyan]")
+            run_first_turn(harness, state, session_file)
 
 
 def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file: Path, harness: CompiledAgentHarness) -> bool:
@@ -609,6 +1026,34 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
         return True
     if command == "/state":
         render_state(harness, state)
+        return True
+    if command == "/slots":
+        _show_slots(harness, state)
+        return True
+    if command == "/slots-edit":
+        _edit_slots_interactive(harness, state, session_file)
+        return True
+    if command == "/slots-clear":
+        state.initial_slots = {}
+        save_session(state, session_file)
+        console.print("[cyan]Slots iniciales limpiados para este hilo.[/cyan]")
+        return True
+    if command == "/contact":
+        _show_contact(state)
+        return True
+    if command == "/contact-edit":
+        _edit_contact_interactive(harness, state, session_file)
+        return True
+    if command == "/contact-clear":
+        state.contact = {}
+        save_session(state, session_file)
+        console.print("[cyan]Datos de contacto limpiados para esta sesion.[/cyan]")
+        return True
+    if command == "/input":
+        _show_input_vars(harness, state)
+        return True
+    if command == "/input-edit":
+        _edit_input_vars_interactive(harness, state, session_file)
         return True
     if command == "/log-llm":
         state.log_llm = not state.log_llm
@@ -655,11 +1100,58 @@ def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, s
     state.first_speaker = ask_first_speaker()
     render_chat_header(state, session_file)
 
+    # Ofrecer configurar contacto (contact.*) primero si no hay ninguno
+    try:
+        contact_fields = harness.discover_contact_fields()
+    except Exception:
+        contact_fields = []
+    if contact_fields and not state.contact:
+        wants_contact = questionary.confirm(
+            f"Detecte {len(contact_fields)} posibles campos de contacto. ¿Quieres configurarlos ahora?",
+            default=False,
+            style=STYLE,
+        ).ask()
+        if wants_contact:
+            _edit_contact_interactive(harness, state, session_file)
+            render_chat_header(state, session_file)
+
+    # Luego ofrecer configurar slots iniciales si hay candidatos y no hay slots definidos
+    try:
+        candidates = harness.discover_slot_names()
+    except Exception:
+        candidates = []
+    if candidates and not state.initial_slots:
+        wants_slots = questionary.confirm(
+            f"Detecte {len(candidates)} posibles slots del grafo. ¿Quieres configurarlos ahora?",
+            default=False,
+            style=STYLE,
+        ).ask()
+        if wants_slots:
+            _edit_slots_interactive(harness, state, session_file)
+            render_chat_header(state, session_file)
+
     opening_message: Optional[str] = None
     if state.first_speaker == "user":
-        opening_message = console.input("\n[bold green]Primer mensaje (usuario)> [/bold green]").strip()
-        console.print(Panel.fit(opening_message, title="User", border_style="green"))
-        state.history.append(_history_entry("inbound", opening_message))
+        # Permite ejecutar comandos antes del primer turno real
+        while True:
+            opening_message = console.input("\n[bold green]Primer mensaje (usuario)> [/bold green]").strip()
+            if not opening_message:
+                continue
+            if opening_message.startswith("/"):
+                # Trata como comando en vez de mensaje al agente
+                try:
+                    handled = handle_chat_command(opening_message, state, session_file, harness)
+                except (ExitLauncher, ReturnToLauncher):
+                    # Propaga para manejo superior (/back, /exit)
+                    raise
+                if handled:
+                    # Re-render cabecera por si algo cambio (p.ej. slots)
+                    render_chat_header(state, session_file)
+                    continue
+            # Mensaje real del usuario para iniciar el flujo
+            console.print(Panel.fit(opening_message, title="User", border_style="green"))
+            state.history.append(_history_entry("inbound", opening_message))
+            break
 
     try:
         result = harness.start(
@@ -685,7 +1177,7 @@ def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, s
 def chat_loop(state: CompiledSessionState, session_file: Path, contact: Optional[Dict[str, Any]] = None) -> None:
     harness = CompiledAgentHarness(
         state.agent_slug,
-        contact=contact,
+        contact={**(contact or {}), **(state.contact or {})},
         log_llm=state.log_llm,
         log_http=state.log_http,
     )
