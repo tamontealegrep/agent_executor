@@ -64,6 +64,13 @@ class GhlAgentRequest(BaseModel):
         contact_obj["name"] = normalized.get("full_name") or contact_obj.get("name") or custom_data.get("contact_full_name")
         contact_obj["email"] = normalized.get("email") or contact_obj.get("email") or custom_data.get("contact_email")
         contact_obj["phone"] = normalized.get("phone") or contact_obj.get("phone") or custom_data.get("contact_phone")
+        # Propagate canonical IDs into the contact object so compiled agents can
+        # reference them as `[contact.contact_id]` / `[contact.location_id]` in DO lines
+        # without requiring them as separate input variables (2026-10-02).
+        if normalized.get("contactId"):
+            contact_obj["contact_id"] = normalized.get("contactId")
+        if normalized.get("locationId"):
+            contact_obj["location_id"] = normalized.get("locationId")
         candidates = [
             normalized.get("language"),
             contact_obj.get("language"),
