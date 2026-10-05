@@ -5480,6 +5480,307 @@
         "fallback": []
       },
       {
+        "node_id": "LM__LM_S",
+        "node_type": "start",
+        "goal": [
+          "Enter language management."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_INIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "LM__LM_INIT",
+        "node_type": "registration",
+        "goal": [
+          "Reset language selection counters and infer current preference."
+        ],
+        "do": [
+          "[lm__lang_try] = 0"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_ASK_LANG",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "LM__LM_ASK_LANG",
+        "node_type": "question",
+        "goal": [
+          "Ask the user which language they prefer to continue in."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I'm sorry, I was speaking in another language. What language would you prefer to speak in? I can help you in English, Spanish, or Portuguese."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "preferred_language",
+            "Literal[es, en, pt]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_DEC_LANG",
+            "condition_text": "IF [preferred_language] IS NOT NULL -> GO_TO: LM__LM_DEC_LANG",
+            "is_mechanical": true,
+            "python_expression": "preferred_language is not None",
+            "reason": null
+          },
+          {
+            "target": "LM__LM_RESUME",
+            "condition_text": "IF [lm__lang_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: LM__LM_RESUME",
+            "is_mechanical": true,
+            "python_expression": "lm__lang_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "LM__LM_ASK_LANG",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "LM__LM_DEC_LANG",
+        "node_type": "decision",
+        "goal": [
+          "Map the internal language code to a display label for GHL."
+        ],
+        "do": [
+          "[lm__lang_try] = [lm__lang_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_SET_ES",
+            "condition_text": "IF [preferred_language] == 'es' -> GO_TO: LM__LM_SET_ES",
+            "is_mechanical": true,
+            "python_expression": "preferred_language == 'es'",
+            "reason": null
+          },
+          {
+            "target": "LM__LM_SET_EN",
+            "condition_text": "IF [preferred_language] == 'en' -> GO_TO: LM__LM_SET_EN",
+            "is_mechanical": true,
+            "python_expression": "preferred_language == 'en'",
+            "reason": null
+          },
+          {
+            "target": "LM__LM_SET_PT",
+            "condition_text": "IF [preferred_language] == 'pt' -> GO_TO: LM__LM_SET_PT",
+            "is_mechanical": true,
+            "python_expression": "preferred_language == 'pt'",
+            "reason": null
+          },
+          {
+            "target": "LM__LM_RESUME",
+            "condition_text": "IF [lm__lang_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: LM__LM_RESUME",
+            "is_mechanical": true,
+            "python_expression": "lm__lang_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "LM__LM_ASK_LANG",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "LM__LM_SET_ES",
+        "node_type": "registration",
+        "goal": [
+          "Set Spanish display label."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[lm__language_value] = 'Spanish'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_ACT_SYNC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "LM__LM_SET_EN",
+        "node_type": "registration",
+        "goal": [
+          "Set English display label."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[lm__language_value] = 'English'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_ACT_SYNC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "LM__LM_SET_PT",
+        "node_type": "registration",
+        "goal": [
+          "Set Portuguese display label."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[lm__language_value] = 'Portuguese'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_ACT_SYNC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "LM__LM_ACT_SYNC",
+        "node_type": "action",
+        "goal": [
+          "Sync the new language preference to GHL Custom Fields."
+        ],
+        "do": [
+          "name = 'language'",
+          "value = [lm__language_value]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_RESUME",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "LM__LM_RESUME",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "LM__LM_RESUME",
+        "node_type": "message",
+        "goal": [
+          "Acknowledge the change and return to the previous state."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Perfect, let's continue with our conversation."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "[current_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "SC__SC_S",
         "node_type": "start",
         "goal": [
@@ -7381,6 +7682,23 @@
         "fallback": []
       },
       {
+        "node_id": "MESSAGE_END_USER_NOT_INTERESTED",
+        "node_type": "terminal",
+        "goal": [
+          "Close the conversation after the user expresses no interest."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
+        "fallback": []
+      },
+      {
         "node_id": "C__CB_END",
         "node_type": "terminal",
         "goal": [
@@ -7551,10 +7869,11 @@
         "trigger": [
           "I am not interested",
           "I don't want to continue",
-          "I prefer not to follow"
+          "no me interesa",
+          "no quiero continuar"
         ],
         "say": [
-          "I understand. If you like, we can briefly review what is holding you back and define the best next step."
+          "I understand. I am here to help if you change your mind later. Have a great day!"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7563,7 +7882,54 @@
         "eval": "code",
         "route": [
           {
-            "target": "OB__OB_S",
+            "target": "MESSAGE_END_USER_NOT_INTERESTED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_LANG_CHANGE",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "I don't speak Spanish",
+          "I don't speak English",
+          "I don't speak Portuguese",
+          "no hablo español",
+          "no hablo ingles",
+          "no hablo portugues",
+          "não falo espanhol",
+          "não falo inglês",
+          "não falo português",
+          "habla en inglés",
+          "habla en español",
+          "speak in english",
+          "speak in spanish",
+          "fale em português",
+          "fale em espanhol",
+          "change language",
+          "cambiar idioma",
+          "mudar idioma",
+          "i dont understand",
+          "no entiendo",
+          "não entendo"
+        ],
+        "say": [
+          "Let me adjust the language so we can continue more comfortably."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7927,56 +8293,56 @@
           "name": "contact_name",
           "required": true,
           "description": "Full name of the contact as mentioned during the call.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "contact_phone",
           "required": false,
           "description": "Contact's phone number in international format. At least one of contact_phone and contact_email must be provided. e.g. +573001234567",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "contact_email",
           "required": false,
           "description": "Contact's email address. At least one of contact_phone and contact_email must be provided. e.g. maria@example.com",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "reason",
           "required": true,
           "description": "Callback reason. One of: no_availability (no availability was found), booking_failed (the booking failed repeatedly), user_requested (the user asked to speak with a person), ambiguous_data (a piece of information remained ambiguous after several attempts), technical_error (technical error during the flow).",
-          "type_expr": null,
+          "type_expr": "Literal[no_availability, booking_failed, user_requested, ambiguous_data, technical_error]",
           "examples": []
         },
         {
           "name": "context",
           "required": false,
           "description": "Short summary of what happened in the conversation, so the person calling does not do so blindly. e.g. 'No availability was found in the next 14 days'",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "preferred_days",
           "required": false,
           "description": "Day or days when the user prefers to be called. Accepts one day, multiple days separated by commas, a list, or the shortcuts 'weekdays' / 'weekend' / 'any' (no preference). e.g. 'weekdays', 'monday,wednesday'",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "preferred_time_window",
           "required": false,
           "description": "Time window when the user prefers to be called. One of: morning, midday, afternoon, evening, any.",
-          "type_expr": null,
+          "type_expr": "Literal[morning, midday, afternoon, evening, any]",
           "examples": []
         },
         {
           "name": "iana_timezone",
           "required": true,
           "description": "Standard IANA timezone identifier for the user — the same one already determined for get_available_slots. Examples: 'America/Bogota', 'America/Sao_Paulo', 'Europe/Madrid', 'Asia/Tokyo'.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         }
       ],
@@ -7985,70 +8351,70 @@
           "name": "success",
           "required": true,
           "description": "Boolean value indicating whether the tool executed successfully.",
-          "type_expr": null,
+          "type_expr": "bool",
           "examples": []
         },
         {
           "name": "contact_name",
           "required": true,
           "description": "Echo of the received name. null if the request was rejected.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "contact_phone",
           "required": true,
           "description": "Echo of the received phone number.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "contact_email",
           "required": true,
           "description": "Echo of the received email address.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "reason",
           "required": true,
           "description": "Normalized echo of the reason (lowercase).",
-          "type_expr": null,
+          "type_expr": "Literal[no_availability, booking_failed, user_requested, ambiguous_data, technical_error]",
           "examples": []
         },
         {
           "name": "context",
           "required": true,
           "description": "Echo of the received context.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "preferred_days",
           "required": true,
           "description": "Normalized list of days (Monday through Sunday, in that order), with shortcuts already expanded. Empty array ([]) if no preference was provided or 'any' was provided.",
-          "type_expr": null,
+          "type_expr": "list[str]",
           "examples": []
         },
         {
           "name": "preferred_time_window",
           "required": true,
           "description": "Normalized echo of the time window. null if no preference was provided or 'any' was provided.",
-          "type_expr": null,
+          "type_expr": "Literal[morning, midday, afternoon, evening, any]",
           "examples": []
         },
         {
           "name": "iana_timezone",
           "required": true,
           "description": "Echo of the received timezone.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "errors",
           "required": true,
           "description": "Explains why the request was rejected (missing or invalid data: contact_name, contact_phone/contact_email, reason, iana_timezone, preferred_days, or preferred_time_window). null when the request is ready to be escalated.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         }
       ],
@@ -8081,7 +8447,7 @@
           "name": "iana_timezone",
           "required": true,
           "description": "IANA identifier of the timezone the current time is wanted in (continent/city). Examples: America/Bogota, Europe/Madrid, America/Sao_Paulo.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         }
       ],
@@ -8090,28 +8456,28 @@
           "name": "success",
           "required": true,
           "description": "Boolean: the query ran successfully.",
-          "type_expr": null,
+          "type_expr": "bool",
           "examples": []
         },
         {
           "name": "iana_timezone",
           "required": true,
           "description": "Echo of the IANA timezone identifier used.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "now",
           "required": true,
           "description": "Current date and time in the given timezone, ISO 8601 with offset. Example: 2026-08-28T18:18:28.935329-05:00. null on error.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         },
         {
           "name": "errors",
           "required": true,
           "description": "Error message if the query failed. null on success.",
-          "type_expr": null,
+          "type_expr": "str",
           "examples": []
         }
       ],
@@ -8121,6 +8487,90 @@
         "ARGUMENT RULE: iana_timezone is an IANA continent/city identifier (e.g. America/Bogota, Europe/Madrid, America/Sao_Paulo). Send whatever the flow fixes; never use abbreviations (EST, COT, BRT).",
         "SOURCE OF TRUTH RULE: use the 'now' field as the only authorized time reference. To normalize a relative date ('8 months ago', 'last year'), compute it from 'now'.",
         "POST-EXECUTION RULE: if 'now' comes back null or 'errors' is not null, call the tool again before continuing."
+      ]
+    },
+    {
+      "name": "update_custom_field",
+      "description": "Actualiza un campo personalizado (Custom Field de contacto) o un valor personalizado (Custom Value global) en GoHighLevel.",
+      "inputs": [
+        {
+          "name": "name",
+          "required": true,
+          "description": "Nombre o ID del campo/valor a actualizar. Ejemplo: 'language', 'uWLes...'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "value",
+          "required": true,
+          "description": "Nuevo valor a asignar. Ejemplo: 'Spanish', 'English'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "contact_id",
+          "required": false,
+          "description": "ID del contacto en GHL (disponible en context.contact_id). Si se provee, se actualiza su campo personalizado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "location_id",
+          "required": false,
+          "description": "ID de la ubicación en GHL (disponible en context.location_id). Necesario para valores globales o para buscar campos por nombre.",
+          "type_expr": "str",
+          "examples": []
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "required": true,
+          "description": "Indica si la operación fue exitosa.",
+          "type_expr": "bool",
+          "examples": []
+        },
+        {
+          "name": "type",
+          "required": true,
+          "description": "Indica qué se actualizó: 'contact' (campo de usuario) o 'custom_value' (global).",
+          "type_expr": "Literal[contact, custom_value]",
+          "examples": []
+        },
+        {
+          "name": "field_id",
+          "required": false,
+          "description": "ID técnico del campo/valor actualizado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "field_name",
+          "required": false,
+          "description": "Eco del nombre del campo solicitado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "value",
+          "required": false,
+          "description": "Eco del valor asignado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "errors",
+          "required": false,
+          "description": "Mensaje de error si la operación falló.",
+          "type_expr": "str",
+          "examples": []
+        }
+      ],
+      "notes": [
+        "MANDATORY EXECUTION: cuando el usuario pide cambiar una preferencia personalizada como su idioma, o una configuración global de la subcuenta.",
+        "ARGUMENTS: name (nombre legible como 'language' o ID técnico), value (nuevo valor).",
+        "CONTEXT RULE: provee contactId para cambios específicos del usuario; si se omite pero se da locationId, actualiza un valor global (Custom Value).",
+        "SOURCE OF TRUTH: usa success para confirmar que GHL aceptó el cambio."
       ]
     },
     {
@@ -8184,13 +8634,13 @@
       ],
       "notes": [
         "MANDATORY EXECUTION TRIGGER: execute it when the contact mentions their nationality or asks if they need a visa to travel to Colombia.",
-        "ARGUMENT RULE: nationalities can be a comma-separated string ('USA, China') or a list of strings (['USA', 'China']). Supports common names or ISO 3166-1 alpha-3 codes.",
+        "ARGUMENTS: nationalities as CSV or list; prefer ISO 3166-1 alpha-3 (UPPERCASE).",
         "SOURCE OF TRUTH RULE: use nationality, requires_visa, and conditional_visa (not an array) to decide the query result. Check conditional_visa for cases like China or India where a visa is required unless they have a USA/Schengen visa."
       ]
     },
     {
       "name": "get_available_slots",
-      "description": "Authorized availability tool for Family Aims commercial appointments (IVF or Surrogacy). Its output is the only authorized source of days and times.",
+      "description": "Authorized availability tool; source of truth for days and times.",
       "inputs": [
         {
           "name": "calendar_type",
@@ -8244,18 +8694,15 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: on entering node SC__SC_AV_I (use calendar_type: 'IVF') or SC__SC_AV_S (use calendar_type: 'SUR'), call get_available_slots as the first action of the turn — imperative, no exception. Also on any intent to schedule, reschedule, see more options, or retry an appointment.",
-        "ABSOLUTE EXECUTION RULE: do not mention days, dates, times, or availability, and do not route, before executing the tool and capturing a valid response.",
-        "ARGUMENT RULE: iana_timezone is a real IANA timezone identifier (continent/city, or continent/country/city for zones that need it, e.g. America/Argentina/Buenos_Aires), already resolved in the flow from the contact's country and city (Colombia -> America/Bogota). Never guess it, never shorten a three-part identifier to two parts, and never use abbreviations such as EST or COT.",
-        "ARGUMENT RULE: calendar_type must be 'IVF' or 'SUR' depending on the flow node where the contact is located.",
-        "SOURCE OF TRUTH RULE: the only source of times is the available_slots array from the most recent call. A time is valid only if it appears as an object with start_co, end_co, start_local, and end_local. If errors is not null or available_slots is not a valid list, treat the response as invalid.",
-        "PRESENTATION RULE: when speaking with the contact use only start_local/end_local. start_co/end_co are Colombia time (the calendar's zone), for internal use only.",
-        "POST-EXECUTION RULE: if the contact asks for more options, move within the same array before calling the tool again. When booking, copy start_co of the chosen slot into start_date of book_appointment without altering the offset."
+        "MANDATORY EXECUTION: on entering SC__SC_AV_I (IVF) or SC__SC_AV_S (SUR), and on any intent to schedule/reschedule/see-more/retry.",
+        "ARGUMENTS: calendar_type in {'IVF','SUR'}; iana_timezone is a real IANA zone (e.g., America/Bogota) resolved in-flow.",
+        "SOURCE OF TRUTH: use only available_slots; each slot must include start_co/end_co and start_local/end_local.",
+        "PRESENTATION: speak only with start_local/end_local; start_co/end_co are internal."
       ]
     },
     {
       "name": "book_appointment",
-      "description": "Authorized booking tool for Family Aims commercial appointments (IVF or Surrogacy). Creates the appointment from a valid get_available_slots slot.",
+      "description": "Authorized booking tool; creates the appointment from a valid slot.",
       "inputs": [
         {
           "name": "calendar_type",
@@ -8367,17 +8814,14 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: on entering node SC__SC_BOOK_I (use calendar_type: 'IVF') or SC__SC_BOOK_S (use calendar_type: 'SUR'), call book_appointment as the first action of the turn — imperative, no exception. Never call it without having executed get_available_slots first.",
-        "ABSOLUTE EXECUTION RULE: do not say the appointment is scheduled, booked, or confirmed, and do not route to confirmation, before receiving success == true and a non-null event_id.",
-        "ARGUMENT RULE: start_date is copied literally from the start_co field of the chosen slot — do not convert, round, reformat, or infer it. duration is fixed: <APPOINTMENT_DURATION_MINUTES>. language is 'EN', 'ES', or 'PT', taken from [preferred_language] (the active conversation language). iana_timezone is the same IANA zone used in get_available_slots. contact_name, contact_email, and contact_phone come from the value already confirmed in the flow.",
-        "ARGUMENT RULE: calendar_type must be 'IVF' or 'SUR' depending on the calendar where the booking is being made.",
-        "SOURCE OF TRUTH RULE: use success as the only authorized result to decide whether the appointment was created.",
-        "POST-EXECUTION RULE: if success is false, check reason: 'past_date' or 'invalid_start_date' -> return to get_available_slots; 'invalid_hour' -> tell the contact it is outside business hours and offer to check again; 'creation_failed' or missing reason -> system problem, apologize and route to a callback."
+        "MANDATORY EXECUTION: on entering SC__SC_BOOK_I (IVF) or SC__SC_BOOK_S (SUR); requires prior get_available_slots.",
+        "ARGUMENTS: start_date = chosen slot.start_co; duration = <APPOINTMENT_DURATION_MINUTES>; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
+        "SOURCE OF TRUTH: success determines creation; do not confirm before success == true and event_id != null."
       ]
     },
     {
       "name": "find_appointment",
-      "description": "Authorized tool to search for existing appointments of a contact by their name or email in Family Aims calendars.",
+      "description": "Authorized search tool for existing appointments.",
       "inputs": [
         {
           "name": "contact_name",
@@ -8412,7 +8856,7 @@
         {
           "name": "language",
           "required": false,
-          "description": "Language to format the results. Default: ES.",
+          "description": "Two-letter uppercase code in {'ES','EN','PT'} to format results. Default: ES.",
           "type_expr": "str",
           "examples": [
             "ES"
@@ -8443,16 +8887,14 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: execute it when the contact wants to consult, verify, or know the details of an appointment they believe they have already scheduled.",
-        "ARGUMENT RULE: contact_name must be the contact's full name as it appears in the CRM or as it was registered in the appointment.",
-        "ARGUMENT RULE: contact_email is the contact's email. Use it preferably if the name is ambiguous or for greater precision.",
-        "ARGUMENT RULE: calendar_type allows filtering by 'IVF' or 'SUR'. It must match the contact's process type.",
-        "SOURCE OF TRUTH RULE: the 'appointments' array contains the list of appointments found. If it is empty, inform the contact that no records were found under that name or email."
+        "MANDATORY EXECUTION: when the contact asks to check/verify appointment details.",
+        "ARGUMENTS: contact_name and/or contact_email; optional calendar_type in {'IVF','SUR'}; optional iana_timezone/language for formatting.",
+        "SOURCE OF TRUTH: appointments array; empty -> no records."
       ]
     },
     {
       "name": "cancel_appointment",
-      "description": "Authorized tool to cancel/delete an existing appointment in Family Aims calendars.",
+      "description": "Authorized cancellation tool for existing appointments.",
       "inputs": [
         {
           "name": "event_id",
@@ -8495,14 +8937,14 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: execute it only when the contact explicitly requests to cancel their appointment and provides or confirms the event_id (previously obtained via find_appointment).",
-        "ABSOLUTE EXECUTION RULE: do not confirm the cancellation before receiving success == true.",
-        "ARGUMENT RULE: event_id must be the exact ID returned by the API. calendar_type must be 'IVF' or 'SUR' as corresponds to the appointment."
+        "MANDATORY EXECUTION: only with a confirmed event_id (from find_appointment).",
+        "ARGUMENTS: event_id (exact), calendar_type in {'IVF','SUR'}, optional iana_timezone.",
+        "SOURCE OF TRUTH: use success as the only authorized verdict."
       ]
     },
     {
       "name": "edit_appointment",
-      "description": "Authorized tool to modify or reschedule an existing appointment in Family Aims calendars.",
+      "description": "Authorized rescheduling/edit tool for existing appointments.",
       "inputs": [
         {
           "name": "event_id",
@@ -8548,7 +8990,7 @@
         {
           "name": "language",
           "required": false,
-          "description": "Language for confirmation. Default: ES.",
+          "description": "Two-letter uppercase code in {'ES','EN','PT'} for confirmation. Default: ES.",
           "type_expr": "str",
           "examples": [
             "ES"
@@ -8588,11 +9030,9 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION TRIGGER: execute it when the contact requests to change the date, time, or duration of an already scheduled appointment.",
-        "ABSOLUTE EXECUTION RULE: do not confirm the change before receiving success == true.",
-        "ARGUMENT RULE: event_id must be the exact ID of the appointment. calendar_type must be 'IVF' or 'SUR'.",
-        "ARGUMENT RULE: new_start_date must be a valid slot obtained from get_available_slots if rescheduling. If only the duration is changed, this field is optional.",
-        "VALIDATION RULE: the tool automatically verifies availability and business hours before applying the change."
+        "MANDATORY EXECUTION: when changing date/time/duration of a scheduled appointment.",
+        "ARGUMENTS: event_id (exact), calendar_type in {'IVF','SUR'}, optional new_start_date (from availability), optional new_duration, optional iana_timezone/language.",
+        "SOURCE OF TRUTH: use success as the only authorized verdict; message/new_start_time are supporting details."
       ]
     }
   ],
