@@ -371,63 +371,64 @@ def test_closing_message_text_dict_override_is_looked_up_by_language():
     assert ghl_endpoint._closing_message_text(cfg, "fr") == "Hola custom"  # falls back to es
 
 
-def test_run_closing_sweep_once_sends_and_marks_each_candidate(monkeypatch):
+def test_run_closing_sweep_once_sends_each_claimed_candidate(monkeypatch):
     candidates = [
         {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
         {"thread_id": "t2", "contact_id": "c2", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "en"},
     ]
-    marked: list[str] = []
+    resets: list[tuple[str, str, str]] = []
     sent: list[dict] = []
 
     async def fake_send(**kwargs):
         sent.append(kwargs)
         return {}
 
-    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: marked.append(args))
+    monkeypatch.setattr(ghl_endpoint, "claim_conversations_needing_closing_message", lambda slug, days: candidates)
+    monkeypatch.setattr(ghl_endpoint, "reset_closing_message_claim", lambda *args: resets.append(args))
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
 
     count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
 
     assert count == 2
-    assert marked == [("test_agent", "l1", "c1"), ("test_agent", "l1", "c2")]
+    assert resets == []  # no failures -> no resets
     assert sent[0]["contact_id"] == "c1"
     assert sent[0]["message"].startswith("Gracias")  # es
     assert sent[1]["contact_id"] == "c2"
     assert sent[1]["message"].startswith("Thank you")  # en
 
 
-def test_run_closing_sweep_once_keeps_going_after_one_candidate_fails(monkeypatch):
+def test_run_closing_sweep_once_keeps_going_after_one_candidate_fails_and_resets_claim(monkeypatch):
     candidates = [
         {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
         {"thread_id": "t2", "contact_id": "c2", "location_id": "l1", "channel": "WHATSAPP", "preferred_language": "es"},
     ]
-    marked: list[str] = []
+    resets: list[tuple[str, str, str]] = []
 
     async def fake_send(**kwargs):
         if kwargs["contact_id"] == "c1":
             raise RuntimeError("GHL send failed")
         return {}
 
-    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: marked.append(args))
+    monkeypatch.setattr(ghl_endpoint, "claim_conversations_needing_closing_message", lambda slug, days: candidates)
+    monkeypatch.setattr(ghl_endpoint, "reset_closing_message_claim", lambda *args: resets.append(args))
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", fake_send)
 
     count = asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg()))
 
     assert count == 1  # only t2 succeeded
-    assert marked == [("test_agent", "l1", "c2")]  # t1's failure must not be marked sent -- it should be retried next sweep
+    # t1 failed -> its claim must be reset; t2 succeeded -> no reset
+    assert resets == [("test_agent", "l1", "c1")]
 
 
 def test_run_closing_sweep_once_passes_lookback_days_and_slug_through(monkeypatch):
     seen = {}
 
-    def fake_find(slug, lookback_days):
+    def fake_claim(slug, lookback_days):
         seen["slug"] = slug
         seen["lookback_days"] = lookback_days
         return []
 
-    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", fake_find)
+    monkeypatch.setattr(ghl_endpoint, "claim_conversations_needing_closing_message", fake_claim)
 
     asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg(slug="babynova_triage_obstetrico_text", closing_message_lookback_days=5.0)))
 
@@ -496,8 +497,7 @@ def test_closing_message_for_widget_is_sent_via_whatsapp(monkeypatch):
     ]
     sent: list[dict] = []
 
-    monkeypatch.setattr(ghl_endpoint, "find_conversations_needing_closing_message", lambda slug, days: candidates)
-    monkeypatch.setattr(ghl_endpoint, "mark_closing_message_sent", lambda *args: None)
+    monkeypatch.setattr(ghl_endpoint, "claim_conversations_needing_closing_message", lambda slug, days: candidates)
     monkeypatch.setattr(ghl_endpoint, "send_ghl_message_async", lambda **kw: (sent.append(kw), {})[1])
 
     asyncio.run(ghl_endpoint.run_closing_sweep_once(_cfg(redirect_widget_to_whatsapp=True)))

@@ -381,6 +381,103 @@ def find_conversations_needing_closing_message(agent_slug: str, lookback_days: f
         return []
 
 
+def claim_conversations_needing_closing_message(agent_slug: str, lookback_days: float, limit: int = 200) -> list[dict[str, Any]]:
+    """Atomically claims contacts due a closing message to avoid duplicate sends across processes.
+
+    Uses a CTE to first select the latest thread per (contact_id, location_id)
+    that qualifies, then updates all rows for those contacts by setting
+    `closing_message_sent_at = now()` with a single UPDATE ... FROM ... statement.
+    The RETURNING clause yields exactly one row per claimed (contact, location),
+    preventing races across multiple sweep loops.
+
+    If sending ultimately fails for a claimed contact, callers should reset the
+    mark back to NULL via `reset_closing_message_claim` so a later sweep retries.
+    """
+    if not postgres_enabled():
+        return []
+    from psycopg.rows import dict_row
+
+    try:
+        with _pool().connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                WITH candidates AS (
+                  SELECT DISTINCT ON (contact_id, location_id)
+                         thread_id, contact_id, location_id, channel, preferred_language
+                  FROM conversations
+                  WHERE agent_slug = %s
+                    AND closing_message_sent_at IS NULL
+                    AND last_message_at IS NOT NULL
+                    AND last_message_at <= now() - %s::interval
+                    AND last_message_at >= now() - %s::interval
+                  ORDER BY contact_id, location_id, last_message_at DESC
+                  LIMIT %s
+                )
+                UPDATE conversations c
+                   SET closing_message_sent_at = now()
+                  FROM candidates d
+                 WHERE c.agent_slug = %s
+                   AND c.location_id = d.location_id
+                   AND c.contact_id = d.contact_id
+                   AND c.closing_message_sent_at IS NULL
+                RETURNING d.thread_id, d.contact_id, d.location_id, d.channel, d.preferred_language;
+                """,
+                (
+                    agent_slug,
+                    CLOSING_MESSAGE_INACTIVITY_THRESHOLD,
+                    f"{lookback_days} days",
+                    limit,
+                    agent_slug,
+                ),
+            )
+            # The UPDATE returns one row per updated source row; because we updated
+            # all rows for the claimed contact/location, duplicate (contact, location)
+            # may appear. Deduplicate here to mirror SELECT DISTINCT ON semantics.
+            rows = cur.fetchall()
+            seen: set[tuple[str, str]] = set()
+            unique: list[dict[str, Any]] = []
+            for r in rows:
+                key = (r["contact_id"], r["location_id"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique.append(r)
+            return unique
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "[%s] Failed to claim closing-message candidates (non-fatal).", agent_slug, exc_info=True
+        )
+        return []
+
+
+def reset_closing_message_claim(agent_slug: str, location_id: str, contact_id: str) -> None:
+    """Clears a previously claimed `closing_message_sent_at` so the sweep can retry.
+
+    Call this if sending the closing message fails after a successful claim.
+    """
+    if not postgres_enabled():
+        return
+    try:
+        with _pool().connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE conversations
+                   SET closing_message_sent_at = NULL
+                 WHERE agent_slug = %s AND location_id = %s AND contact_id = %s
+                """,
+                (agent_slug, location_id, contact_id),
+            )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "[%s:%s:%s] Failed to reset closing message claim (non-fatal).",
+            agent_slug, location_id, contact_id, exc_info=True
+        )
+
+
 def mark_closing_message_sent(agent_slug: str, location_id: str, contact_id: str) -> None:
     """Records that this contact got its closing message for the current
     24h window across ALL their threads for this agent -- prevents

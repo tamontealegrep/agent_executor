@@ -30,8 +30,8 @@ from instances.helpers.ghl_request import GhlAgentRequest
 from instances.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
 from compiled_runner.postgres import (
-    find_conversations_needing_closing_message,
-    mark_closing_message_sent,
+    claim_conversations_needing_closing_message,
+    reset_closing_message_claim,
     postgres_enabled,
     upsert_conversation,
 )
@@ -206,8 +206,9 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
     production code doesn't need to).
     """
     logger = logging.getLogger(f"compiled_runner.ghl_endpoint.{cfg.slug}")
+    # Atomically claim candidates to avoid duplicate sends across processes
     candidates = await run_in_threadpool(
-        find_conversations_needing_closing_message, cfg.slug, cfg.closing_message_lookback_days
+        claim_conversations_needing_closing_message, cfg.slug, cfg.closing_message_lookback_days
     )
     sent = 0
     for row in candidates:
@@ -228,11 +229,21 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
                 location_id=row["location_id"],
                 logger=logger,
             )
-            await run_in_threadpool(mark_closing_message_sent, cfg.slug, row["location_id"], row["contact_id"])
             logger.info("[%s] Closing message sent after ~24h of inactivity.", thread_id)
             sent += 1
         except Exception:
             logger.error("[%s] Failed to send closing message.", thread_id, exc_info=True)
+            # Allow a future sweep to retry this contact
+            try:
+                await run_in_threadpool(
+                    reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
+                )
+            except Exception:
+                logger.warning(
+                    "[%s] Failed to reset closing message claim after send error (non-fatal).",
+                    thread_id,
+                    exc_info=True,
+                )
     return sent
 
 
