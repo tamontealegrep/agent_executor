@@ -58,14 +58,28 @@ _TOOLS_APP_BY_SLUG: dict[str, str] = {
 
 
 def _tools_base_url(slug: str) -> str:
-    """Where this compiled agent's tool calls land -- the matching
-    src/tools/<app>/ backend running in this same process (main.py mounts
-    each one at /<app>/v1, see api/v1/router.py under it). Defaults to
-    family_aims for an unmapped slug, matching this function's original,
-    family_aims-only behavior."""
+    """Where a compiled agent's tool calls land.
+
+    Centralized gateway for Family Aims agents (and any shared tools):
+    /tools/v1 aggregates snake_case endpoints (utils + family_aims). This
+    avoids per-app aliasing of shared tools like update_custom_field.
+
+    Other verticals (e.g., novafem_surrogacy) keep their dedicated base
+    for now until their endpoints are also aggregated under /tools/v1.
+    """
     host = os.getenv("HOST", "127.0.0.1")
     port = os.getenv("PORT", "8010")
     probe_host = "127.0.0.1" if host == "0.0.0.0" else host
+    if slug in {
+        "family_aims_sam_text",
+        "family_aims_sam_en_voice",
+        "family_aims_sam_es_voice",
+        "family_aims_sam_pt_voice",
+        "babynova_surrogate_questions_voice",
+        "babynova_surrogate_questions_text",
+        "babynova_triage_obstetrico_text",
+    }:
+        return f"http://{probe_host}:{port}/tools/v1"
     app = _TOOLS_APP_BY_SLUG.get(slug, "family_aims")
     return f"http://{probe_host}:{port}/{app}/v1"
 

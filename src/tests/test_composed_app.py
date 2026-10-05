@@ -79,29 +79,29 @@ def test_composed_app_mounts_novafem_surrogacy_check_documentation_under_its_slu
     assert response.json()["approved"] is True
 
 
-def test_composed_app_mounts_utils_tools_under_its_slug():
-    response = client.post("/utils/v1/time-now", json={"iana_timezone": "UTC"})
+def test_tools_gateway_time_now():
+    response = client.post("/tools/v1/time_now", json={"iana_timezone": "UTC"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
     assert body["iana_timezone"] == "UTC"
 
 
-def test_composed_app_mounts_utils_check_days_elapsed_under_its_slug():
-    response = client.post("/utils/v1/check-days-elapsed", json={"date": "2000/01/01", "days": 365})
+def test_tools_gateway_check_days_elapsed():
+    response = client.post("/tools/v1/check_days_elapsed", json={"date": "2000/01/01", "days": 365})
     assert response.status_code == 200
     assert response.json()["elapsed"] is True
 
 
-def test_composed_app_mounts_utils_calculate_bmi_under_its_slug():
-    response = client.post("/utils/v1/calculate-bmi", json={"weight_kg": 70, "height_cm": 175})
+def test_tools_gateway_calculate_bmi():
+    response = client.post("/tools/v1/calculate_bmi", json={"weight_kg": 70, "height_cm": 175})
     assert response.status_code == 200
     assert response.json()["bmi"] == 22.9
 
 
-def test_composed_app_mounts_utils_request_callback_under_its_slug():
+def test_tools_gateway_request_callback():
     response = client.post(
-        "/utils/v1/request-callback",
+        "/tools/v1/callback",
         json={"contact_name": "Test", "contact_phone": "+573000000000", "reason": "user_requested", "iana_timezone": "America/Bogota"},
     )
     assert response.status_code == 200

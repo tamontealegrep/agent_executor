@@ -70,14 +70,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 for _agent_package in discover_agents():
     _slug = agent_slug(_agent_package)
+    # Deprecated legacy mount: skip 'utils' — tools live under /tools/v1 gateway now.
+    if _slug == "utils":
+        continue
     app.include_router(load_agent_router(_agent_package), prefix=f"/{_slug}/v1", tags=[_slug])
 
 # Pilot: compiled agent_compiler agents, served via agent_runtime — separate
 # from the src/tools/* discovery above, since a compiled agent is not a
 # tools backend. See compiled_runner/README (or SPEC notes) for scope.
 from compiled_runner.endpoint import router as compiled_agent_router  # noqa: E402
+from tools.gateway.api.v1.router import api_router as tools_gateway_router  # noqa: E402
 
 app.include_router(compiled_agent_router, prefix="/compiled", tags=["compiled_agents"])
+app.include_router(tools_gateway_router, prefix="/tools/v1", tags=["tools_gateway"])
 
 
 @app.get("/api-contracts", include_in_schema=False)
