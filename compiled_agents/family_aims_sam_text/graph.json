@@ -3882,7 +3882,7 @@
         "say": [
           "Program with Financial Guarantee:\n\n- Repeats necessary medical procedures within the program timeframe\n- Seeks to achieve pregnancy within 24 months\n- If the delay depends on the process or clinical factors, the program is extended until the service delivery is completed\n- Admission depends on sperm quality validated by the laboratory"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3909,8 +3909,35 @@
         "say": [
           "Program without Financial Guarantee:\n\n- Has a fixed number of selected transfers\n- If pregnancy is not achieved and you wish to continue, it requires additional payment\n- If there are already embryos formed, the additional cost corresponds to the transfers\n- If there are no embryos, new aspiration, embryo formation, or change of surrogate may be required depending on the case"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SP__SP_PAUSE_A",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SP__SP_PAUSE_A",
+        "node_type": "action",
+        "goal": [
+          "Insert a short pause between the program descriptions and the process summary."
+        ],
+        "do": [
+          "seconds = '2'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": true,
+        "execute": "pause",
         "store": [],
         "capture": [],
         "eval": "code",
@@ -3969,14 +3996,14 @@
         "say": [
           "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- In Colombia, at least one of the intended parents must provide genetic material\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "SP__SP_PITCH",
+            "target": "SP__SP_PAUSE_B",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3996,8 +4023,35 @@
         "say": [
           "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- For your route, the support is carried out in Mexico\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SP__SP_PAUSE_B",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SP__SP_PAUSE_B",
+        "node_type": "action",
+        "goal": [
+          "Insert a short pause between the process summary and the pitch."
+        ],
+        "do": [
+          "seconds = '2'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": true,
+        "execute": "pause",
         "store": [],
         "capture": [],
         "eval": "code",
@@ -4023,7 +4077,7 @@
         "say": [
           "Every desire to have a family starts with a first step.\n\nWe encourage you to schedule an appointment with <HUMAN_SURROGACY_ADVISOR_NAME>, our specialized commercial advisor in gestational surrogacy. She will be able to get to know your story, listen to your needs, and explain how we can support you in each phase."
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],
@@ -5517,7 +5571,9 @@
         "say": [],
         "say_verbatim": false,
         "execute": null,
-        "store": [],
+        "store": [
+          "[lm__resume_state] = [current_state]"
+        ],
         "capture": [],
         "eval": "code",
         "route": [
@@ -5540,7 +5596,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "I'm sorry, I was speaking in another language. What language would you prefer to speak in? I can help you in English, Spanish, or Portuguese."
+          "I'm sorry, what language would you prefer to speak in? I can help you in English, Spanish, or Portuguese."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -5771,7 +5827,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "[current_state]",
+            "target": "[lm__resume_state]",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -8599,6 +8655,23 @@
       ]
     },
     {
+      "name": "pause",
+      "description": "Espera un número de segundos antes de continuar (control de ritmo entre mensajes).",
+      "inputs": [
+        {
+          "name": "seconds",
+          "required": true,
+          "description": "Número de segundos a esperar.",
+          "type_expr": "int",
+          "examples": []
+        }
+      ],
+      "outputs": [],
+      "notes": [
+        "Uso para insertar una pequeña pausa (1-2 s) entre mensajes."
+      ]
+    },
+    {
       "name": "check_visa",
       "description": "Checks if one or more nationalities require a visa to enter Colombia as a tourist.",
       "inputs": [
@@ -9066,7 +9139,7 @@
     "COMPANY_NAME": "Family Aims",
     "MAX_RETRY_ATTEMPTS": "3",
     "END_LISTEN_MAX_ATTEMPTS": "20",
-    "DATA_LAW_REFERENCE": "Law 1581 of 2012 and its regulatory decrees, as well as the international HIPAA and GDPR standards where applicable",
+    "DATA_LAW_REFERENCE": "Law 1581 of 2012 and its regulatory decrees, as well as the international HIPAA and GDPR standards where applicable, available at https://familyaims.com/privacy-policy-us/",
     "HUMAN_SURROGACY_ADVISOR_NAME": "Marcela Arango",
     "HUMAN_IVF_ADVISOR_NAME": "Ayda Chuquizan",
     "PROCESS_DURATION_MONTHS": "24 months",

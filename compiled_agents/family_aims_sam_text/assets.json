@@ -222,6 +222,21 @@
     ]
   },
   {
+    "name": "pause",
+    "description": "Espera un número de segundos antes de continuar (control de ritmo entre mensajes).",
+    "notes": [
+      "Uso para insertar una pequeña pausa (1-2 s) entre mensajes."
+    ],
+    "inputs": [
+      {
+        "name": "seconds",
+        "required": true,
+        "description": "Número de segundos a esperar."
+      }
+    ],
+    "outputs": []
+  },
+  {
     "name": "check_visa",
     "description": "Checks if one or more nationalities require a visa to enter Colombia as a tourist.",
     "notes": [
