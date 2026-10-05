@@ -32,6 +32,28 @@ RouterMatch = tuple[str, "GraphNode | FaqNode"]
 """`(kind, node)` where `kind` is `"handler"` or `"faq"`."""
 
 
+# Acceptable FAQ ids to source firewall content from the agent spec.
+FIREWALL_FAQ_IDS: tuple[str, ...] = ("FAQ_FIREWALL", "F_FIREWALL", "FAQ__FIREWALL", "F__FIREWALL")
+
+
+def find_firewall_faq(router: GlobalRouterDefinition) -> FaqNode | None:
+    for faq in router.faqs:
+        if getattr(faq, "faq_id", None) in FIREWALL_FAQ_IDS:
+            return faq
+    return None
+
+
+# Acceptable Handler ids to source firewall behavior from the agent spec.
+FIREWALL_HANDLER_IDS: tuple[str, ...] = ("HANDLER_FIREWALL", "H_FIREWALL", "HANDLER__FIREWALL", "H__FIREWALL")
+
+
+def find_firewall_handler(router: GlobalRouterDefinition) -> GraphNode | None:
+    for handler in router.handlers:
+        if getattr(handler, "node_id", None) in FIREWALL_HANDLER_IDS:
+            return handler
+    return None
+
+
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
     return [("handler", h) for h in router.handlers] + [("faq", f) for f in router.faqs]
 
@@ -95,6 +117,37 @@ def _continues_the_flow(
         "interrupts above."
     )
     return llm_client.complete(prompt).strip().upper() != "INTERRUPT"
+
+
+def should_block_message(llm_client: LLMClient, ctx: LLMContext) -> bool:
+    """Top-level firewall: decide whether the agent should refuse to answer.
+
+    Runs before evaluating handlers or FAQs. Returns True to BLOCK when the
+    user's last message clearly asks for something out of scope, disallowed by
+    house rules, or unsafe to answer (medical/legal/financial diagnosis or
+    advice, personal data collection, explicit content, or operational actions
+    the agent cannot perform). Otherwise returns False to ALLOW normal flow.
+
+    The refusal copy is owned by the agent via a dedicated Handler or FAQ.
+    """
+    policy_block = f"House rules (non-exhaustive):\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
+    question_context = (
+        f"The agent just asked the user: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
+    )
+    prompt = (
+        "You are a gatekeeper for a production assistant. Decide if the assistant "
+        "is allowed to respond SUBSTANTIVELY to the user's latest message below. "
+        "BLOCK when the request is clearly outside the assistant's domain, asks for "
+        "prohibited or unsafe content (medical/legal/financial advice or diagnosis, "
+        "explicit content, sensitive personal data collection), or requests actions "
+        "the assistant cannot perform per house rules. Otherwise ALLOW.\n\n"
+        f"{ctx.block()}"
+        f"{question_context}"
+        f"{policy_block}"
+        "Reply with just one word: ALLOW or BLOCK."
+    )
+    decision = llm_client.complete(prompt).strip().upper()
+    return decision == "BLOCK"
 
 
 def _match_candidate(

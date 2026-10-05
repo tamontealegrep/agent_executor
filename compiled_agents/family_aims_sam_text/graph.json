@@ -8095,6 +8095,17 @@
     ],
     "faqs": [
       {
+        "faq_id": "FAQ_FIREWALL",
+        "match": [
+          "__FIREWALL__"
+        ],
+        "say": [
+          "No puedo responder a esa solicitud. Soy un agente de IA. ¿Puedo ayudarte con algo más?"
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
         "faq_id": "F_LGBTQ",
         "match": [
           "gay couple",

@@ -1199,6 +1199,49 @@ def _make_node_fn(
                     policies=judgment_policies or [],
                     contact=contact,
                 )
+                # Top-level firewall: decide if we should refuse outright before
+                # attempting any FAQ/Handler matching.
+                try:
+                    from engine.runtime.global_router import (
+                        should_block_message,
+                        find_firewall_faq,
+                        find_firewall_handler,
+                        handle_global_router_match,
+                    )
+                except Exception:
+                    should_block_message = None  # type: ignore
+                if callable(should_block_message) and should_block_message(llm_client, router_ctx):
+                    # Prefer a dedicated firewall Handler if present: allows routing.
+                    firewall_handler = find_firewall_handler(router)
+                    if firewall_handler is not None:
+                        goto_target = handle_global_router_match(
+                            ("handler", firewall_handler),
+                            router_ctx,
+                            resolve_edges=resolve_edges,
+                            on_say=_on_router_say,
+                        )
+                        if goto_target is not None and goto_target in node_by_id:
+                            return Command(
+                                update={
+                                    "slots": slots,
+                                    "current_state": goto_target,
+                                    "last_user_message": reply,
+                                    "history": history,
+                                },
+                                goto=goto_target,
+                            )
+                        # else: no route or dynamic -> re-ask
+                        continue
+
+                    # Else use a dedicated firewall FAQ if present: say then resume.
+                    firewall_faq = find_firewall_faq(router)
+                    if firewall_faq is not None and firewall_faq.say:
+                        _on_router_say(firewall_faq, firewall_faq.say)
+                        # Re-ask the same pending question
+                        continue
+
+                    # Else, no firewall node defined — simply re-ask without extra text.
+                    continue
                 match = match_global_router(llm_client, router, router_ctx)
                 if match is None:
                     last_user_message = reply
