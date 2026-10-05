@@ -6,6 +6,7 @@ from tools.utils.api.v1.endpoints import (
     callback_request,
     check_days_elapsed,
     calculate_bmi,
+    pause as pause_endpoint,
     update_custom_field as ucf_endpoint,
     echo as echo_endpoint,
 )
@@ -56,6 +57,10 @@ api_router.add_api_route(
 api_router.add_api_route(
     "/echo", echo_endpoint.echo,
     methods=["POST"], tags=["echo"],
+)
+api_router.add_api_route(
+    "/pause", pause_endpoint.pause,
+    methods=["POST"], response_model=pause_endpoint.PauseResponse, tags=["pause"],
 )
 
 # --- Family Aims vertical under snake_case names ---
