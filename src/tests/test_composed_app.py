@@ -80,7 +80,7 @@ def test_composed_app_mounts_novafem_surrogacy_check_documentation_under_its_slu
 
 
 def test_tools_gateway_time_now():
-    response = client.post("/tools/v1/time_now", json={"iana_timezone": "UTC"})
+    response = client.post("/tools/v1/time-now", json={"iana_timezone": "UTC"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True

@@ -35,7 +35,7 @@ api_router = APIRouter()
 
 # --- Shared (utils) under snake_case names ---
 api_router.add_api_route(
-    "/time_now", time_now.time_now,
+    "/time-now", time_now.time_now,
     methods=["POST"], response_model=time_now.TimeNowResponse, tags=["time_now"],
 )
 api_router.add_api_route(
@@ -85,7 +85,7 @@ api_router.add_api_route(
     methods=["POST"], response_model=edit_appointment.EditAppointmentResponse, tags=["edit_appointment"],
 )
 api_router.add_api_route(
-    "/check_visa", visa.check_visa_requirement,
+    "/check-visa", visa.check_visa_requirement,
     methods=["POST"], response_model=visa.VisaCheckResponse, tags=["visa_check"],
 )
 
