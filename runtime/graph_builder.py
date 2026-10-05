@@ -153,7 +153,14 @@ def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None
 
     slot_ref = _STORE_SLOT_REF_RE.match(rhs)
     if slot_ref:
-        slots[name] = slots.get(slot_ref.group(1))
+        source_name = slot_ref.group(1)
+        source_value = slots.get(source_name)
+        # Do not overwrite with None when copying from an unset/missing slot —
+        # use `NULL` explicitly to clear a value. This prevents clobbering a
+        # previously captured value (e.g., resume_state) when the source is
+        # not available in this node's context.
+        if source_value is not None:
+            slots[name] = source_value
         return
     arith = _STORE_SELF_ARITH_RE.match(rhs)
     if arith and arith.group(1) == name:
@@ -1052,6 +1059,15 @@ def _make_node_fn(
     """
     def node_fn(state: SessionState) -> Any:
         slots = dict(state["slots"])
+        # Expose the incoming state's id to DSL expressions inside this node
+        # (e.g., dynamic GO_TO: [current_state] or STORE using [current_state]).
+        prev_state_id = state.get("current_state")
+        if prev_state_id is not None and "current_state" not in slots:
+            slots["current_state"] = prev_state_id
+        # If this node is part of the language-management subflow (LM__),
+        # capture the resume target once on entry when not already set.
+        if node.node_id.startswith("LM__") and prev_state_id is not None and "resume_state" not in slots:
+            slots["resume_state"] = prev_state_id
         last_user_message = state.get("last_user_message", "")
         language_code = slots.get("preferred_language")
         history = list(state.get("history", []))
