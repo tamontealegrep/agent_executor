@@ -67,7 +67,7 @@ api_router.add_api_route(
 babynova_api_router = APIRouter()
 
 babynova_api_router.add_api_route(
-    "/check-documentation-sur", bn_check_documentation_sur.check_documentation,
+    "/check-documentation-sur", bn_check_documentation_sur.check_documentation_sur,
     methods=["POST"], response_model=bn_check_documentation_sur.CheckDocumentationResponse, tags=["babynova_sur.check_documentation"],
 )
 babynova_api_router.add_api_route(
