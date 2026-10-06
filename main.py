@@ -1,4 +1,4 @@
-"""
+﻿"""
 Punto de entrada raíz del proyecto.
 
 Expone la app compuesta y, al ejecutarse como script, levanta uvicorn con la
@@ -32,11 +32,6 @@ class SelectiveLogFilter(logging.Filter):
         if logger_name.startswith("compiled_runner.ghl_endpoint."):
             return True
         if logger_name == "compiled_runner.postgres":
-            # Found live (2026-09-29): a Postgres connection failure here
-            # (upsert_conversation, the closing-message sweep) only ever
-            # logs a warning through this logger -- silently dropped by
-            # this same filter before, making a broken DATABASE_URL
-            # indistinguishable from "everything's fine" in production.
             return True
 
         return False
@@ -79,10 +74,12 @@ for _agent_package in discover_agents():
 # from the src/tools/* discovery above, since a compiled agent is not a
 # tools backend. See compiled_runner/README (or SPEC notes) for scope.
 from compiled_runner.endpoint import router as compiled_agent_router  # noqa: E402
-from tools.gateway.api.v1.router import api_router as tools_gateway_router  # noqa: E402
+from tools.gateway.api.v1.router import api_router as tools_gateway_router, babynova_api_router, family_api_router  # noqa: E402
 
 app.include_router(compiled_agent_router, prefix="/compiled", tags=["compiled_agents"])
 app.include_router(tools_gateway_router, prefix="/tools/v1", tags=["tools_gateway"])
+app.include_router(babynova_api_router, prefix="/babynova/v1")
+app.include_router(family_api_router, prefix="/family_aims/v1")
 
 
 @app.get("/api-contracts", include_in_schema=False)
@@ -113,3 +110,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
