@@ -65,8 +65,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 for _agent_package in discover_agents():
     _slug = agent_slug(_agent_package)
-    # Deprecated legacy mount: skip 'utils' — tools live under /tools/v1 gateway now.
-    if _slug == "utils":
+    # Skip routers that are mounted explicitly to avoid double-mounts and mixed styles.
+    # - utils lives under /tools/v1 (gateway)
+    # - family_aims lives under /family_aims/v1 (gateway family_api_router)
+    # - babynova_surrogacy lives under /babynova/v1 (gateway babynova_api_router)
+    if _slug in {"utils", "family_aims", "babynova_surrogacy"}:
         continue
     app.include_router(load_agent_router(_agent_package), prefix=f"/{_slug}/v1", tags=[_slug])
 
