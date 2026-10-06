@@ -10,6 +10,7 @@ from tools.babynova_surrogacy.schemas.booking import (
     FindAppointmentResponse,
 )
 from tools.babynova_surrogacy.services import date_formatting
+from tools.babynova_surrogacy.services.booking import EVENT_TITLE_PREFIX, TITLE_SEPARATOR
 from tools.babynova_surrogacy.services.google_calendar import get_access_token, list_events
 from tools.babynova_surrogacy.utils.timezones import parse_iso
 
@@ -20,40 +21,40 @@ router = APIRouter()
 async def find_appointment(req: FindAppointmentRequest):
     settings = get_settings()
     
-    # NormalizaciÃ³n segura de inputs (manejo de None y strip)
+    # Safe normalization of inputs (handle None and strip)
     client_tz = (req.iana_timezone or "America/Bogota").strip()
     target_person = (req.contact_name or "").strip()
     target_phone = (req.contact_phone or "").strip()
     target_email = (req.contact_email or "").strip().lower()
-    language = "ES"
+    language = "EN"
 
-    # 1. ValidaciÃ³n: Nombre, TelÃ©fono o Correo son obligatorios
+    # 1. Validation: at least one of Name, Phone, or Email is required
     if not target_person and not target_phone and not target_email:
-        return FindAppointmentResponse(success=False, errors="Debe proporcionar al menos el nombre, el telÃ©fono o el correo para realizar la bÃºsqueda.")
+        return FindAppointmentResponse(success=False, errors="You must provide at least a name, phone, or email to search.")
 
-    # 2. NormalizaciÃ³n de TelÃ©fono (+57 si son 10 dÃ­gitos que empiezan con 3)
+    # 2. Phone normalization (+57 if 10 digits starting with 3)
     clean_phone_digits = "".join(c for c in target_phone if c.isdigit())
     if len(clean_phone_digits) == 10 and clean_phone_digits.startswith("3"):
         target_phone = f"+57{clean_phone_digits}"
     
-    # 3. ValidaciÃ³n bÃ¡sica de Correo (si se proporciona)
+    # 3. Basic email validation (if provided)
     if target_email and ("@" not in target_email or "." not in target_email.split("@")[1]):
-        return FindAppointmentResponse(success=False, errors=f"El correo electrÃ³nico '{target_email}' no tiene un formato vÃ¡lido.")
+        return FindAppointmentResponse(success=False, errors=f"The email '{target_email}' is not in a valid format.")
 
     try:
-        # Rango: desde ayer hasta dentro de 35 dÃ­as
+        # Range: from yesterday to 35 days ahead
         now = datetime.now(ZoneInfo("UTC"))
         time_min = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
         time_max = time_min + timedelta(days=36)
 
         if not (settings.google_client_id and settings.google_client_secret and settings.google_refresh_token):
-            return FindAppointmentResponse(success=False, errors="Faltan credenciales de Google en el entorno")
+            return FindAppointmentResponse(success=False, errors="Missing Google credentials in environment")
 
         access_token = await get_access_token(
             settings.google_client_id, settings.google_client_secret, settings.google_refresh_token
         )
         if not access_token:
-            return FindAppointmentResponse(success=False, errors="No se pudo obtener el access token de Google Calendar")
+            return FindAppointmentResponse(success=False, errors="Failed to obtain Google Calendar access token")
 
         events = await list_events(
             access_token=access_token,
@@ -67,23 +68,23 @@ async def find_appointment(req: FindAppointmentRequest):
         email_matches = []
 
         target_lower = target_person.lower()
-        target_keywords = [w for w in target_lower.split() if len(w) > 2 and w not in ("baby", "nova", "novafem", "primera", "vez")]
+        target_keywords = [w for w in target_lower.split() if len(w) > 2 and w not in ("baby", "nova", "novafem", "first", "visit")]
         clean_target_phone = "".join(c for c in target_phone if c.isdigit())
 
         for event in events:
             summary = event.get("summary", "")
             description = event.get("description", "")
             attendees = event.get("attendees", [])
-            
-            if "Primera Vez" not in summary:
-                 continue
 
-            # Extraer datos del tÃ­tulo: "Primera Vez â€” Nombre â€” TelÃ©fono"
-            parts = [p.strip() for p in summary.split("â€”")]
+            if EVENT_TITLE_PREFIX not in summary:
+                continue
+
+            # Extract data from title: "First Visit - Name - Phone"
+            parts = [p.strip() for p in summary.split(TITLE_SEPARATOR)]
             ext_name = parts[1] if len(parts) > 1 else ""
             ext_phone = parts[2] if len(parts) > 2 else ""
             
-            # Extraer correo de descripciÃ³n o asistentes
+            # Extract email from description or attendees
             ext_email = None
             if "Email:" in description:
                 try:
@@ -101,33 +102,33 @@ async def find_appointment(req: FindAppointmentRequest):
             appt_info = AppointmentInfo(
                 event_id=event["id"],
                 summary=summary,
-                start_time=f"{formatted_date} a las {formatted_time}",
+                start_time=f"{formatted_date} at {formatted_time}",
                 contact_name=ext_name or None,
                 contact_phone=ext_phone or None,
                 contact_email=ext_email or None
             )
 
-            # --- PriorizaciÃ³n de BÃºsqueda ---
+            # --- Search Prioritization ---
             
-            # 1. Prioridad: TelÃ©fono
+            # 1. Priority: Phone
             if clean_target_phone and ext_phone:
                 clean_ext_phone = "".join(c for c in ext_phone if c.isdigit())
                 if clean_target_phone in clean_ext_phone:
                     phone_matches.append(appt_info)
-                    continue # Si matchea por telÃ©fono, es prioridad alta
+                    continue  # If phone matches, high priority
 
-            # 2. Correo (si se proporcionÃ³ y no hubo match de telÃ©fono aÃºn)
+            # 2. Email (if provided and no phone match yet)
             if target_email and ext_email and target_email == ext_email.lower():
                 email_matches.append(appt_info)
                 continue
 
-            # 3. Nombre
+            # 3. Name
             if target_person and ext_name:
                 content_to_search = (summary + " " + description).lower()
                 if (target_lower in content_to_search) or (all(kw in content_to_search for kw in target_keywords) if target_keywords else False):
                     name_matches.append(appt_info)
 
-        # Retornar resultados segÃºn prioridad
+        # Return results by priority
         results = phone_matches or email_matches or name_matches
 
         if results:
@@ -135,7 +136,7 @@ async def find_appointment(req: FindAppointmentRequest):
 
         target_search = target_phone or target_person or target_email
         return FindAppointmentResponse(
-            success=False, errors=f"No se encontrÃ³ ninguna cita para '{target_search}' en el prÃ³ximo mes."
+            success=False, errors=f"No appointments found for '{target_search}' in the next month."
         )
 
     except Exception as e:

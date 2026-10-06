@@ -53,7 +53,7 @@ def _send_echo(contact_id: str, channel: str, message: str, reply_message_id: Op
     if not send_type:
         raise HTTPException(
             status_code=400,
-            detail=f"Canal no soportado para envío: {channel}. Soportados: {sorted(GHL_OUTBOUND_CHANNEL_MAP)}",
+            detail=f"Unsupported channel for sending: {channel}. Supported: {sorted(GHL_OUTBOUND_CHANNEL_MAP)}",
         )
 
     payload: Dict[str, Any] = {
@@ -153,7 +153,7 @@ def _find_or_create_conversation(contact_id: str, location_id: str) -> str:
     created = create_response.json().get("conversation", {})
     conversation_id = created.get("id") or created.get("conversationId")
     if not conversation_id:
-        raise HTTPException(status_code=502, detail="No se pudo obtener el conversationId")
+        raise HTTPException(status_code=502, detail="Could not obtain conversationId")
 
     return str(conversation_id)
 
@@ -187,7 +187,7 @@ def echo(payload: Dict[str, Any]):
             raise HTTPException(
                 status_code=500,
                 detail=(
-                    "Falta configurar GHL_TOKEN en el entorno o definir GHL_TOKEN en app.py"
+                    "GHL_TOKEN is missing in environment or not defined in app.py"
                 ),
             )
 
@@ -229,13 +229,13 @@ def echo(payload: Dict[str, Any]):
             return {
                 "ok": True,
                 "echoSent": False,
-                "reason": f"El telefono {phone} no esta en la lista permitida",
+                "reason": f"Phone {phone} is not in the allowed list",
             }
 
         if not contact_id:
-            raise HTTPException(status_code=400, detail="No se encontró contact_id/contactId en el payload")
+            raise HTTPException(status_code=400, detail="contact_id/contactId not found in payload")
         if not location_id:
-            raise HTTPException(status_code=400, detail="No se encontró location_id/location.id en el payload")
+            raise HTTPException(status_code=400, detail="location_id/location.id not found in payload")
 
         _append_trace(
             "searching_conversation",
@@ -309,7 +309,7 @@ def echo(payload: Dict[str, Any]):
             return {
                 "ok": True,
                 "echoSent": False,
-                "reason": "No se encontraron mensajes inbound para esta conversación",
+                "reason": "No inbound messages found for this conversation",
                 "contactId": contact_id,
                 "locationId": location_id,
                 "conversationId": conversation_id,
@@ -401,7 +401,7 @@ def echo(payload: Dict[str, Any]):
             },
         )
         _log_exception("request_exception", payload, error)
-        raise HTTPException(status_code=502, detail=f"Error de red llamando a GHL: {error}") from error
+        raise HTTPException(status_code=502, detail=f"Network error calling GHL: {error}") from error
     except Exception as error:
         _append_trace(
             "unexpected_exception",
@@ -411,4 +411,4 @@ def echo(payload: Dict[str, Any]):
             },
         )
         _log_exception("unexpected_exception", payload, error)
-        raise HTTPException(status_code=500, detail=f"Error inesperado en echo: {error}") from error
+        raise HTTPException(status_code=500, detail=f"Unexpected error in echo: {error}") from error

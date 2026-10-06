@@ -17,21 +17,21 @@ async def cancel_appointment(req: CancelAppointmentRequest):
     config = settings.ivf if req.calendar_type == "IVF" else settings.sur
     
     if not (config.google_client_id and config.google_client_secret and config.google_refresh_token):
-        return CancelAppointmentResponse(success=False, errors=f"Faltan credenciales para el calendario {req.calendar_type}")
+        return CancelAppointmentResponse(success=False, errors=f"Missing credentials for calendar {req.calendar_type}")
 
     try:
         access_token = await get_access_token(
             config.google_client_id, config.google_client_secret, config.google_refresh_token
         )
         if not access_token:
-            return CancelAppointmentResponse(success=False, errors="No se pudo obtener el access token de Google Calendar")
+            return CancelAppointmentResponse(success=False, errors="Failed to obtain Google Calendar access token")
 
         success = await delete_event(access_token, config.calendar_id, req.event_id)
         
         if success:
-            return CancelAppointmentResponse(success=True, message="La cita ha sido cancelada exitosamente.")
+            return CancelAppointmentResponse(success=True, message="The appointment has been successfully canceled.")
         else:
-            return CancelAppointmentResponse(success=False, errors="No se pudo eliminar el evento. Verifique el event_id.")
+            return CancelAppointmentResponse(success=False, errors="Could not delete the event. Please verify the event_id.")
 
     except Exception as e:
         return CancelAppointmentResponse(success=False, errors=str(e))

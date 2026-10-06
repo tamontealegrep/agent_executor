@@ -31,14 +31,14 @@ async def get_available_slots(req: SlotsRequest):
         if not (tool.google_client_id and tool.google_client_secret and tool.google_refresh_token):
             return SlotsResponse(
                 success=False, iana_timezone=user_tz, available_slots=[],
-                errors=f"Faltan GOOGLE_CLIENT_ID_{env_suffix} / GOOGLE_CLIENT_SECRET_{env_suffix} / GOOGLE_REFRESH_TOKEN_{env_suffix} en el entorno",
+                errors=f"Missing GOOGLE_CLIENT_ID_{env_suffix} / GOOGLE_CLIENT_SECRET_{env_suffix} / GOOGLE_REFRESH_TOKEN_{env_suffix} in environment",
             )
 
         access_token = await get_access_token(
             tool.google_client_id, tool.google_client_secret, tool.google_refresh_token
         )
         if not access_token:
-            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="No se pudo obtener el access token")
+            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="Failed to obtain access token")
 
         start_date = compute_start_date(now)
         end_date = compute_end_date(start_date, tool.days_ahead, policy.closing_hour)

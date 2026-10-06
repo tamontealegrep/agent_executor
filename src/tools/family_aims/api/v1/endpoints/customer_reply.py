@@ -68,13 +68,13 @@ async def customer_reply(payload: Dict[str, Any]):
         channel = req.channel or "LIVE_CHAT"
 
         if not contact_id or not user_message:
-            raise HTTPException(status_code=400, detail="Faltan campos requeridos (contact_id o mensaje)")
+            raise HTTPException(status_code=400, detail="Missing required fields (contact_id or message)")
 
-        # Inicializar LangChain con GPT-4o
+        # Initialize LangChain LLM
         llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
         
         messages = [
-            SystemMessage(content="Eres un asistente útil para Family Aims, una agencia de maternidad subrogada e IVF. Responde de manera profesional y empática."),
+            SystemMessage(content="You are a helpful assistant for Family Aims, a surrogacy and IVF agency. Respond professionally and empathetically."),
             HumanMessage(content=user_message)
         ]
         

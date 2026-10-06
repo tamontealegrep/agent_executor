@@ -25,7 +25,7 @@ def _is_present(val: Any) -> bool:
 
 
 def _split_list(raw: Optional[Union[str, List[str]]]) -> List[str]:
-    """Normaliza el input (string separado por comas, o lista) a una lista de strings sin vacios, en minusculas."""
+    """Normalize input (comma-separated string or list) to a non-empty, lowercased list of strings."""
     if raw is None:
         return []
     items = raw if isinstance(raw, list) else str(raw).split(",")
@@ -33,7 +33,7 @@ def _split_list(raw: Optional[Union[str, List[str]]]) -> List[str]:
 
 
 def _normalize_preferred_days(raw: Optional[Union[str, List[str]]]) -> Tuple[List[str], Optional[str]]:
-    """Acepta días individuales, y los atajos 'weekdays'/'weekend'/'any'. Devuelve (dias_ordenados, error)."""
+    """Accepts individual days and 'weekdays'/'weekend'/'any' shortcuts. Returns (ordered_days, error)."""
     tokens = _split_list(raw)
     if not tokens:
         return [], None
@@ -49,7 +49,7 @@ def _normalize_preferred_days(raw: Optional[Union[str, List[str]]]) -> Tuple[Lis
         elif token in _DAY_NAMES:
             days.add(token)
         else:
-            return [], f"Dia invalido en preferred_days: '{token}'"
+            return [], f"Invalid day in preferred_days: '{token}'"
 
     return [d for d in _DAY_NAMES if d in days], None
 
@@ -62,7 +62,7 @@ def _normalize_time_window(raw: Optional[str]) -> Tuple[Optional[str], Optional[
         return None, None
     if token in _VALID_TIME_WINDOWS:
         return token, None
-    return None, f"Franja horaria invalida en preferred_time_window: '{token}'"
+    return None, f"Invalid time window in preferred_time_window: '{token}'"
 
 
 def _is_valid_timezone(tz: str) -> bool:
@@ -97,29 +97,28 @@ def prepare_callback_request(
     raw_preferred_time_window: Optional[str],
     raw_timezone: Optional[str],
 ) -> Dict[str, Any]:
-    """Valida y normaliza una solicitud de callback. No tiene efectos externos.
-    Un input invalido/incompleto es un resultado de negocio normal (errors
-    explica por que), no una excepcion — misma convencion que calculate_bmi
-    y check_documentation."""
+    """Validate and normalize a callback request. No side effects.
+    An invalid/incomplete input is a normal business result (errors explains why),
+    not an exception — same convention as calculate_bmi and check_documentation."""
     contact_name = raw_contact_name.strip() if _is_present(raw_contact_name) else None
     contact_phone = raw_contact_phone.strip() if _is_present(raw_contact_phone) else None
     contact_email = raw_contact_email.strip() if _is_present(raw_contact_email) else None
 
     if not contact_name:
-        return _rejected("contact_name es requerido")
+        return _rejected("contact_name is required")
 
     if not contact_phone and not contact_email:
-        return _rejected("Debe proporcionar al menos contact_phone o contact_email")
+        return _rejected("You must provide at least contact_phone or contact_email")
 
     reason = raw_reason.strip().lower() if _is_present(raw_reason) else None
     if reason not in _VALID_REASONS:
-        return _rejected(f"reason invalido. Valores permitidos: {', '.join(sorted(_VALID_REASONS))}")
+        return _rejected(f"invalid reason. Allowed values: {', '.join(sorted(_VALID_REASONS))}")
 
     if not _is_present(raw_timezone):
-        return _rejected("timezone es requerido")
+        return _rejected("timezone is required")
     timezone = raw_timezone.strip()
     if not _is_valid_timezone(timezone):
-        return _rejected(f"timezone invalido: '{timezone}'")
+        return _rejected(f"invalid timezone: '{timezone}'")
 
     preferred_days, days_error = _normalize_preferred_days(raw_preferred_days)
     if days_error:

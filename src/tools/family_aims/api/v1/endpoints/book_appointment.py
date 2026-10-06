@@ -35,22 +35,22 @@ async def book_appointment(req: BookAppointmentRequest):
         try:
             start_dt = engine.parse_start_date(req.start_date)
         except ValueError:
-            return BookAppointmentResponse(success=False, reason="invalid_start_date", errors="start_date no es una fecha ISO 8601 válida")
+            return BookAppointmentResponse(success=False, reason="invalid_start_date", errors="start_date is not a valid ISO 8601 date")
 
         duration_minutes = engine.parse_duration_minutes(req.duration)
         end_dt = engine.compute_end_date(start_dt, duration_minutes)
 
         if not engine.is_future(start_dt, now):
-            return BookAppointmentResponse(success=False, reason="past_date", errors="La fecha no puede estar en el pasado")
+            return BookAppointmentResponse(success=False, reason="past_date", errors="The date cannot be in the past")
 
         weekday = get_weekday_in_tz(start_dt, "America/Bogota")
         hour = get_hour_in_tz(start_dt, "America/Bogota")
         minute = start_dt.astimezone(ZoneInfo("America/Bogota")).minute
         if not policy.is_valid_business_hour(weekday, hour, minute):
-            return BookAppointmentResponse(success=False, reason="invalid_hour", errors="El horario solicitado está fuera del horario de atención")
+            return BookAppointmentResponse(success=False, reason="invalid_hour", errors="The requested time is outside business hours")
 
         if not engine.is_valid_email(req.contact_email):
-            return BookAppointmentResponse(success=False, reason="invalid_email", errors="El correo del contacto no es válido")
+            return BookAppointmentResponse(success=False, reason="invalid_email", errors="The contact email is not valid")
 
         contact_email = engine.normalize_email(req.contact_email)
         contact_name = engine.format_contact_name(req.contact_name)
@@ -59,15 +59,15 @@ async def book_appointment(req: BookAppointmentRequest):
         client_tz = req.iana_timezone.strip() or "America/Bogota"
 
         if not (tool.google_client_id and tool.google_client_secret and tool.google_refresh_token):
-            return BookAppointmentResponse(success=False, errors=f"Faltan GOOGLE_CLIENT_ID_{env_suffix} / GOOGLE_CLIENT_SECRET_{env_suffix} / GOOGLE_REFRESH_TOKEN_{env_suffix} en el entorno")
+            return BookAppointmentResponse(success=False, errors=f"Missing GOOGLE_CLIENT_ID_{env_suffix} / GOOGLE_CLIENT_SECRET_{env_suffix} / GOOGLE_REFRESH_TOKEN_{env_suffix} in environment")
 
         access_token = await get_access_token(tool.google_client_id, tool.google_client_secret, tool.google_refresh_token)
         if not access_token:
-            return BookAppointmentResponse(success=False, errors="No se pudo obtener el access token de Google Calendar")
+            return BookAppointmentResponse(success=False, errors="Failed to obtain Google Calendar access token")
 
         busy_events = await get_free_busy(access_token, tool.calendar_id, start_dt, end_dt)
         if busy_events:
-            return BookAppointmentResponse(success=False, reason="slot_taken", errors="Ese horario ya no está disponible")
+            return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
 
         event = await create_event(
             access_token=access_token,
@@ -81,14 +81,14 @@ async def book_appointment(req: BookAppointmentRequest):
         )
         event_id = event.get("id")
         if not event_id:
-            return BookAppointmentResponse(success=False, reason="creation_failed", errors="No se pudo crear la cita. No se realizó la reserva")
+            return BookAppointmentResponse(success=False, reason="creation_failed", errors="Failed to create the appointment. The booking was not completed")
 
         event_link = event.get("htmlLink")
         meet_link = event.get("hangoutLink")
 
         try:
             if not (gmail.google_client_id and gmail.google_client_secret and gmail.google_refresh_token and gmail.sender_email):
-                raise RuntimeError("Faltan las credenciales de Gmail (FA_GOOGLE_CLIENT_ID_GMAIL / FA_GMAIL_SENDER_EMAIL, etc.) en el entorno")
+                raise RuntimeError("Missing Gmail credentials (FA_GOOGLE_CLIENT_ID_GMAIL / FA_GMAIL_SENDER_EMAIL, etc.) in environment")
 
             gmail_token = await get_access_token(gmail.google_client_id, gmail.google_client_secret, gmail.google_refresh_token)
             local_start = start_dt.astimezone(ZoneInfo(client_tz))
@@ -105,7 +105,7 @@ async def book_appointment(req: BookAppointmentRequest):
         except Exception as email_error:
             return BookAppointmentResponse(
                 success=True, event_id=event_id, event_link=event_link, meet_link=meet_link,
-                errors=f"La cita se creó pero no se pudo notificar por correo: {email_error}",
+                errors=f"The appointment was created but email notification failed: {email_error}",
             )
 
         return BookAppointmentResponse(success=True, event_id=event_id, event_link=event_link, meet_link=meet_link, errors=None)

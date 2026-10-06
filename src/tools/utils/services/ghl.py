@@ -38,9 +38,9 @@ async def update_custom_field_service(
             elif location_id:
                 field_id = await _find_custom_field_id_by_name(location_id, name, config, headers)
                 if not field_id:
-                    return {"success": False, "type": "contact", "errors": f"No se encontró campo '{name}'"}
+                    return {"success": False, "type": "contact", "errors": f"Field '{name}' not found"}
             else:
-                return {"success": False, "type": "contact", "errors": "Se requiere location_id para buscar por nombre"}
+                return {"success": False, "type": "contact", "errors": "location_id is required to search by name"}
             
             payload = {"customFields": [{"id": field_id, "value": value}]}
         
@@ -67,7 +67,7 @@ async def update_custom_field_service(
                 target = next((cv for cv in cvs if cv.get("name", "").lower() == name.lower()), None)
                 
                 if not target:
-                    return {"success": False, "type": "custom_value", "errors": f"Custom Value '{name}' no encontrado"}
+                    return {"success": False, "type": "custom_value", "errors": f"Custom Value '{name}' not found"}
                 
                 # Actualizar
                 update_url = f"{config.base_url}/locations/{location_id}/customValues/{target['id']}"
@@ -82,7 +82,7 @@ async def update_custom_field_service(
         except Exception as e:
             return {"success": False, "type": "custom_value", "errors": str(e)}
 
-    return {"success": False, "type": "unknown", "errors": "Falta contact_id o location_id"}
+    return {"success": False, "type": "unknown", "errors": "Missing contact_id or location_id"}
 
 async def _find_custom_field_id_by_name(location_id: str, name: str, config, headers: dict) -> Optional[str]:
     """Helper interno para mapear nombre de campo -> ID en una ubicación."""

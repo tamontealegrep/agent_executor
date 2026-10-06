@@ -15,21 +15,21 @@ async def cancel_appointment(req: CancelAppointmentRequest):
     settings = get_settings()
     
     if not (settings.google_client_id and settings.google_client_secret and settings.google_refresh_token):
-        return CancelAppointmentResponse(success=False, errors="Faltan credenciales de Google en el entorno")
+        return CancelAppointmentResponse(success=False, errors="Missing Google credentials in environment")
 
     try:
         access_token = await get_access_token(
             settings.google_client_id, settings.google_client_secret, settings.google_refresh_token
         )
         if not access_token:
-            return CancelAppointmentResponse(success=False, errors="No se pudo obtener el access token de Google Calendar")
+            return CancelAppointmentResponse(success=False, errors="Failed to obtain Google Calendar access token")
 
         success = await delete_event(access_token, settings.calendar_id, req.event_id)
         
         if success:
-            return CancelAppointmentResponse(success=True, message="La cita ha sido cancelada exitosamente.")
+            return CancelAppointmentResponse(success=True, message="The appointment has been successfully canceled.")
         else:
-            return CancelAppointmentResponse(success=False, errors="No se pudo eliminar el evento. Verifique el event_id.")
+            return CancelAppointmentResponse(success=False, errors="Could not delete the event. Please verify the event_id.")
 
     except Exception as e:
         return CancelAppointmentResponse(success=False, errors=str(e))

@@ -1,9 +1,8 @@
 """
-Port de code_01 del flujo GHL "book_appointment": parseo de fecha/duración,
-formateo del nombre de contacto, y el validador de horario laboral de
-Colombia — distinto del de available-slots (este SÍ atiende sábado, y
-Lunes-Viernes cierra a las 18:00, no a las 17:00). No sabe nada de HTTP ni
-de Google.
+Core booking helpers: parsing start/duration, contact-name formatting, and
+Colombia business-hours validation. This is distinct from the availability
+calculator (this one does attend Saturday, and Mon–Fri closes at 18:00).
+Pure logic — no HTTP/Google concerns here.
 """
 
 import re
@@ -13,13 +12,15 @@ from zoneinfo import ZoneInfo
 
 _LEADING_INT_RE = re.compile(r"^\s*(-?\d+)")
 
-EVENT_TITLE_PREFIX = "Primera Vez"
-EMAIL_SUBJECT_PREFIX = "🗓️ Primera Vez"
+# Public constants used by endpoints for consistent titles/subjects
+EVENT_TITLE_PREFIX = "First Visit"
+TITLE_SEPARATOR = " - "
+EMAIL_SUBJECT_PREFIX = "First Visit"
 EMAIL_TEMPLATE_NAME = "book_appointment"
 
 
 def parse_start_date(start_date_str: str) -> datetime:
-    """Si start_date no trae offset, se asume hora de Bogotá (la zona del negocio)."""
+    """If start_date has no offset, assume America/Bogota (business TZ)."""
     dt = datetime.fromisoformat(start_date_str.strip().replace("Z", "+00:00"))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=ZoneInfo("America/Bogota"))
@@ -27,8 +28,7 @@ def parse_start_date(start_date_str: str) -> datetime:
 
 
 def parse_duration_minutes(raw: Optional[str], default: int = 10) -> int:
-    """Equivalente a `parseInt(x, 10) || 10` del JS original (10 min por
-    defecto — este flujo usa un valor distinto al de los demás tools)."""
+    """JS-equivalent of parseInt(x, 10) || 10 (defaults to 10 minutes)."""
     if raw is None:
         return default
     match = _LEADING_INT_RE.match(raw)
@@ -47,23 +47,24 @@ def is_future(start_dt: datetime, now_utc: datetime) -> bool:
 
 
 def format_contact_name(raw_name: str) -> str:
-    """Recorta, colapsa espacios y capitaliza cada palabra."""
+    """Trim, collapse spaces, and capitalize each word."""
     return " ".join(word.capitalize() for word in raw_name.strip().split())
 
 
 def is_valid_business_hour(weekday: int, hour: int, minute: int) -> bool:
-    """Port de validateColombiaBusinessHours del JS original. weekday sigue
-    la convención del proyecto (0=Domingo ... 6=Sábado, ver utils/timezones.py).
-    Domingo cerrado; Lunes a Viernes 07:00-18:00; Sábado 08:00-13:00."""
-    if weekday == 0:  # Domingo
+    """Validate Colombia business hours.
+    Weekday uses project convention (0=Sunday ... 6=Saturday, see utils/timezones.py).
+    Sunday closed; Mon–Fri 07:00–18:00; Saturday 08:00–13:00.
+    """
+    if weekday == 0:  # Sunday
         return False
-    if weekday in (1, 2, 3, 4, 5):  # Lunes a Viernes
+    if weekday in (1, 2, 3, 4, 5):  # Monday to Friday
         if hour < 7:
             return False
         if hour > 18 or (hour == 18 and minute > 0):
             return False
         return True
-    if weekday == 6:  # Sábado
+    if weekday == 6:  # Saturday
         if hour < 8:
             return False
         if hour > 13 or (hour == 13 and minute > 0):

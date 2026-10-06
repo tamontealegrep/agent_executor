@@ -18,13 +18,13 @@ async def edit_appointment(req: EditAppointmentRequest):
     try:
         now = datetime.now(ZoneInfo("UTC"))
         
-        # 1. Credenciales
+        # 1. Credentials
         if not (settings.google_client_id and settings.google_client_secret and settings.google_refresh_token):
-            return EditAppointmentResponse(success=False, errors="Faltan credenciales de Google en el entorno")
+            return EditAppointmentResponse(success=False, errors="Missing Google credentials in environment")
 
         access_token = await get_access_token(settings.google_client_id, settings.google_client_secret, settings.google_refresh_token)
         if not access_token:
-            return EditAppointmentResponse(success=False, errors="No se pudo obtener el access token de Google Calendar")
+            return EditAppointmentResponse(success=False, errors="Failed to obtain Google Calendar access token")
 
         # 2. Procesar cambios de fecha/hora si se proporcionan
         start_dt = None
@@ -35,30 +35,30 @@ async def edit_appointment(req: EditAppointmentRequest):
             try:
                 start_dt = policy.parse_start_date(req.new_start_date)
             except ValueError:
-                return EditAppointmentResponse(success=False, errors="new_start_date no es una fecha ISO 8601 vÃ¡lida")
+                return EditAppointmentResponse(success=False, errors="new_start_date is not a valid ISO 8601 date")
 
             if not policy.is_future(start_dt, now):
-                return EditAppointmentResponse(success=False, errors="La nueva fecha no puede estar en el pasado")
+                return EditAppointmentResponse(success=False, errors="The new date cannot be in the past")
 
             # Validar horario laboral
             local_start = start_dt.astimezone(ZoneInfo("America/Bogota"))
             weekday = get_weekday_in_tz(start_dt, "America/Bogota")
             if not policy.is_valid_business_hour(weekday, local_start.hour, local_start.minute):
-                return EditAppointmentResponse(success=False, errors="El nuevo horario solicitado estÃ¡ fuera del horario de atenciÃ³n")
+                return EditAppointmentResponse(success=False, errors="The requested new time is outside business hours")
 
             # Calcular fin
             applied_duration = req.new_duration or str(settings.duration_minutes)
             duration_int = policy.parse_duration_minutes(applied_duration)
             end_dt = policy.compute_end_date(start_dt, duration_int)
 
-            # Validar disponibilidad: buscamos eventos en el rango que no sean el actual
+            # Validate availability: find events in range other than the current one
             existing_events = await list_events(access_token, settings.calendar_id, start_dt, end_dt)
             
-            # Filtramos el evento actual de los resultados. Si queda algo, el slot estÃ¡ ocupado.
+            # Filter the current event from results. If any remain, the slot is taken.
             other_events = [e for e in existing_events if e.get("id") != req.event_id]
             
             if other_events:
-                return EditAppointmentResponse(success=False, errors="El nuevo horario solicitado ya estÃ¡ ocupado por otra cita.")
+                return EditAppointmentResponse(success=False, errors="The requested new time is already taken by another appointment.")
 
         # 3. Actualizar evento
         updated_event = await update_event(
@@ -70,21 +70,21 @@ async def edit_appointment(req: EditAppointmentRequest):
         )
 
         if not updated_event:
-            return EditAppointmentResponse(success=False, errors="No se pudo actualizar el evento. Verifique el event_id.")
+            return EditAppointmentResponse(success=False, errors="Could not update the event. Please verify the event_id.")
 
         # 4. Formatear respuesta
         local_tz = (req.iana_timezone or "America/Bogota").strip()
-        language = "ES"
+        language = "EN"
         
-        message = "La cita ha sido modificada exitosamente."
+        message = "The appointment has been successfully updated."
         new_time_str = None
         
         if start_dt:
             local_start = start_dt.astimezone(ZoneInfo(local_tz))
             formatted_date = date_formatting.format_full_date(local_start, language)
             formatted_time = date_formatting.format_booking_time(local_start, language)
-            new_time_str = f"{formatted_date} a las {formatted_time}"
-            message = f"La cita ha sido reprogramada para el {new_time_str}."
+            new_time_str = f"{formatted_date} at {formatted_time}"
+            message = f"The appointment has been rescheduled to {new_time_str}."
 
         return EditAppointmentResponse(
             success=True,

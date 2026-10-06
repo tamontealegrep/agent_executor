@@ -23,13 +23,13 @@ async def get_available_slots(req: SlotsRequest):
         if not (settings.google_client_id and settings.google_client_secret and settings.google_refresh_token):
             return SlotsResponse(
                 success=False, iana_timezone=user_tz, available_slots=[],
-                errors="Faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN en el entorno",
+                errors="Missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN in environment",
             )
         access_token = await get_access_token(
             settings.google_client_id, settings.google_client_secret, settings.google_refresh_token
         )
         if not access_token:
-            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="No se pudo obtener el access token")
+            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="Failed to obtain access token")
 
         range_end = add_days(now, settings.days_ahead)
         busy_events = await get_free_busy(access_token, settings.calendar_id, now, range_end)

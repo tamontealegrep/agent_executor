@@ -26,13 +26,13 @@ async def find_appointment(req: FindAppointmentRequest):
     requested_cal = req.calendar_type.upper()
 
     if requested_cal not in ("IVF", "SUR"):
-        return FindAppointmentResponse(success=False, errors="Debe proporcionar un calendar_type válido ('IVF' o 'SUR')")
+        return FindAppointmentResponse(success=False, errors="You must provide a valid calendar_type ('IVF' or 'SUR')")
 
     if not target_person and not target_email:
-        return FindAppointmentResponse(success=False, errors="Debe proporcionar el nombre o el correo de la persona")
+        return FindAppointmentResponse(success=False, errors="You must provide the person's name or email")
 
     try:
-        # Rango: desde ayer hasta dentro de 35 días (para asegurar cobertura total)
+        # Range: from yesterday to 35 days ahead (full coverage)
         now = datetime.now(ZoneInfo("UTC"))
         time_min = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
         time_max = time_min + timedelta(days=36)
@@ -65,8 +65,7 @@ async def find_appointment(req: FindAppointmentRequest):
                 calendar_id=config.calendar_id,
                 time_min=time_min,
                 time_max=time_max,
-                # Quitamos el query 'q' para que Google no filtre por nosotros
-                # y así asegurarnos de traer TODOS los eventos del mes para procesarlos aquí.
+                # Avoid using query 'q' so we fetch ALL events and post-filter locally.
             )
 
             for event in events:
@@ -79,14 +78,14 @@ async def find_appointment(req: FindAppointmentRequest):
 
                 content_to_search = (summary + " " + description).lower()
                 
-                # Búsqueda por nombre
+                # Name-based search
                 name_match = False
                 if target_person:
                     name_match = (target_lower in content_to_search) or (
                         all(kw in content_to_search for kw in target_keywords) if target_keywords else False
                     )
                 
-                # Búsqueda por correo (en contenido o en lista de asistentes)
+                # Email-based search (in content or attendees list)
                 email_match = False
                 if target_email:
                     in_content = target_email in content_to_search
@@ -97,14 +96,15 @@ async def find_appointment(req: FindAppointmentRequest):
                     start_raw = event["start"].get("dateTime", event["start"].get("date"))
                     start_dt = parse_iso(start_raw).astimezone(ZoneInfo(client_tz))
                     
-                    formatted_date = date_formatting.format_full_date(start_dt, language)
-                    formatted_time = date_formatting.format_booking_time(start_dt, language)
+                    # Force English formatting for tool output
+                    formatted_date = date_formatting.format_full_date(start_dt, "EN")
+                    formatted_time = date_formatting.format_booking_time(start_dt, "EN")
 
                     found_appointments.append(
                         AppointmentInfo(
                             event_id=event["id"],
                             summary=summary,
-                            start_time=f"{formatted_date} a las {formatted_time}",
+                            start_time=f"{formatted_date} at {formatted_time}",
                             calendar_type=cal_type,
                         )
                     )
@@ -114,7 +114,7 @@ async def find_appointment(req: FindAppointmentRequest):
 
         target_search = target_person or target_email
         return FindAppointmentResponse(
-            success=False, errors=f"No se encontró ninguna cita para {target_search} en el próximo mes."
+            success=False, errors=f"No appointments found for {target_search} in the next month."
         )
 
     except Exception as e:
