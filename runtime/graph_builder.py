@@ -1199,10 +1199,14 @@ def _make_node_fn(
 
         # Recompute language after DO/STORE so output uses the updated language
         language_name = _language_name_from_slots(slots, fallback=language_name)
+        # The language-management subflow exists because the user can't read
+        # the current language, so it must not render in it: with no language
+        # given, render_say follows the language of the user's own message.
+        say_language = None if node.node_id.startswith("LM__") else language_name
 
         if node.node_type in ("message", "terminal") and node.say:
             rendered_message = render_say(
-                node.node_id, node.say, node.say_verbatim, language_name, slots, say_policies,
+                node.node_id, node.say, node.say_verbatim, say_language, slots, say_policies,
                 user_message=last_user_message,
             )
             say_callback(rendered_message)
@@ -1214,7 +1218,7 @@ def _make_node_fn(
             # on every turn. The caller reads the prompt from the interrupt
             # payload instead, exactly once.
             rendered_say = render_say(
-                node.node_id, node.say, node.say_verbatim, language_name, slots, say_policies,
+                node.node_id, node.say, node.say_verbatim, say_language, slots, say_policies,
                 user_message=last_user_message,
             )
 
@@ -1231,7 +1235,7 @@ def _make_node_fn(
                     n.node_id if hasattr(n, "node_id") else n.faq_id,
                     say,
                     n.say_verbatim,
-                    language_name,
+                    say_language,
                     slots,
                     say_policies,
                     user_message=reply,
@@ -1259,7 +1263,7 @@ def _make_node_fn(
                             f"{node.node_id}__side_question_ack",
                             UNANSWERED_QUESTION_ACK,
                             False,
-                            language_name,
+                            say_language,
                             slots,
                             say_policies,
                             user_message=reply,
