@@ -726,9 +726,11 @@ def _make_render_say(
         )
         if not language_name and user_message.strip():
             force_lang = (
-                " Write the final message in the same language the user is writing in, judging by "
-                f"their latest message: {user_message.strip()[:200]!r}. If the text is in another "
-                "language, translate it faithfully into that language before rephrasing."
+                " Write the final message in a language the user can read, judging by their latest "
+                f"message: {user_message.strip()[:200]!r}. That is usually the language the message "
+                "is written in, but if the message says they do not speak a language, use a different "
+                "one instead of that language. If the text is in another language, translate it "
+                "faithfully into that language before rephrasing."
             )
         prompt = (
             f"Rephrase this agent message naturally{in_language}, the way a person "
@@ -849,10 +851,13 @@ def _llm_pick_condition(
 _ARG_BIND_RE = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$")
 _CONST_REF_RE = re.compile(r"^<([A-Z_][A-Z0-9_]*)>$")
 _ATTR_ACCESS_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$")
+_CONTACT_REF_RE = re.compile(r"^\[contact\.([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _SEGMENT_SPLIT_RE = re.compile(r",\s*|\.(?=\s|$)")
 
 
-def _extract_mechanical_arg_bindings(do_lines: list[str], slots: dict[str, Any]) -> dict[str, Any]:
+def _extract_mechanical_arg_bindings(
+    do_lines: list[str], slots: dict[str, Any], contact: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Parse `DO` lines for `input_name = <value>` tool-argument hints.
 
     The bare-left-hand-side counterpart to `_apply_store_line`'s
@@ -891,7 +896,7 @@ def _extract_mechanical_arg_bindings(do_lines: list[str], slots: dict[str, Any])
             if not match:
                 continue
             arg_name, rhs = match.group(1), match.group(2).strip()
-            resolved, value = _resolve_simple_rhs(rhs, slots)
+            resolved, value = _resolve_simple_rhs(rhs, slots, contact or {})
             if resolved:
                 bindings[arg_name] = value
     return bindings
@@ -920,7 +925,10 @@ def _arg_names_mentioned(do_lines: list[str]) -> set[str]:
     return names
 
 
-def _resolve_simple_rhs(rhs: str, slots: dict[str, Any]) -> tuple[bool, Any]:
+def _resolve_simple_rhs(rhs: str, slots: dict[str, Any], contact: dict[str, Any]) -> tuple[bool, Any]:
+    contact_ref = _CONTACT_REF_RE.match(rhs)
+    if contact_ref:
+        return True, contact.get(contact_ref.group(1))
     slot_ref = _STORE_SLOT_REF_RE.match(rhs)
     if slot_ref:
         return True, slots.get(slot_ref.group(1))
@@ -1030,15 +1038,23 @@ def _bind_tool_inputs(
     input_names = {f.name for f in contract_inputs}
     bound: dict[str, Any] = {name: slots[name] for name in input_names if name in slots}
 
-    mechanical = _extract_mechanical_arg_bindings(ctx.do, slots)
+    mechanical = _extract_mechanical_arg_bindings(ctx.do, slots, ctx.contact)
+    optional_names = {f.name for f in contract_inputs if not f.required}
+    resolved_empty: set[str] = set()
     for name, value in mechanical.items():
         if name in input_names and name not in bound:
+            # An optional input that resolved to nothing is omitted, not sent
+            # as null, and not worth an LLM call either.
+            if value is None and name in optional_names:
+                resolved_empty.add(name)
+                continue
             bound[name] = value
 
     mentioned = _arg_names_mentioned(ctx.do)
     optional_mentioned = {f.name for f in contract_inputs if not f.required and f.name in mentioned}
     missing_fields = [
-        f for f in contract_inputs if f.name not in bound and (f.required or f.name in mentioned)
+        f for f in contract_inputs
+        if f.name not in bound and f.name not in resolved_empty and (f.required or f.name in mentioned)
     ]
     if missing_fields:
         llm_bound = _llm_bind_tool_inputs(llm_client, missing_fields, ctx)
@@ -1131,7 +1147,7 @@ def _make_node_fn(
         # Expose the incoming state's id to DSL expressions inside this node
         # (e.g. dynamic GO_TO: [current_state] or STORE using [current_state]).
         prev_state_id = state.get("current_state")
-        if prev_state_id is not None and "current_state" not in slots:
+        if prev_state_id is not None:
             slots["current_state"] = prev_state_id
         # The language-management subflow (LM__) returns the user to where
         # they were: capture that resume target once, on entry.
@@ -1286,7 +1302,7 @@ def _make_node_fn(
                     return Command(
                         update={
                             "slots": slots,
-                            "current_state": goto_target,
+                            "current_state": node.node_id,
                             "last_user_message": reply,
                             "history": history,
                         },
@@ -1348,9 +1364,13 @@ def _make_node_fn(
                 _apply_store_line(line, ctx, llm_client)
             _apply_conditional_mutations(node.store, ctx, llm_client)
 
+        # A start node is only a gateway into a subflow: the state a DSL
+        # expression like `[current_state]` should see after it is still the
+        # one the user was in before the jump.
+        keeps_previous_state = node.node_type == "start" and bool(prev_state_id)
         return {
             "slots": slots,
-            "current_state": node.node_id,
+            "current_state": prev_state_id if keeps_previous_state else node.node_id,
             "last_user_message": last_user_message,
             "history": history,
         }
