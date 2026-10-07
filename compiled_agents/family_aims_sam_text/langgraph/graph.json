@@ -1349,7 +1349,7 @@
           "Initialize opening counters and lock the operating language."
         ],
         "do": [
-          "Set [preferred_language] from {{contact.language}} when available; if it is missing, default [preferred_language] to English."
+          "Infer [preferred_language] from {{contact.language}} first; if it is missing, infer it from the user's latest message."
         ],
         "trigger": [],
         "say": [],
@@ -1359,7 +1359,7 @@
           "[o__svc_try] = 0",
           "[o__consent_try] = 0",
           "[svc] = NULL",
-          "[preferred_language] = 'English' | 'Spanish' | 'Portuguese' derived from {{contact.language}}; if missing, default to 'English'"
+          "[preferred_language] = 'es' | 'en' | 'pt' derived from {{contact.language}} or inferred from the user's message"
         ],
         "capture": [],
         "eval": "code",
@@ -5604,7 +5604,7 @@
         "capture": [
           [
             "preferred_language",
-            "Literal[English, Spanish, Portuguese]"
+            "Literal[es, en, pt]"
           ]
         ],
         "eval": "code",
@@ -5653,23 +5653,23 @@
         "route": [
           {
             "target": "LM__LM_SET_ES",
-            "condition_text": "IF [preferred_language] == 'Spanish' -> GO_TO: LM__LM_SET_ES",
+            "condition_text": "IF [preferred_language] == 'es' -> GO_TO: LM__LM_SET_ES",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'Spanish'",
+            "python_expression": "preferred_language == 'es'",
             "reason": null
           },
           {
             "target": "LM__LM_SET_EN",
-            "condition_text": "IF [preferred_language] == 'English' -> GO_TO: LM__LM_SET_EN",
+            "condition_text": "IF [preferred_language] == 'en' -> GO_TO: LM__LM_SET_EN",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'English'",
+            "python_expression": "preferred_language == 'en'",
             "reason": null
           },
           {
             "target": "LM__LM_SET_PT",
-            "condition_text": "IF [preferred_language] == 'Portuguese' -> GO_TO: LM__LM_SET_PT",
+            "condition_text": "IF [preferred_language] == 'pt' -> GO_TO: LM__LM_SET_PT",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'Portuguese'",
+            "python_expression": "preferred_language == 'pt'",
             "reason": null
           },
           {
@@ -7951,11 +7951,7 @@
         "node_id": "H_LANG_CHANGE",
         "node_type": "message",
         "goal": [],
-        "do": [
-          "If the latest user message clearly requests to speak Spanish (e.g., contains 'no hablo ingles', 'habla en español', 'en español por favor', 'cambiar a español'), set [preferred_language] = 'Spanish' now before speaking.",
-          "If the latest user message clearly requests to speak Portuguese (e.g., contains 'não falo inglês', 'mudar para português', 'em português por favor', 'fale em português'), set [preferred_language] = 'Portuguese' now before speaking.",
-          "If the latest user message clearly requests to speak English or says they do not speak Spanish/Portuguese (e.g., 'I don't speak Spanish', 'speak in English', 'in English please'), set [preferred_language] = 'English' now before speaking."
-        ],
+        "do": [],
         "trigger": [
           "I don't speak Spanish",
           "I don't speak English",
@@ -9160,13 +9156,12 @@
     "PROCESS_DURATION_MONTHS": "24 months",
     "IVF_CITY": "Bogotá",
     "APPOINTMENT_DURATION_MINUTES": "30",
-    "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely.",
-    "SUPPORTED_LANG": "English|Spanish|Portuguese"
+    "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely."
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
-    "The conversation operating language is [preferred_language], set from {{contact.language}} when available; if missing, inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
-    "If [preferred_language] == 'English', respond in warm professional English; if 'Spanish', respond in natural Colombian Spanish ; if 'Portuguese', respond in natural Brazilian Portuguese. If it is still empty, use default to English",
+    "The conversation operating language is [preferred_language], set from {{contact.language}} when available or inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
+    "If [preferred_language] == 'es', respond in natural Colombian Spanish; if 'en', respond in warm professional English; if 'pt', respond in natural Brazilian Portuguese. If it is still empty, use Spanish when the latest message is clearly Spanish; otherwise default to English.",
     "For ambiguous replies such as yes, no, ok, numbers, dates, or times, keep [preferred_language]. Change it only if the user explicitly asks for another language or sends a new clear message in another supported language.",
     "If an approved SAY, FAQ, or handler message is written in another supported language, translate it faithfully into [preferred_language] without adding or removing facts.",
     "Write in a warm, brief, useful style and keep each turn focused on one clear next step.",
