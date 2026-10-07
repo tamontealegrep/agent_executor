@@ -75,10 +75,11 @@ for candidate in (EXECUTOR_SRC, EXECUTOR_ROOT):
 load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(PROJECT_ROOT / "agent_executor" / ".env", override=True)
 
-from sync_engine import sync_agent_runtime_engine
+from sync_engine import sync_vendored_engine
 
-sync_agent_runtime_engine()
+sync_vendored_engine()
 
+from compiled_runner.tool_routing import candidate_urls
 from engine.runtime.graph_builder import build_graph, fresh_state
 from engine.runtime.llm_client import OpenAILLMClient
 from engine.runtime.session_resolver import resolve_session
@@ -122,24 +123,35 @@ class ReturnToLauncher(Exception):
 
 
 def _tools_base_url(slug: str) -> str:
-    import os
+    """Base URL de tools para este slug.
 
-    host = os.getenv("HOST", "127.0.0.1")
-    port = os.getenv("PORT", "8010")
-    probe_host = "127.0.0.1" if host == "0.0.0.0" else host
-
-    # Mapeo de slugs a sus respectivos backends de herramientas
-    mapping = {
-        "family_aims_sam_text": "family_aims",
-        "family_aims_sam_en_voice": "family_aims",
-        "family_aims_sam_es_voice": "family_aims",
-        "family_aims_sam_pt_voice": "family_aims",
-        "babynova_surrogate_questions_voice": "novafem_surrogacy",
-        "babynova_surrogate_questions_text": "novafem_surrogacy",
-        "babynova_triage_obstetrico_text": "novafem_surrogacy",
-    }
-    app = mapping.get(slug, "family_aims")
-    return f"http://{probe_host}:{port}/{app}/v1"
+    Intentamos reutilizar la misma lógica que usa el servidor (compiled_runner/loader.py)
+    para evitar divergencias. Si no se puede importar, aplicamos un mapping local que
+    sigue la estructura actual de routers.
+    """
+    try:
+        # Usa la fuente de verdad del servidor si está disponible
+        from compiled_runner.loader import _tools_base_url as _server_tools_base_url  # type: ignore
+        return _server_tools_base_url(slug)
+    except Exception:
+        import os
+        host = os.getenv("HOST", "127.0.0.1")
+        port = os.getenv("PORT", "8010")
+        probe_host = "127.0.0.1" if host == "0.0.0.0" else host
+        if slug in {
+            "family_aims_sam_text",
+            "family_aims_sam_en_voice",
+            "family_aims_sam_es_voice",
+            "family_aims_sam_pt_voice",
+        }:
+            return f"http://{probe_host}:{port}/family_aims/v1"
+        if slug in {
+            "babynova_surrogate_questions_voice",
+            "babynova_surrogate_questions_text",
+            "babynova_triage_obstetrico_text",
+        }:
+            return f"http://{probe_host}:{port}/babynova/v1"
+        return f"http://{probe_host}:{port}/family_aims/v1"
 
 
 @dataclass
@@ -213,14 +225,96 @@ class TracingClient(httpx.Client):
         self._trace_sink = trace_sink
         self.enabled = False
         self._local_client = None
+        self._base_prefixes: List[str] = []
         try:
             # Intentamos usar TestClient para llamadas in-process si el servidor no está corriendo
             from main import app
             from fastapi.testclient import TestClient
 
             self._local_client = TestClient(app)
+            # Descubre prefijos base montados en la app local
+            self._maybe_discover_bases_from_local_app()
         except Exception:
             pass
+
+    def _maybe_discover_bases_from_local_app(self) -> None:
+        try:
+            if not self._local_client:
+                return
+            app = self._local_client.app
+            prefixes: set[str] = set()
+            for route in getattr(app, "routes", []) or []:
+                path = getattr(route, "path", "") or ""
+                # Buscamos /<vertical>/vN
+                parts = path.split("/")
+                if len(parts) >= 3 and parts[1] and parts[2].startswith("v"):
+                    prefixes.add(f"/{parts[1]}/{parts[2]}")
+            # Siempre incluir /tools/v1 por si el gateway está presente
+            prefixes.add("/tools/v1")
+            self._base_prefixes = sorted(prefixes)
+        except Exception:
+            self._base_prefixes = ["/family_aims/v1", "/babynova/v1", "/tools/v1"]
+
+    def _maybe_discover_bases_from_openapi(self, url: str) -> None:
+        # Intenta una sola vez contra el host al que llamamos
+        if self._base_prefixes:
+            return
+        try:
+            from urllib.parse import urlsplit, urlunsplit
+            parts = urlsplit(url)
+            openapi_url = urlunsplit((parts.scheme, parts.netloc, "/openapi.json", "", ""))
+            resp = super().get(openapi_url, timeout=5.0)
+            if resp.status_code != 200:
+                return
+            data = resp.json()
+            paths = data.get("paths", {}) if isinstance(data, dict) else {}
+            prefixes: set[str] = set()
+            for p in paths.keys():
+                segs = p.split("/")
+                if len(segs) >= 3 and segs[1] and segs[2].startswith("v"):
+                    prefixes.add(f"/{segs[1]}/{segs[2]}")
+            prefixes.add("/tools/v1")
+            if prefixes:
+                self._base_prefixes = sorted(prefixes)
+        except Exception:
+            # Deja la lista vacía — caller tendrá fallback fijo
+            pass
+
+    def _candidate_bases(self, url: str) -> List[str]:
+        if not self._base_prefixes:
+            self._maybe_discover_bases_from_openapi(url)
+        return self._base_prefixes or ["/family_aims/v1", "/babynova/v1", "/tools/v1"]
+
+    def _rewrite_snake_to_kebab(self, url: str) -> str:
+        """Normaliza la última parte del path a kebab-case (check_visa -> check-visa)."""
+        try:
+            from urllib.parse import urlsplit, urlunsplit
+
+            parts = urlsplit(url)
+            path = parts.path
+            if not path:
+                return url
+            if "/" not in path:
+                return url
+            head, tail = path.rsplit("/", 1)
+            new_tail = tail.replace("_", "-")
+            if new_tail == tail:
+                return url
+            new_path = f"{head}/{new_tail}"
+            return urlunsplit((parts.scheme, parts.netloc, new_path, parts.query, parts.fragment))
+        except Exception:
+            return url
+
+    def _switch_base(self, url: str, new_base: str) -> str:
+        from urllib.parse import urlsplit, urlunsplit
+        parts = urlsplit(url)
+        path = parts.path
+        # Reemplaza solo el prefijo base conocido
+        for base in set(self._candidate_bases(url)):
+            if path.startswith(base):
+                new_path = new_base + path[len(base):]
+                return urlunsplit((parts.scheme, parts.netloc, new_path, parts.query, parts.fragment))
+        return url
 
     def post(self, url: str, *args: Any, json: Any = None, **kwargs: Any) -> httpx.Response:  # noqa: A002
         if self.enabled:
@@ -233,14 +327,27 @@ class TracingClient(httpx.Client):
                         border_style="cyan",
                     )
                 )
-
-        if self._local_client and ("127.0.0.1" in url or "localhost" in url):
+        # Same endpoint resolution the server uses (compiled_runner.tool_routing)
+        candidates = candidate_urls(url)
+        # Ejecuta en orden hasta que no sea 404
+        last_response: httpx.Response | None = None
+        for attempt_url in candidates:
             try:
-                response = self._local_client.post(url, *args, json=json, **kwargs)
+                if self._local_client and ("127.0.0.1" in attempt_url or "localhost" in attempt_url):
+                    response = self._local_client.post(attempt_url, *args, json=json, **kwargs)
+                else:
+                    response = super().post(attempt_url, *args, json=json, **kwargs)
             except Exception:
-                response = super().post(url, *args, json=json, **kwargs)
-        else:
-            response = super().post(url, *args, json=json, **kwargs)
+                # Si falla el transporte, sigue al siguiente candidato
+                continue
+            if response.status_code != 404:
+                last_response = response
+                url = attempt_url
+                break
+            # Si todos dan 404, se conserva la del primer candidato (error real de la app)
+            last_response = last_response or response
+
+        response = last_response or super().post(candidates[0], *args, json=json, **kwargs)
 
         if self.enabled:
             console.print(f"[dim]HTTP Response {response.status_code}[/dim]")
@@ -434,13 +541,9 @@ class CompiledAgentHarness:
                         yield from _collect_strings(v)
 
             pattern = re.compile(r"\{\{\s*contact\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
-            for s in _collect_strings(self._artifact_dict):
-                for m in pattern.findall(s):
-                    fields.add(m)
+            for text in _collect_strings(self._artifact_dict):
+                fields.update(pattern.findall(text))
 
-        # Contact conocido via CLI flags
-        known_cli = {"name", "email", "phone", "language"}
-        fields.update(known_cli)
         return sorted(fields)
 
     def discover_input_variables(self) -> List[Dict[str, str]]:
@@ -816,62 +919,53 @@ def _edit_contact_interactive(harness: CompiledAgentHarness, state: CompiledSess
             continue
         if action == "clear":
             state.contact.pop(key, None)
+            harness.contact.pop(key, None)
             console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
             save_session(state, session_file)
             continue
         if action == "edit":
             if key == "language":
                 lang = questionary.select(
-                    "Elige idioma (es/en/pt) o 'Vaciar':",
+                    "Elige idioma o 'Vaciar':",
                     choices=[
-                        questionary.Choice("es", value="es"),
-                        questionary.Choice("en", value="en"),
-                        questionary.Choice("pt", value="pt"),
-                        questionary.Choice("Vaciar", value=None),
+                        questionary.Choice("Spanish", value="Spanish"),
+                        questionary.Choice("English", value="English"),
+                        questionary.Choice("Portuguese", value="Portuguese"),
+                        questionary.Choice("Vaciar", value="__clear__"),
                     ],
                     style=STYLE,
                 ).ask()
                 if lang is None:
+                    continue
+                if lang == "__clear__":
                     state.contact.pop(key, None)
+                    harness.contact.pop(key, None)
                     console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
                 else:
                     state.contact[key] = lang
+                    harness.contact[key] = lang
                     console.print(f"[cyan]Campo actualizado:[/cyan] contact.{key} = {lang!r}")
                 save_session(state, session_file)
                 continue
 
-            # Otros campos: ofrecer elegir entre escribir o vaciar
-            mode = questionary.select(
-                f"contact.{key} — como quieres actualizar?",
-                choices=[
-                    questionary.Choice("Escribir nuevo valor…", value="write"),
-                    questionary.Choice("Vaciar (dejar sin valor)", value="clear"),
-                    questionary.Choice("Cancelar", value="cancel"),
-                ],
+            current = state.contact.get(key)
+            val_raw = questionary.text(
+                "Valor (texto):",
+                default=str(current) if current is not None else "",
                 style=STYLE,
             ).ask()
-            if mode == "clear":
+            if val_raw is None:
+                continue
+            if val_raw.strip() == "":
                 state.contact.pop(key, None)
+                harness.contact.pop(key, None)
                 console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
-                save_session(state, session_file)
-                continue
-            if mode == "write":
-                current = state.contact.get(key)
-                val_raw = questionary.text(
-                    "Valor (texto):",
-                    default=str(current) if current is not None else "",
-                    style=STYLE,
-                ).ask()
-                if val_raw is None:
-                    continue
-                if val_raw.strip() == "":
-                    state.contact.pop(key, None)
-                    console.print(f"[cyan]Campo eliminado:[/cyan] contact.{key}")
-                else:
-                    state.contact[key] = val_raw
-                    console.print(f"[cyan]Campo actualizado:[/cyan] contact.{key} = {val_raw!r}")
-                save_session(state, session_file)
-                continue
+            else:
+                state.contact[key] = val_raw
+                harness.contact[key] = val_raw
+                console.print(f"[cyan]Campo actualizado:[/cyan] contact.{key} = {val_raw!r}")
+            save_session(state, session_file)
+            continue
 
     # Persistimos al salir
     save_session(state, session_file)
