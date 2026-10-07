@@ -125,7 +125,8 @@ _STORE_ASSIGN_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*=\s*(.+)$")
 _STORE_INCREMENT_RE = re.compile(r"^increment\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+by\s+1$", re.IGNORECASE)
 _STORE_SLOT_REF_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_SELF_ARITH_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*([+-])\s*(\d+)$")
-_QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
+_QUOTED_RE = re.compile(r"""^'([^']*)'$|^"([^"]*)"$""")
+# A quote inside the text means it isn't one literal (e.g. `'a' | 'b' derived from ...` is prose).
 
 
 def _as_int(value: Any) -> int:
