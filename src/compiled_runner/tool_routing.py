@@ -19,6 +19,12 @@ import httpx
 
 UTILS_PREFIX = "/tools/v1"
 
+# Shared tools mounted only under UTILS_PREFIX (tools.gateway's api_router), so
+# asking the agent's own vertical first would just burn a 404 on every call.
+_UTILS_TOOLS = frozenset(
+    {"time-now", "callback", "check-days-elapsed", "calculate-bmi", "update-custom-field", "echo", "pause"}
+)
+
 # App prefix (first path segment) -> suffix every one of its routes carries.
 _ROUTE_SUFFIX_BY_APP = {"babynova": "-sur"}
 
@@ -33,7 +39,10 @@ def candidate_urls(url: str) -> list[str]:
     paths = [f"{head}/{kebab}"]
     if suffix and not kebab.endswith(suffix):
         paths.insert(0, f"{head}/{kebab}{suffix}")
-    paths.append(f"{UTILS_PREFIX}/{kebab}")
+    if kebab in _UTILS_TOOLS:
+        paths.insert(0, f"{UTILS_PREFIX}/{kebab}")
+    else:
+        paths.append(f"{UTILS_PREFIX}/{kebab}")
 
     unique_paths = list(dict.fromkeys(paths))
     return [urlunsplit((parts.scheme, parts.netloc, p, parts.query, parts.fragment)) for p in unique_paths]

@@ -25,6 +25,10 @@ def test_candidate_urls_tries_the_babynova_suffix_first():
     ]
 
 
+def test_candidate_urls_tries_utils_first_for_a_shared_tool():
+    assert candidate_urls(f"{BASE}/family_aims/v1/update_custom_field")[0] == f"{BASE}/tools/v1/update-custom-field"
+
+
 def _client(routes: set[str], seen: list[str]) -> ToolRoutingClient:
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request.url.path)
@@ -35,11 +39,11 @@ def _client(routes: set[str], seen: list[str]) -> ToolRoutingClient:
     return ToolRoutingClient(transport=httpx.MockTransport(handler))
 
 
-def test_client_resolves_a_utils_tool_called_through_a_vertical_base():
+def test_client_resolves_a_utils_tool_without_a_wasted_request():
     seen: list[str] = []
     response = _client({"/tools/v1/time-now"}, seen).post(f"{BASE}/family_aims/v1/time_now", json={})
     assert response.status_code == 200
-    assert seen == ["/family_aims/v1/time-now", "/tools/v1/time-now"]
+    assert seen == ["/tools/v1/time-now"]
 
 
 def test_client_remembers_the_resolved_url_so_later_calls_skip_the_misses():
