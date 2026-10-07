@@ -1149,6 +1149,11 @@ def _resolve_target(
     return target
 
 
+def _leads_to_language_management(node: GraphNode | FaqNode) -> bool:
+    """True for a global-router handler whose route enters the `LM__` subflow."""
+    return any(edge.target.startswith("LM__") for edge in getattr(node, "route", []))
+
+
 def _make_node_fn(
     node: GraphNode,
     llm_client: LLMClient,
@@ -1269,7 +1274,7 @@ def _make_node_fn(
                     n.node_id if hasattr(n, "node_id") else n.faq_id,
                     say,
                     n.say_verbatim,
-                    say_language,
+                    None if _leads_to_language_management(n) else language_name,
                     slots,
                     say_policies,
                     user_message=reply,
