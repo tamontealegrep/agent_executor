@@ -66,9 +66,11 @@ produces a second write in the same step). See `_resolve_target`.
 
 from __future__ import annotations
 
-import json
+import logging
 import re
 from collections.abc import Callable
+from functools import lru_cache
+from types import CodeType
 from typing import Any, TypedDict
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -90,6 +92,9 @@ from agent_compiler.targets.langgraph.condition_parser import NAMED_PREDICATES
 from agent_compiler.targets.langgraph.graph_renderer import FaqNode, GlobalRouterDefinition, GraphEdge, GraphNode
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact
 from agent_compiler.targets.langgraph.type_parser import classify_type_expr
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionState(TypedDict):
@@ -123,6 +128,14 @@ _STORE_SELF_ARITH_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*([+-])\s*(\d
 _QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
 
 
+def _as_int(value: Any) -> int:
+    """`value` as an int, treating `None` and non-numeric content as 0."""
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None:
     """Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
 
@@ -143,7 +156,7 @@ def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None
     match = _STORE_INCREMENT_RE.match(line.strip())
     if match:
         name = match.group(1)
-        slots[name] = int(slots.get(name) or 0) + 1
+        slots[name] = _as_int(slots.get(name)) + 1
         return
 
     match = _STORE_ASSIGN_RE.match(line.strip())
@@ -153,19 +166,17 @@ def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None
 
     slot_ref = _STORE_SLOT_REF_RE.match(rhs)
     if slot_ref:
-        source_name = slot_ref.group(1)
-        source_value = slots.get(source_name)
-        # Do not overwrite with None when copying from an unset/missing slot —
-        # use `NULL` explicitly to clear a value. This prevents clobbering a
-        # previously captured value (e.g., resume_state) when the source is
-        # not available in this node's context.
+        # A copy from an unset slot never overwrites: use `NULL` explicitly to
+        # clear a value. Otherwise a previously captured value (e.g.
+        # `resume_state`) is clobbered when the source isn't set in this node.
+        source_value = slots.get(slot_ref.group(1))
         if source_value is not None:
             slots[name] = source_value
         return
     arith = _STORE_SELF_ARITH_RE.match(rhs)
     if arith and arith.group(1) == name:
         delta = int(arith.group(3))
-        current = int(slots.get(name) or 0)
+        current = _as_int(slots.get(name))
         slots[name] = current + delta if arith.group(2) == "+" else current - delta
         return
     if rhs == "NULL":
@@ -431,7 +442,24 @@ def _coerce_value(value: Any, type_expr: str) -> Any:
 # `say` rendering and slot interpolation
 # ---------------------------------------------------------------------------
 
-_LANGUAGE_NAMES = {"es": "Spanish", "en": "English", "pt": "Portuguese"}
+_SUPPORTED_LANGUAGE_NAMES = {"English", "Spanish", "Portuguese"}
+_LANGUAGE_NAMES_BY_CODE = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
+
+
+def _language_name_from_slots(slots: dict[str, Any], fallback: str | None = None) -> str | None:
+    """Full language name for `slots["preferred_language"]`, accepting a code or a name.
+
+    Returns `fallback` when the slot is absent or not a supported language.
+    The full name (not the 2-letter code) is what reaches the LLM prompts,
+    deliberately — it gives the model more context than a bare code does.
+    """
+    value = slots.get("preferred_language")
+    if not isinstance(value, str):
+        return fallback
+    value = value.strip()
+    if value.lower() in _LANGUAGE_NAMES_BY_CODE:
+        return _LANGUAGE_NAMES_BY_CODE[value.lower()]
+    return value if value in _SUPPORTED_LANGUAGE_NAMES else fallback
 
 
 _INTERPOLATION_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]|<([A-Z_][A-Z0-9_]*)>")
@@ -442,15 +470,15 @@ _STANDALONE_NUMBER_RE = re.compile(r"\b\d{1,2}\b")
 _CONSTANT_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 _MONTH_NAMES = {
-    "es": [
+    "Spanish": [
         "enero", "febrero", "marzo", "abril", "mayo", "junio",
         "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
     ],
-    "en": [
+    "English": [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December",
     ],
-    "pt": [
+    "Portuguese": [
         "janeiro", "fevereiro", "março", "abril", "maio", "junho",
         "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
     ],
@@ -474,12 +502,14 @@ def _time_part(iso_text: str) -> str | None:
     return f"{match.group(1)}:{match.group(2)}" if match else None
 
 
-def _format_date_human(date_parts: _DateParts, language_code: str | None) -> str:
+def _format_date_human(date_parts: _DateParts, language_name: str | None) -> str:
     year, month, day = date_parts
-    months = _MONTH_NAMES.get(language_code or "es", _MONTH_NAMES["es"])
+    months = _MONTH_NAMES.get(language_name or "Spanish", _MONTH_NAMES["Spanish"])
+    if not 1 <= int(month) <= len(months):
+        return f"{year}-{month}-{day}"
     month_name = months[int(month) - 1]
     day_number = str(int(day))
-    if language_code == "en":
+    if language_name == "English":
         return f"{month_name} {day_number}, {year}"
     return f"{day_number} de {month_name} de {year}"
 
@@ -540,7 +570,7 @@ def _find_selected_date(slots: dict[str, Any], candidate_dates: set[_DateParts])
     return None
 
 
-def _format_appointment_list(items: list[dict[str, Any]], slots: dict[str, Any], language_code: str | None) -> str:
+def _format_appointment_list(items: list[dict[str, Any]], slots: dict[str, Any], language_name: str | None) -> str:
     """Format a `[slot]`-shaped list of appointment objects for display.
 
     The root-cause fix (2026-09-17) for `SC_DAYS`/`SC_HOURS` dumping the
@@ -591,10 +621,10 @@ def _format_appointment_list(items: list[dict[str, Any]], slots: dict[str, Any],
         if times:
             return "\n".join(f"🕐 {t}" for t in times)
 
-    return "\n".join(f"📅 {_format_date_human(d, language_code)}" for d in sorted(candidate_dates))
+    return "\n".join(f"📅 {_format_date_human(d, language_name)}" for d in sorted(candidate_dates))
 
 
-def _interpolate_slots(text: str, slots: dict[str, Any], language_code: str | None = None) -> str:
+def _interpolate_slots(text: str, slots: dict[str, Any], language_name: str | None = None) -> str:
     """Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
     their current value.
 
@@ -613,14 +643,14 @@ def _interpolate_slots(text: str, slots: dict[str, Any], language_code: str | No
     (either form) rather than silently blanked, so a real gap stays visible
     instead of disappearing.
 
-    `language_code` (2026-09-17) only matters for a list-of-appointment-
+    `language_name` (2026-09-17) only matters for a list-of-appointment-
     objects value's human-readable date formatting (`_format_appointment_
     list`) — every other value renders the same regardless.
     """
 
     def _format_value(value: Any) -> str:
         if isinstance(value, list) and value and isinstance(value[0], dict):
-            return _format_appointment_list(value, slots, language_code)
+            return _format_appointment_list(value, slots, language_name)
         return str(value)
 
     def repl(match: re.Match[str]) -> str:
@@ -641,9 +671,10 @@ def _make_render_say(
         node_id: str,
         say: list[str],
         say_verbatim: bool,
-        language_code: str | None,
+        language_name: str | None,
         slots: dict[str, Any],
         policies: list[str] | None = None,
+        user_message: str = "",
     ) -> str:
         """Render a `say` block, paraphrased naturally in the caller's language via the LLM.
 
@@ -672,29 +703,50 @@ def _make_render_say(
         not here). Only the `message`/`terminal` call site in `_make_node_fn`
         passes it for now; `question` phrasing and the global-router's
         matched-handler/FAQ `say` still render without it.
+
+        `user_message` is the user's latest message. It only matters when no
+        `language_name` is known yet (`preferred_language` unset or
+        unsupported): the paraphrase is then written in the language that
+        message is in, so the user can understand what they are being asked
+        even before they have picked a language. A known `language_name`
+        always wins.
         """
-        raw = _interpolate_slots("\n".join(say), slots, language_code)
+        raw = _interpolate_slots("\n".join(say), slots, language_name)
         if say_verbatim:
             return raw
 
-        language_name = _LANGUAGE_NAMES.get(language_code, language_code) if language_code else None
         in_language = f" in {language_name}" if language_name else ""
         policy_block = (
             f"House rules this message must respect:\n{chr(10).join(policies)}\n\n" if policies else ""
         )
+        force_lang = (
+            f" Always write the final message in {language_name}. If the text is in another "
+            f"language, translate it faithfully into {language_name} before rephrasing."
+            if language_name else ""
+        )
+        if not language_name and user_message.strip():
+            force_lang = (
+                " Write the final message in the same language the user is writing in, judging by "
+                f"their latest message: {user_message.strip()[:200]!r}. If the text is in another "
+                "language, translate it faithfully into that language before rephrasing."
+            )
         prompt = (
             f"Rephrase this agent message naturally{in_language}, the way a person "
             "would say it in conversation rather than reading a script — vary the "
             "wording and sentence structure. Preserve the exact meaning, every fact, "
             "and any placeholders like <NAME> exactly as written; do not add, remove, "
-            "or soften any information.\n\n"
+            f"or soften any information.{force_lang}\n\n"
             f"{policy_block}"
             "Output ONLY the rephrased message itself, "
             "exactly as the agent would send it to the user — no preamble like \"here's "
             "a version of that\", no label, no quotes around it, nothing before or "
             f"after it:\n\n{raw}"
         )
-        return llm_client.complete(prompt, temperature=1.0) or raw
+        try:
+            return llm_client.complete(prompt, temperature=1.0) or raw
+        except Exception:
+            logger.warning("say paraphrase failed for node %r; using unparaphrased text", node_id, exc_info=True)
+            return raw
 
     return render_say
 
@@ -727,6 +779,11 @@ def _matches(value: Any, predicate_name: str) -> bool:
 _EVAL_BUILTINS = {"len": len, "_matches": _matches}
 
 
+@lru_cache(maxsize=None)
+def _compile_expression(expression: str) -> CodeType:
+    return compile(expression, "<edge condition>", "eval")
+
+
 def _make_resolve_edges(
     llm_client: LLMClient,
 ) -> Callable[[list[GraphEdge], LLMContext], str | None]:
@@ -738,10 +795,16 @@ def _make_resolve_edges(
             if edge.is_mechanical and edge.python_expression is not None:
                 try:
                     if eval(
-                        edge.python_expression, {"__builtins__": _EVAL_BUILTINS}, dict(ctx.slots)
+                        _compile_expression(edge.python_expression),
+                        {"__builtins__": _EVAL_BUILTINS},
+                        dict(ctx.slots),
                     ):
                         return edge.target
-                except Exception:
+                except Exception as exc:
+                    logger.debug(
+                        "edge condition %r -> %r evaluated as false (%s: %s)",
+                        edge.python_expression, edge.target, type(exc).__name__, exc,
+                    )
                     continue
             else:
                 llm_candidates.append(edge)
@@ -772,7 +835,7 @@ def _llm_pick_condition(
         f"{policy_block}"
         f"Conditions:\n{numbered}"
     )
-    text = llm_client.complete(prompt)
+    text = llm_client.complete(prompt).strip().rstrip(".")
     if text.isdigit() and int(text) < len(candidates):
         return candidates[int(text)]
     return None
@@ -1036,7 +1099,7 @@ def _make_node_fn(
     llm_client: LLMClient,
     router: GlobalRouterDefinition,
     node_by_id: dict[str, GraphNode],
-    render_say: Callable[[str, list[str], bool, str | None, dict[str, Any], list[str] | None], str],
+    render_say: Callable[..., str],
     resolve_edges: Callable[[list[GraphEdge], LLMContext], str | None],
     tool_executors: dict[str, Callable[..., dict[str, Any]]],
     tool_input_fields: dict[str, list[ToolContractField]],
@@ -1059,17 +1122,18 @@ def _make_node_fn(
     """
     def node_fn(state: SessionState) -> Any:
         slots = dict(state["slots"])
+        last_user_message = state.get("last_user_message", "")
         # Expose the incoming state's id to DSL expressions inside this node
-        # (e.g., dynamic GO_TO: [current_state] or STORE using [current_state]).
+        # (e.g. dynamic GO_TO: [current_state] or STORE using [current_state]).
         prev_state_id = state.get("current_state")
         if prev_state_id is not None and "current_state" not in slots:
             slots["current_state"] = prev_state_id
-        # If this node is part of the language-management subflow (LM__),
-        # capture the resume target once on entry when not already set.
+        # The language-management subflow (LM__) returns the user to where
+        # they were: capture that resume target once, on entry.
         if node.node_id.startswith("LM__") and prev_state_id is not None and "resume_state" not in slots:
             slots["resume_state"] = prev_state_id
-        last_user_message = state.get("last_user_message", "")
-        language_code = slots.get("preferred_language")
+        # Normalize preferred_language to the full language name for rendering/tools
+        language_name = _language_name_from_slots(slots)
         history = list(state.get("history", []))
         contact = state.get("contact") or {}
 
@@ -1133,9 +1197,13 @@ def _make_node_fn(
         if node.node_type != "action" and node.eval != "llm":
             _apply_conditional_mutations(do_lines, ctx, llm_client)
 
+        # Recompute language after DO/STORE so output uses the updated language
+        language_name = _language_name_from_slots(slots, fallback=language_name)
+
         if node.node_type in ("message", "terminal") and node.say:
             rendered_message = render_say(
-                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies
+                node.node_id, node.say, node.say_verbatim, language_name, slots, say_policies,
+                user_message=last_user_message,
             )
             say_callback(rendered_message)
             history = _append_history(history, f"agent: {rendered_message}")
@@ -1146,7 +1214,8 @@ def _make_node_fn(
             # on every turn. The caller reads the prompt from the interrupt
             # payload instead, exactly once.
             rendered_say = render_say(
-                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies
+                node.node_id, node.say, node.say_verbatim, language_name, slots, say_policies,
+                user_message=last_user_message,
             )
 
             # Global router: every reply is checked against every handler
@@ -1162,9 +1231,10 @@ def _make_node_fn(
                     n.node_id if hasattr(n, "node_id") else n.faq_id,
                     say,
                     n.say_verbatim,
-                    language_code,
+                    language_name,
                     slots,
                     say_policies,
+                    user_message=reply,
                 )
                 say_callback(rendered)
                 history = _append_history(history, f"agent: {rendered}")
@@ -1189,9 +1259,10 @@ def _make_node_fn(
                             f"{node.node_id}__side_question_ack",
                             UNANSWERED_QUESTION_ACK,
                             False,
-                            language_code,
+                            language_name,
                             slots,
                             say_policies,
+                            user_message=reply,
                         )
                         say_callback(ack)
                         history = _append_history(history, f"agent: {ack}")
@@ -1356,6 +1427,13 @@ def build_graph(
         for name, contract in contracts.items()
     }
     tool_input_fields = {name: contract.inputs for name, contract in contracts.items()}
+
+    for node in agent_graph.nodes:
+        if node.node_type == "action" and node.execute and node.execute not in contracts:
+            logger.warning("node %r executes unknown tool %r; the call will be skipped", node.node_id, node.execute)
+        for edge in [*node.route, *node.fallback]:
+            if not is_dynamic_target(edge.target) and edge.target not in node_by_id:
+                logger.warning("node %r routes to unknown state %r; it will end the graph", node.node_id, edge.target)
 
     builder = StateGraph(SessionState)
     for node in agent_graph.nodes:
