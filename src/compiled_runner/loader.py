@@ -22,6 +22,7 @@ from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_a
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from compiled_runner.postgres import build_postgres_checkpointer, postgres_enabled
+from compiled_runner.tool_routing import ToolRoutingClient
 
 COMPILED_AGENTS_DIR = Path(__file__).resolve().parents[2] / "compiled_agents"
 
@@ -46,41 +47,31 @@ def _say_callback(text: str) -> None:
 # don't exist under any app yet -- novafem_surrogacy is the closest home for
 # them (same business vertical) but they still need to be implemented there;
 # see TODO.md.
-_TOOLS_APP_BY_SLUG: dict[str, str] = {
-    "family_aims_sam_text": "family_aims",
-    "family_aims_sam_en_voice": "family_aims",
-    "family_aims_sam_es_voice": "family_aims",
-    "family_aims_sam_pt_voice": "family_aims",
-    "babynova_surrogate_questions_voice": "novafem_surrogacy",
-    "babynova_surrogate_questions_text": "novafem_surrogacy",
-    "babynova_triage_obstetrico_text": "novafem_surrogacy",
-}
+_TOOLS_APP_BY_SLUG_PREFIX = {"family_aims": "family_aims", "babynova": "babynova"}
 
 
 def _tools_base_url(slug: str) -> str:
     """Where a compiled agent's tool calls land.
 
-    Centralized gateway for Family Aims agents (and any shared tools):
-    /tools/v1 aggregates snake_case endpoints (utils + family_aims). This
-    avoids per-app aliasing of shared tools like update_custom_field.
+    Current deploy mounts:
+      - Family Aims tools under /family_aims/v1
+      - Babynova Surrogacy tools under /babynova/v1
 
-    Other verticals (e.g., novafem_surrogacy) keep their dedicated base
-    for now until their endpoints are also aggregated under /tools/v1.
+    Utils live under /tools/v1 but compiled agents call vertical-specific
+    tools (e.g., check-visa) that are NOT exposed by the gateway. Keep
+    routing to each vertical's prefix to avoid 404s. Tools that live
+    elsewhere (utils) are found by `tool_routing.ToolRoutingClient`.
     """
     host = os.getenv("HOST", "127.0.0.1")
     port = os.getenv("PORT", "8010")
     probe_host = "127.0.0.1" if host == "0.0.0.0" else host
-    if slug in {
-        "family_aims_sam_text",
-        "family_aims_sam_en_voice",
-        "family_aims_sam_es_voice",
-        "family_aims_sam_pt_voice",
-        "babynova_surrogate_questions_voice",
-        "babynova_surrogate_questions_text",
-        "babynova_triage_obstetrico_text",
-    }:
-        return f"http://{probe_host}:{port}/tools/v1"
-    app = _TOOLS_APP_BY_SLUG.get(slug, "family_aims")
+
+    # A slug's first underscore-separated word is not enough: "family_aims_*"
+    # would resolve to "family", which is mounted nowhere.
+    app = next(
+        (mount for prefix, mount in _TOOLS_APP_BY_SLUG_PREFIX.items() if slug.startswith(f"{prefix}_")),
+        "family_aims",
+    )
     return f"http://{probe_host}:{port}/{app}/v1"
 
 
@@ -118,6 +109,7 @@ def _build_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
         artifact,
         llm_client,
         tools_base_url=_tools_base_url(slug),
+        tool_http_client=ToolRoutingClient(),
         checkpointer=checkpointer,
         say_callback=_say_callback,
     )

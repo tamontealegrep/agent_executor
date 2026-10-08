@@ -1349,7 +1349,7 @@
           "Initialize opening counters and lock the operating language."
         ],
         "do": [
-          "Set [preferred_language] from {{contact.language}} when available; if it is missing, default [preferred_language] to English."
+          "Infer [preferred_language] from {{contact.language}} first; if it is missing, infer it from the user's latest message."
         ],
         "trigger": [],
         "say": [],
@@ -1357,8 +1357,9 @@
         "execute": null,
         "store": [
           "[o__svc_try] = 0",
+          "[o__consent_try] = 0",
           "[svc] = NULL",
-          "[preferred_language] = 'English' | 'Spanish' | 'Portuguese' derived from {{contact.language}}; if missing, default to 'English'"
+          "[preferred_language] = 'es' | 'en' | 'pt' derived from {{contact.language}} or inferred from the user's message"
         ],
         "capture": [],
         "eval": "code",
@@ -1391,7 +1392,117 @@
         "eval": "code",
         "route": [
           {
+            "target": "O__OP_PRIVACY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_PRIVACY",
+        "node_type": "question",
+        "goal": [
+          "State that continuing the conversation implies acceptance of the privacy policy and ask for consent."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "By continuing this conversation, you accept the Privacy and Personal Data Protection Policy of <COMPANY_NAME>, which is given in compliance with <DATA_LAW_REFERENCE>. Do you wish to continue?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__consent] = [o__consent]"
+        ],
+        "capture": [
+          [
+            "o__consent",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_DEC_CONSENT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_DEC_CONSENT",
+        "node_type": "decision",
+        "goal": [
+          "Evaluate if the user granted consent to continue."
+        ],
+        "do": [
+          "[o__consent_try] = [o__consent_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BYE_NO_CONSENT",
+            "condition_text": "IF [o__consent_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_BYE_NO_CONSENT",
+            "is_mechanical": true,
+            "python_expression": "o__consent_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
             "target": "O__OP_ASK",
+            "condition_text": "IF [o__consent] == 'yes' -> GO_TO: O__OP_ASK",
+            "is_mechanical": true,
+            "python_expression": "o__consent == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_BYE_NO_CONSENT",
+            "condition_text": "IF [o__consent] == 'no' -> GO_TO: O__OP_BYE_NO_CONSENT",
+            "is_mechanical": true,
+            "python_expression": "o__consent == 'no'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_PRIVACY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_BYE_NO_CONSENT",
+        "node_type": "message",
+        "goal": [
+          "Say goodbye if the user does not consent."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I understand. We cannot continue without your consent. Thank you for your time and have a great day."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -5493,7 +5604,7 @@
         "capture": [
           [
             "preferred_language",
-            "Literal[English, Spanish, Portuguese]"
+            "Literal[es, en, pt]"
           ]
         ],
         "eval": "code",
@@ -5542,23 +5653,23 @@
         "route": [
           {
             "target": "LM__LM_SET_ES",
-            "condition_text": "IF [preferred_language] == 'Spanish' -> GO_TO: LM__LM_SET_ES",
+            "condition_text": "IF [preferred_language] == 'es' -> GO_TO: LM__LM_SET_ES",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'Spanish'",
+            "python_expression": "preferred_language == 'es'",
             "reason": null
           },
           {
             "target": "LM__LM_SET_EN",
-            "condition_text": "IF [preferred_language] == 'English' -> GO_TO: LM__LM_SET_EN",
+            "condition_text": "IF [preferred_language] == 'en' -> GO_TO: LM__LM_SET_EN",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'English'",
+            "python_expression": "preferred_language == 'en'",
             "reason": null
           },
           {
             "target": "LM__LM_SET_PT",
-            "condition_text": "IF [preferred_language] == 'Portuguese' -> GO_TO: LM__LM_SET_PT",
+            "condition_text": "IF [preferred_language] == 'pt' -> GO_TO: LM__LM_SET_PT",
             "is_mechanical": true,
-            "python_expression": "preferred_language == 'Portuguese'",
+            "python_expression": "preferred_language == 'pt'",
             "reason": null
           },
           {
@@ -7840,11 +7951,7 @@
         "node_id": "H_LANG_CHANGE",
         "node_type": "message",
         "goal": [],
-        "do": [
-          "If the latest user message clearly requests to speak Spanish (e.g., contains 'no hablo ingles', 'habla en español', 'en español por favor', 'cambiar a español'), set [preferred_language] = 'Spanish' now before speaking.",
-          "If the latest user message clearly requests to speak Portuguese (e.g., contains 'não falo inglês', 'mudar para português', 'em português por favor', 'fale em português'), set [preferred_language] = 'Portuguese' now before speaking.",
-          "If the latest user message clearly requests to speak English or says they do not speak Spanish/Portuguese (e.g., 'I don't speak Spanish', 'speak in English', 'in English please'), set [preferred_language] = 'English' now before speaking."
-        ],
+        "do": [],
         "trigger": [
           "I don't speak Spanish",
           "I don't speak English",
@@ -9049,13 +9156,12 @@
     "PROCESS_DURATION_MONTHS": "24 months",
     "IVF_CITY": "Bogotá",
     "APPOINTMENT_DURATION_MINUTES": "30",
-    "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely.",
-    "SUPPORTED_LANG": "English|Spanish|Portuguese"
+    "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely."
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
-    "The conversation operating language is [preferred_language], set from {{contact.language}} when available; if missing, inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
-    "If [preferred_language] == 'English', respond in warm professional English; if 'Spanish', respond in natural Colombian Spanish ; if 'Portuguese', respond in natural Brazilian Portuguese. If it is still empty, use default to English",
+    "The conversation operating language is [preferred_language], set from {{contact.language}} when available or inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
+    "If [preferred_language] == 'es', respond in natural Colombian Spanish; if 'en', respond in warm professional English; if 'pt', respond in natural Brazilian Portuguese. If it is still empty, use Spanish when the latest message is clearly Spanish; otherwise default to English.",
     "For ambiguous replies such as yes, no, ok, numbers, dates, or times, keep [preferred_language]. Change it only if the user explicitly asks for another language or sends a new clear message in another supported language.",
     "If an approved SAY, FAQ, or handler message is written in another supported language, translate it faithfully into [preferred_language] without adding or removing facts.",
     "Write in a warm, brief, useful style and keep each turn focused on one clear next step.",

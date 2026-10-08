@@ -16,3 +16,6 @@ test_runs/
 /SPEC.md
 /STATUS.yaml
 /TESTING.md
+
+# Written by scripts/sync_engine.py after a successful vendored-engine resync
+scripts/.vendored_engine_synced_from

@@ -31,16 +31,16 @@ def test_tools_base_url_routes_family_aims_slugs(monkeypatch):
     assert loader._tools_base_url("family_aims_sam_en_voice") == "http://127.0.0.1:8010/family_aims/v1"
 
 
-def test_tools_base_url_routes_babynova_slugs_to_novafem_surrogacy(monkeypatch):
+def test_tools_base_url_routes_babynova_slugs_to_babynova(monkeypatch):
     monkeypatch.setenv("HOST", "127.0.0.1")
     monkeypatch.setenv("PORT", "8010")
     assert (
         loader._tools_base_url("babynova_surrogate_questions_voice")
-        == "http://127.0.0.1:8010/novafem_surrogacy/v1"
+        == "http://127.0.0.1:8010/babynova/v1"
     )
     assert (
         loader._tools_base_url("babynova_triage_obstetrico_text")
-        == "http://127.0.0.1:8010/novafem_surrogacy/v1"
+        == "http://127.0.0.1:8010/babynova/v1"
     )
 
 
