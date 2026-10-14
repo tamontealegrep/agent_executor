@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from instances.helpers.ghl_request import GhlAgentRequest
+from agents.helpers.ghl_request import GhlAgentRequest
 
 
 def load_payload() -> Dict[str, Any]:

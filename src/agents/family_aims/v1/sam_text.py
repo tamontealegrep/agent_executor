@@ -21,7 +21,7 @@ phone once it's cleared to go live, no code change needed.
 
 import os
 
-from instances.helpers.ghl import default_ghl_client_config
+from agents.helpers.ghl import default_ghl_client_config
 from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_agent_router, load_phone_whitelist
 
 SLUG = "family_aims_sam_text"
@@ -43,7 +43,7 @@ CLOSING_MESSAGE_LOOKBACK_DAYS = float(os.getenv("SAM_TEXT_CLOSING_SWEEP_LOOKBACK
 router = build_compiled_agent_router(
     CompiledAgentGhlConfig(
         slug=SLUG,
-        path="/sam_text",
+        path="/sam-text",
         allowed_phones=ALLOWED_PHONES,
         debounce_seconds=DEBOUNCE_SECONDS,
         enforce_phone_whitelist=ENFORCE_PHONE_WHITELIST,

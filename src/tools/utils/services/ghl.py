@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Dict, Any
 import httpx
-from instances.helpers.ghl import default_ghl_client_config, get_ghl_headers
+from agents.helpers.ghl import default_ghl_client_config, get_ghl_headers
 from tools.utils.schemas.ghl import CustomValueResponse, GhlCustomValuesList
 
 logger = logging.getLogger(__name__)

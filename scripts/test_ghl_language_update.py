@@ -21,7 +21,7 @@ async def run_test():
     
     # 0. Debug: Ver contacto actual
     print(f"\n[0] Verificando estado actual del contacto {contact_id}...")
-    from instances.helpers.ghl import default_ghl_client_config, get_ghl_headers
+    from agents.helpers.ghl import default_ghl_client_config, get_ghl_headers
     import httpx
     cfg = default_ghl_client_config()
     async with httpx.AsyncClient() as client:

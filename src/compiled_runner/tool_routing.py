@@ -17,7 +17,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
-UTILS_PREFIX = "/tools/v1"
+UTILS_PREFIX = "/tools/utils/v1"
 
 # Shared tools mounted only under UTILS_PREFIX (tools.gateway's api_router), so
 # asking the agent's own vertical first would just burn a 404 on every call.
@@ -34,7 +34,10 @@ def candidate_urls(url: str) -> list[str]:
     parts = urlsplit(url)
     head, _, tail = parts.path.rpartition("/")
     kebab = tail.replace("_", "-")
-    suffix = _ROUTE_SUFFIX_BY_APP.get(head.strip("/").split("/")[0])
+    # head is /tools/{app}/v1 -> segments[1] is {app}
+    path_segments = head.strip("/").split("/")
+    app_name = path_segments[1] if len(path_segments) > 1 else ""
+    suffix = _ROUTE_SUFFIX_BY_APP.get(app_name)
 
     paths = [f"{head}/{kebab}"]
     if suffix and not kebab.endswith(suffix):

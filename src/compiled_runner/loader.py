@@ -72,7 +72,7 @@ def _tools_base_url(slug: str) -> str:
         (mount for prefix, mount in _TOOLS_APP_BY_SLUG_PREFIX.items() if slug.startswith(f"{prefix}_")),
         "family_aims",
     )
-    return f"http://{probe_host}:{port}/{app}/v1"
+    return f"http://{probe_host}:{port}/tools/{app}/v1"
 
 
 _agent_cache: dict[str, tuple[RuntimeArtifact, object]] = {}

@@ -51,7 +51,7 @@ for candidate in (EXECUTOR_SRC, PROJECT_ROOT):
         sys.path.insert(0, candidate_str)
 
 from discovery import get_hub_settings  # carga el .env del root antes de leer OPENAI_API_KEY, etc.
-from instances.family_aims_sam import agent as sam_agent
+from agents.family_aims.v1 import sam_text as sam_agent
 from sam_tui import LocalSamHarness, ToolTrace, _new_state  # reusa el mismo harness que la TUI
 
 

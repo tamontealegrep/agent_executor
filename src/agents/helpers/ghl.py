@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from instances.helpers.text import normalize_channel
+from agents.helpers.text import normalize_channel
 
 # agent_executor root: src/agents/helpers/ghl.py -> helpers -> agents -> src -> root
 GHL_DEFAULTS_PATH = Path(__file__).resolve().parents[3] / "config" / "ghl_defaults.json"

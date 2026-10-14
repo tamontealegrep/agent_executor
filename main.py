@@ -77,12 +77,22 @@ for _agent_package in discover_agents():
 # from the src/tools/* discovery above, since a compiled agent is not a
 # tools backend. See compiled_runner/README (or SPEC notes) for scope.
 from compiled_runner.endpoint import router as compiled_agent_router  # noqa: E402
-from tools.gateway.api.v1.router import api_router as tools_gateway_router, babynova_api_router, family_api_router  # noqa: E402
+from agents.family_aims.v1.router import family_agents_router  # noqa: E402
+from agents.babynova.v1.router import babynova_agents_router  # noqa: E402
+from tools.gateway.api.v1.router import api_router as tools_utils_router  # noqa: E402
+from tools.family_aims.api.v1.router import api_router as family_tools_router  # noqa: E402
+from tools.babynova_surrogacy.api.v1.router import api_router as babynova_tools_router  # noqa: E402
 
-app.include_router(compiled_agent_router, prefix="/compiled", tags=["compiled_agents"])
-app.include_router(tools_gateway_router, prefix="/tools/v1", tags=["tools_gateway"])
-app.include_router(babynova_api_router, prefix="/babynova/v1")
-app.include_router(family_api_router, prefix="/family_aims/v1")
+app.include_router(compiled_agent_router, prefix="/agents/compiled", tags=["compiled_agents"])
+
+# Agents (Chat/Webhooks)
+app.include_router(family_agents_router, prefix="/agents/family_aims/v1")
+app.include_router(babynova_agents_router, prefix="/agents/babynova/v1")
+
+# Tools (Functions)
+app.include_router(tools_utils_router, prefix="/tools/utils/v1", tags=["tools.utils"])
+app.include_router(family_tools_router, prefix="/tools/family_aims/v1", tags=["tools.family_aims"])
+app.include_router(babynova_tools_router, prefix="/tools/babynova/v1", tags=["tools.babynova"])
 
 
 @app.get("/api-contracts", include_in_schema=False)

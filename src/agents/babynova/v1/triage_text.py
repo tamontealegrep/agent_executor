@@ -30,7 +30,7 @@ away from the two nodes that would currently fail.
 
 import os
 
-from instances.helpers.ghl import default_ghl_client_config
+from agents.helpers.ghl import default_ghl_client_config
 from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_agent_router, load_phone_whitelist
 
 SLUG = "babynova_triage_obstetrico_text"
@@ -52,7 +52,7 @@ CLOSING_MESSAGE_LOOKBACK_DAYS = float(os.getenv("BABYNOVA_TRIAGE_CLOSING_SWEEP_L
 router = build_compiled_agent_router(
     CompiledAgentGhlConfig(
         slug=SLUG,
-        path="/triage_text",
+        path="/triage-text",
         allowed_phones=ALLOWED_PHONES,
         debounce_seconds=DEBOUNCE_SECONDS,
         enforce_phone_whitelist=ENFORCE_PHONE_WHITELIST,

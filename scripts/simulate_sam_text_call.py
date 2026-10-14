@@ -25,12 +25,12 @@ async def main() -> None:
     from discovery import load_agent_router  # noqa: WPS433
 
     mini_app = FastAPI(title="Mini app for sam_text simulation")
-    mini_app.include_router(load_agent_router("family_aims"), prefix="/family_aims/v1", tags=["family_aims"])
+    mini_app.include_router(load_agent_router("family_aims"), prefix="/agents/family_aims/v1", tags=["family_aims"])
 
     transport = httpx.ASGITransport(app=mini_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         payload = build_payload()
-        r = await client.post("/family_aims/v1/sam_text", json=payload)
+        r = await client.post("/agents/family_aims/v1/sam-text", json=payload)
         print("status:", r.status_code)
         try:
             print(json.dumps(r.json(), indent=2, ensure_ascii=False))

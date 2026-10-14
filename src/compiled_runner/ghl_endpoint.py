@@ -25,9 +25,9 @@ from starlette.concurrency import run_in_threadpool
 
 from engine.runtime.graph_builder import fresh_state
 from engine.runtime.session_resolver import resolve_session
-from instances.helpers.ghl import GhlClientConfig, send_ghl_message_async
-from instances.helpers.ghl_request import GhlAgentRequest
-from instances.helpers.runner import derive_execution_id
+from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
+from agents.helpers.ghl_request import GhlAgentRequest
+from agents.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
 from compiled_runner.postgres import (
     claim_conversations_needing_closing_message,
