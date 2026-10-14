@@ -3549,7 +3549,7 @@
         "say": [
           "Our support is 360°:\n\n- Donor selection and embryo formation\n- Surrogate matching and embryo transfer\n- Support during pregnancy, birth, and legal path\n- Weekly updates and care in Spanish and English, with support in Mandarin when applicable"
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3771,7 +3771,7 @@
         "say": [
           "Program with Financial Guarantee:\n\n- Repeats necessary medical procedures within the program timeframe\n- Seeks to achieve pregnancy within 24 months\n- If the delay depends on the process or clinical factors, the program is extended until the service delivery is completed\n- Admission depends on sperm quality validated by the laboratory"
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3798,7 +3798,7 @@
         "say": [
           "Program without Financial Guarantee:\n\n- Has a fixed number of selected transfers\n- If pregnancy is not achieved and you wish to continue, it requires additional payment\n- If there are already embryos formed, the additional cost corresponds to the transfers\n- If there are no embryos, new aspiration, embryo formation, or change of surrogate may be required depending on the case"
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3885,7 +3885,7 @@
         "say": [
           "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- In Colombia, at least one of the intended parents must provide genetic material\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3912,7 +3912,7 @@
         "say": [
           "About the process:\n\n- The estimated duration is <PROCESS_DURATION_MONTHS>, although it may vary according to each case\n- For your route, the support is carried out in Mexico\n- In Mexico, double donation can exist, provided that the country of origin does not require a DNA test for registration"
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
@@ -3966,7 +3966,7 @@
         "say": [
           "Every desire to have a family starts with a first step.\n\nWe encourage you to schedule an appointment with <HUMAN_SURROGACY_ADVISOR_NAME>, our specialized commercial advisor in gestational surrogacy. She will be able to get to know your story, listen to your needs, and explain how we can support you in each phase."
         ],
-        "say_verbatim": true,
+        "say_verbatim": false,
         "execute": null,
         "store": [],
         "capture": [],
