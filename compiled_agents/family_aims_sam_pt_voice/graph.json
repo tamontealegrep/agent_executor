@@ -6943,6 +6943,23 @@
         "fallback": []
       },
       {
+        "node_id": "MESSAGE_END_VOICEMAIL",
+        "node_type": "terminal",
+        "goal": [
+          "Detectar caixa de mensagens e encerrar a chamada."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "end_call",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
+        "fallback": []
+      },
+      {
         "node_id": "MESSAGE_END",
         "node_type": "terminal",
         "goal": [
@@ -7170,9 +7187,51 @@
           }
         ],
         "fallback": []
+      },
+      {
+        "node_id": "H_VOICEMAIL",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "deixe sua mensagem",
+          "após o sinal",
+          "caixa de mensagens",
+          "secretária eletrônica",
+          "não está disponível"
+        ],
+        "say": [
+          "Olá, sou Sam da Family Aims. Estava ligando para dar informações sobre tratamentos de fertilidade. Entraremos em contato mais tarde. Tchau!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_VOICEMAIL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       }
     ],
     "faqs": [
+      {
+        "faq_id": "FAQ_FIREWALL",
+        "match": [
+          "__FIREWALL__"
+        ],
+        "say": [
+          "Não posso responder a essa solicitação. Sou um agente de IA. Posso te ajudar com algo mais?"
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
       {
         "faq_id": "F_LGBTQ",
         "match": [

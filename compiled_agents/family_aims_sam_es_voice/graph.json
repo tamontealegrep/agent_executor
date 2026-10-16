@@ -6943,6 +6943,23 @@
         "fallback": []
       },
       {
+        "node_id": "MESSAGE_END_VOICEMAIL",
+        "node_type": "terminal",
+        "goal": [
+          "Detectar buzón de voz y finalizar la llamada."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "end_call",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
+        "fallback": []
+      },
+      {
         "node_id": "MESSAGE_END",
         "node_type": "terminal",
         "goal": [
@@ -7048,6 +7065,37 @@
   },
   "global_router": {
     "handlers": [
+      {
+        "node_id": "H_VOICEMAIL",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "buzón de voz",
+          "deje su mensaje",
+          "después del tono",
+          "la llamada será transferida",
+          "no se encuentra disponible"
+        ],
+        "say": [
+          "Hola, soy Sam de Family Aims. Te llamaba para darte información sobre los tratamientos de fertilidad. Te contactaremos más tarde. ¡Adiós!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_VOICEMAIL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
       {
         "node_id": "H_SUR_CAND",
         "node_type": "message",
@@ -7173,6 +7221,17 @@
       }
     ],
     "faqs": [
+      {
+        "faq_id": "FAQ_FIREWALL",
+        "match": [
+          "__FIREWALL__"
+        ],
+        "say": [
+          "No puedo responder a esa solicitud. Soy un agente de IA. ¿Puedo ayudarte con algo más?"
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
       {
         "faq_id": "F_LGBTQ",
         "match": [
