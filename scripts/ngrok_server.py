@@ -11,6 +11,7 @@ que levantó.
 """
 
 from pathlib import Path
+import os
 import socket
 import subprocess
 import sys
@@ -34,21 +35,65 @@ def _wait_for_port(host: str, port: int, timeout: float = 20.0) -> bool:
     return False
 
 
+def _kill_local_ngrok_processes() -> bool:
+    """Try to terminate local ngrok processes (best-effort).
+
+    Returns True if a kill command executed without raising, False otherwise.
+    """
+    try:
+        if os.name == "nt":
+            # Windows
+            result = subprocess.run(["taskkill", "/F", "/IM", "ngrok.exe"], text=True, capture_output=True)
+            return result.returncode == 0
+        else:
+            # Unix-like (may not exist on all systems, best-effort)
+            result = subprocess.run(["pkill", "-f", "^ngrok( .*)?$"], text=True, capture_output=True)
+            return result.returncode == 0
+    except Exception:
+        return False
+
+
 def _open_ngrok_tunnel(domain: str, port: int) -> None:
-    base_command = ["ngrok", "http", f"--domain={domain}", str(port)]
-    result = subprocess.run(base_command, text=True, capture_output=True)
+    # Always prefer pooling to avoid race where first client is non-pooled.
+    pooled_command = ["ngrok", "http", f"--domain={domain}", "--pooling-enabled", str(port)]
+    result = subprocess.run(pooled_command, text=True, capture_output=True)
     if result.returncode == 0:
         return
 
-    if "ERR_NGROK_334" in (result.stderr or ""):
-        print("El dominio ya estaba online; reintentando con pooling-enabled...")
-        pooled_command = ["ngrok", "http", f"--domain={domain}", "--pooling-enabled", str(port)]
-        subprocess.run(pooled_command, check=True)
-        return
+    # If the endpoint is already online (ERR_NGROK_334), we can optionally
+    # try to kill local ngrok processes and retry once (opt-in via env var).
+    stderr_text = result.stderr or ""
+    if "ERR_NGROK_334" in stderr_text:
+        print("El dominio ya está online. Verificando opciones...")
+        kill_flag = os.getenv("NGROK_KILL_EXISTING", "").strip().lower() in {"1", "true", "yes"}
+        if kill_flag:
+            print("Intentando detener procesos locales de ngrok y reintentando...")
+            if _kill_local_ngrok_processes():
+                time.sleep(1.0)
+                retry = subprocess.run(pooled_command, text=True, capture_output=True)
+                if retry.returncode == 0:
+                    return
+                stderr_text = retry.stderr or stderr_text
+            else:
+                print("No se pudo detener ngrok localmente (o no estaba ejecutándose).")
 
+        # If we get here, we still failed. Provide a clear guidance and raise.
+        stderr_text += (
+            "\nSugerencia: Detén el endpoint activo o arranca TODOS los clientes "
+            "con '--pooling-enabled'. También puedes exportar NGROK_KILL_EXISTING=1 "
+            "para que este script intente cerrar ngrok local antes de reintentar."
+        )
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            pooled_command,
+            output=result.stdout,
+            stderr=stderr_text,
+        )
+
+    # Other errors: surface as-is for visibility
     raise subprocess.CalledProcessError(
         result.returncode,
-        base_command,
+        pooled_command,
         output=result.stdout,
         stderr=result.stderr,
     )
