@@ -20,6 +20,8 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from agent_compiler.dsl.utils import is_dynamic_target
+import unicodedata
+import re
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
 from agent_compiler.targets.langgraph.graph_renderer import (
     FaqNode,
@@ -36,6 +38,24 @@ def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
     return [("handler", h) for h in router.handlers] + [("faq", f) for f in router.faqs]
 
 
+def _normalize(text: str) -> str:
+    try:
+        return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii").lower()
+    except Exception:
+        return (text or "").lower()
+
+
+def _phrase_matches(msg_norm: str, phrase: str) -> bool:
+    p = unicodedata.normalize("NFKD", str(phrase) or "").encode("ascii", "ignore").decode("ascii").lower()
+    if not p:
+        return False
+    tokens = [re.escape(t) for t in p.split() if t]
+    if not tokens:
+        return False
+    pattern = r"\b" + r"\s+".join(tokens) + r"\b"
+    return re.search(pattern, msg_norm) is not None
+
+
 def _candidate_lines(candidates: list[RouterMatch]) -> str:
     lines = []
     for i, (kind, node) in enumerate(candidates):
@@ -48,6 +68,7 @@ def _candidate_lines(candidates: list[RouterMatch]) -> str:
 def _continues_the_flow(
     llm_client: LLMClient,
     ctx: LLMContext,
+    candidates: list[RouterMatch],
     candidate_lines: str,
 ) -> bool:
     """Stage 1: does `user_reply` continue the pending question normally?
@@ -75,6 +96,17 @@ def _continues_the_flow(
     3/3 to 7/10 live. The saving this stage exists for is the *second*
     call, not this one skipping context.
     """
+    # Deterministic early check.
+    try:
+        msg_norm = _normalize(getattr(ctx, "last_user_message", "") or "")
+        for kind, node in candidates:
+            phrases = node.trigger if kind == "handler" else node.match
+            for p in phrases or []:
+                if _phrase_matches(msg_norm, str(p)):
+                    return False
+    except Exception:
+        pass
+
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
         "A conversational agent asked the user a question. Does the user's latest "
@@ -91,6 +123,11 @@ def _continues_the_flow(
         "(a lone \"sí\"/\"no\"/\"ok\"/\"claro\") is almost always a continuation too — a "
         "genuine interrupt takes more than a couple of words to express, unless it "
         "IS itself, word for word, one of the trigger phrases listed.\n\n"
+        "However, if the reply explicitly asks to EXPLAIN or DEFINE one of the service "
+        "or program names mentioned by the agent (e.g. IVF/FIV, ROPA, gestational "
+        "surrogacy) — such as \"aclárame el método ROPA\", \"qué es la FIV\", or \"explica la "
+        "gestación subrogada\" — treat it as an INTERRUPT so the agent can answer via the "
+        "corresponding FAQ, even if the overall topic matches the current question.\n\n"
         "Reply with just CONTINUE, or INTERRUPT if it clearly matches one of the "
         "interrupts above."
     )
@@ -112,6 +149,17 @@ def _match_candidate(
     "only match if truly unrelated" wording rather than trusting Stage 1
     blindly, since a wrong Stage-1 call here is otherwise unrecoverable.
     """
+    # Deterministic phrase match.
+    try:
+        msg_norm = _normalize(getattr(ctx, "last_user_message", "") or "")
+        for idx, (kind, node) in enumerate(candidates):
+            phrases = node.trigger if kind == "handler" else node.match
+            for p in phrases or []:
+                if _phrase_matches(msg_norm, str(p)):
+                    return candidates[idx]
+    except Exception:
+        pass
+
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
         "A conversational agent is mid-question. The user's reply below has already "
@@ -172,8 +220,26 @@ def match_global_router(
     candidates = _candidates(router)
     if not candidates:
         return None
+    # Deterministic pre-check for explicit explain/define requests about services
+    try:
+        msg = getattr(ctx, "last_user_message", "") or ""
+        norm = unicodedata.normalize("NFKD", msg).encode("ascii", "ignore").decode("ascii").lower()
+        explain_markers = (
+            "que es", "que es el", "que es la", "explica", "explicame", "aclarame", "aclarar",
+            "what is", "explain", "define",
+            "o que e", "o que e o", "o que e a", "explique",
+        )
+        topic_markers = ("ropa", "fiv", "ivf", "subrog", "surrog", "gestacion", "gestacion subrogada")
+        if any(m in norm for m in explain_markers) and any(t in norm for t in topic_markers):
+            lines = _candidate_lines(candidates)
+            picked = _match_candidate(llm_client, candidates, ctx, lines)
+            if picked is not None:
+                return picked
+    except Exception:
+        pass
+
     lines = _candidate_lines(candidates)
-    if _continues_the_flow(llm_client, ctx, lines):
+    if _continues_the_flow(llm_client, ctx, candidates, lines):
         return None
     return _match_candidate(llm_client, candidates, ctx, lines)
 
