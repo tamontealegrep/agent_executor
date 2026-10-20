@@ -75,9 +75,13 @@ for candidate in (EXECUTOR_SRC, EXECUTOR_ROOT):
 load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(PROJECT_ROOT / "agent_executor" / ".env", override=True)
 
-from sync_engine import sync_vendored_engine
-
-sync_vendored_engine()
+try:
+    # Sync mínimo: vendor sin commits/push antes de importar el engine
+    from sync_vendor_engine import main as _sync_vendor_engine
+    _sync_vendor_engine()
+except Exception:
+    # No bloquea el TUI si el sync falla; se podrá usar la copia actual
+    pass
 
 from compiled_runner.tool_routing import candidate_urls
 from engine.runtime.graph_builder import build_graph, fresh_state
