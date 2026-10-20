@@ -1405,7 +1405,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, egg donation, and ROPA to 'ivf'; map surrogacy and gestational surrogacy to 'surrogacy'."
+          "Map IVF, conventional fertility, egg donation, and ROPA to 'ivf'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'."
         ],
         "do": [],
         "trigger": [],
@@ -1420,7 +1420,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, surrogacy]"
+            "Literal[ivf, surrogacy, none]"
           ]
         ],
         "eval": "code",
@@ -1465,6 +1465,13 @@
             "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_TO_CL",
             "is_mechanical": true,
             "python_expression": "svc == 'surrogacy'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_BYE",
+            "condition_text": "IF [svc] == 'none' -> GO_TO: O__OP_BYE",
+            "is_mechanical": true,
+            "python_expression": "svc == 'none'",
             "reason": null
           },
           {
@@ -1537,6 +1544,50 @@
             "reason": null
           }
         ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_BYE",
+        "node_type": "message",
+        "goal": [
+          "Politely close the conversation if the lead is not interested."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Thank you very much. If you change your mind or need more information in the future, we will be here to help you."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_END",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_END",
+        "node_type": "terminal",
+        "goal": [
+          "Reach the terminal state."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
         "fallback": []
       },
       {
@@ -7936,12 +7987,14 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [],
+        "store": [
+          "[svc] = 'surrogacy'"
+        ],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "CL__CL_S",
+            "target": "CL__CL_ASK_NAT",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7977,12 +8030,14 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [],
+        "store": [
+          "[svc] = 'ivf'"
+        ],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "CL__CL_S",
+            "target": "CL__CL_ASK_GO",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
