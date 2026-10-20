@@ -76,20 +76,20 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command, interrupt
 
-from engine.dsl.schemas import ToolContractField
-from engine.dsl.utils import dynamic_target_slot_name, is_dynamic_target
-from engine.runtime.global_router import (
+from agent_compiler.dsl.schemas import ToolContractField
+from agent_compiler.dsl.utils import dynamic_target_slot_name, is_dynamic_target
+from agent_compiler.runtime.global_router import (
     UNANSWERED_QUESTION_ACK,
     handle_global_router_match,
     has_unanswered_side_question,
     match_global_router,
 )
-from engine.runtime.llm_client import LLMClient, LLMContext
-from engine.runtime.tool_executor import make_tool_executor
-from engine.targets.langgraph.condition_parser import NAMED_PREDICATES
-from engine.targets.langgraph.graph_renderer import FaqNode, GlobalRouterDefinition, GraphEdge, GraphNode
-from engine.targets.langgraph.runtime_artifact import RuntimeArtifact
-from engine.targets.langgraph.type_parser import classify_type_expr
+from agent_compiler.runtime.llm_client import LLMClient, LLMContext
+from agent_compiler.runtime.tool_executor import make_tool_executor
+from agent_compiler.targets.langgraph.condition_parser import NAMED_PREDICATES
+from agent_compiler.targets.langgraph.graph_renderer import FaqNode, GlobalRouterDefinition, GraphEdge, GraphNode
+from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact
+from agent_compiler.targets.langgraph.type_parser import classify_type_expr
 
 
 class SessionState(TypedDict):
