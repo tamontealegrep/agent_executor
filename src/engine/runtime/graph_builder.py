@@ -193,7 +193,7 @@ def _llm_compute_store_value(llm_client: LLMClient, slot_name: str, instruction:
 
 
 _BRACKET_REF_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]")
-_COMPARISON_VERB_RE = re.compile(r"^(compare|validate|check|ensure|verify|confirm|map|treat|evaluate|examine|judge|detect|identify)\b", re.IGNORECASE)
+_COMPARISON_VERB_RE = re.compile(r"^(compare|validate|check|ensure|verify|confirm)\b", re.IGNORECASE)
 
 
 def _is_recognized_mutation_line(line: str) -> bool:
@@ -342,26 +342,6 @@ def _json_schema_type(type_expr: str) -> dict[str, Any]:
         return {"type": ["boolean", "null"]}
     if type_expr == "int":
         return {"type": ["integer", "null"]}
-
-    # Handle list[Literal[...]] or list[T]
-    if type_expr.startswith("list[") and type_expr.endswith("]"):
-        inner = type_expr[5:-1].strip()
-        inner_schema = _json_schema_type(inner)
-        # Drop the "null" from the inner type for the array elements,
-        # but the array itself remains nullable in the parent object.
-        if isinstance(inner_schema.get("type"), list) and "null" in inner_schema["type"]:
-            if len(inner_schema["type"]) == 2:
-                inner_schema["type"] = inner_schema["type"][0]
-            else:
-                inner_schema["type"] = [t for t in inner_schema["type"] if t != "null"]
-        if "enum" in inner_schema and None in inner_schema["enum"]:
-            inner_schema["enum"] = [e for e in inner_schema["enum"] if e is not None]
-
-        return {
-            "type": ["array", "null"],
-            "items": inner_schema,
-        }
-
     return {"type": ["string", "null"]}
 
 
@@ -403,11 +383,6 @@ def _llm_extract_capture(
         f"{ctx.block()}"
         f"{policy_block}"
         f"Normalization instructions for this step:\n{context_lines}\n\n"
-        "IMPORTANT: If a field specifies a list of allowed values (enum/Literal), you MUST "
-        "map the user's natural language to those exact values. If the user mentions "
-        "multiple items, return them as a list of separate allowed values. "
-        "Do not return a single string containing multiple items or 'and'/'y' connectors "
-        "inside the list; split them into individual elements.\n\n"
         "Extract the fields defined by the provided schema, following the "
         "normalization instructions above. Use null for anything not clearly stated."
     )
@@ -420,57 +395,27 @@ def _coerce_value(value: Any, type_expr: str) -> Any:
     Two callers (2026-09-17): a question node's capture extraction (the
     original use — an LLM-extracted value against its `capture` schema type),
     and `_bind_tool_inputs` (a mechanically-resolved tool argument against
-    its *contract's own* declared type).
+    its *contract's own* declared type) — found live: `book_appointment`'s
+    `duration` input is declared `type_expr: "int"`, bound mechanically from
+    `<APPOINTMENT_DURATION_MINUTES>` (a compile-time constant `initial_slots()`
+    coerces to a real Python `int`), but the actual backend's Pydantic schema
+    expects a JSON string (`HTTP 422: "Input should be a valid string"`) — a
+    real mismatch between the tool's declared contract type and its backend's
+    real wire shape, silently untyped because mechanical binding (unlike the
+    LLM-fallback path, which gets JSON-schema type enforcement for free) never
+    coerced its resolved value against anything at all.
     """
     if value is None:
         return None
-
-    # Handle list[T] or list[Literal[...]]
-    if type_expr.startswith("list[") and type_expr.endswith("]"):
-        items = []
-        if isinstance(value, str):
-            value_stripped = value.strip()
-            if value_stripped.startswith("[") and value_stripped.endswith("]"):
-                try:
-                    import json
-                    parsed = json.loads(value_stripped.replace("'", '"'))
-                    if isinstance(parsed, list):
-                        items = parsed
-                except Exception:
-                    items = [value_stripped]
-            else:
-                items = [value_stripped] if value_stripped else []
-        elif isinstance(value, list):
-            items = value
-        else:
-            items = [value] if value is not None else []
-
-        # Flatten any comma or "y"/"and" separated strings within the list (lazy LLM extraction fix)
-        final_items = []
-        for item in items:
-            if isinstance(item, str):
-                # Split by comma, " y ", or " and "
-                parts = re.split(r",\s*|\s+y\s+|\s+and\s+", item, flags=re.IGNORECASE)
-                final_items.extend([s.strip() for s in parts if s.strip()])
-            else:
-                final_items.append(item)
-        return final_items
-
     parsed = classify_type_expr(type_expr)
-    canonical = parsed.canonical_suggestion if parsed.category == "synonym" else type_expr
-
-    if canonical == "bool":
-        if isinstance(value, str):
-            return value.lower() in ("true", "1", "yes", "si")
+    if parsed.category == "canonical" and type_expr == "bool":
         return bool(value)
-    if canonical == "int":
+    if parsed.category == "canonical" and type_expr == "int":
         try:
             return int(value)
         except (TypeError, ValueError):
             return value
-    if canonical == "str":
-        if isinstance(value, bool):
-            return "si" if value else "no"
+    if parsed.category == "canonical" and type_expr == "str":
         return str(value)
     return value
 
@@ -1132,22 +1077,45 @@ def _make_node_fn(
         # node type, mirroring `STORE` on `registration` nodes below.
         # `DO` was previously only fed to the LLM as route-decision
         # context and never actually mutated `slots`, so every retry
-        # Universal mutation pass: Process all mechanical assignments in DO/STORE
-        # for ALL node types before any output or execution (2026-10-01).
-        # A `DO` line identical to a `STORE` line (common on `registration`
-        # nodes) is skipped to avoid double-applying.
-        all_mutation_lines = list(node.store) + [
-            line for line in node.do if line not in set(node.store)
-        ]
-        for line in all_mutation_lines:
+        # counter silently never incremented — see DESIGN_PATTERNS.md.
+        # A `DO` line identical to a `STORE` line (common on
+        # `registration` nodes, which duplicate the same assignment in
+        # both fields) is skipped here to avoid double-applying it.
+        store_lines = set(node.store)
+        do_lines = [line for line in node.do if line not in store_lines]
+        for line in do_lines:
             _apply_store_line(line, ctx, llm_client)
-
-        # Non-mechanical conditional fallback (only for non-action nodes)
-        # 2026-10-01: Enabled for eval: "llm" nodes to allow deriving slots
-        # used in subsequent route evaluation (e.g., city typos).
-        # Comparison-only lines are still guarded by _is_comparison_only_line.
-        if node.node_type != "action":
-            _apply_conditional_mutations(all_mutation_lines, ctx, llm_client)
+        # `action` nodes' DO lines are entirely owned by `_bind_tool_inputs`
+        # below (tool-argument hints like "input_name = [slot]" are not slot
+        # mutations) — the conditional-prose fallback only applies elsewhere,
+        # or it would double-handle the same lines and fire an extra LLM call
+        # on every single tool call.
+        #
+        # `eval: "llm"` nodes, any node type (2026-09-17, found live — see
+        # `_is_comparison_only_line`'s docstring for the first, narrower
+        # attempt at this same bug): a `SC_DEC_S`-shaped node's `do:` line
+        # ("Map [slot] to the exact object in [available_slots]. It is
+        # valid only if that object has start_co and end_co.") isn't a
+        # `compare`/`validate`/... verb, so the earlier verb-list guard let
+        # it through — the model "applied" it, nulling out `available_slots`
+        # (a list of real appointment objects) and silently derailing the
+        # booking into objections. A verb blacklist can never be complete;
+        # checking every real `eval: "llm"` node's `do:` lines in this
+        # agent instead confirms the actual structural rule: on any node
+        # whose route is `eval: "llm"` — `decision` nodes (`SC_DEC_S`,
+        # `SC_DEC_D`, ...), but also real content's `registration`
+        # (`AM_INIT`) and `question` (`AM_ASK_NAME`) nodes, since `eval` is
+        # a route-evaluation property of any node type, not decision-only —
+        # `do:` lines exist exclusively to ground `_llm_pick_condition`'s
+        # route judgment (`resolve_edges` already receives them via
+        # `ctx.do`); every real occurrence across this agent is validation
+        # prose ("Evaluate whether...", "Compare...", "Map...", "Treat..."),
+        # never a mutation instruction. A genuine conditional mutation
+        # (e.g. `OP_DEC`'s "If [svc] is still NULL, infer it...") only ever
+        # appears on an `eval: "code"` node, which has no route-judgment use
+        # for `do:` at all — that's the only place this pass is needed.
+        if node.node_type != "action" and node.eval != "llm":
+            _apply_conditional_mutations(do_lines, ctx, llm_client)
 
         if node.node_type in ("message", "terminal") and node.say:
             rendered_message = render_say(
@@ -1157,8 +1125,6 @@ def _make_node_fn(
             history = _append_history(history, f"agent: {rendered_message}")
 
         elif node.node_type == "question":
-            # ... (question node logic remains identical) ...
-            # [OMITTED FOR BREVITY - the original code from line 1133 to 1238]
             # Don't call say_callback here: interrupt() re-runs this function
             # from the top on every resume, so a call before it would repeat
             # on every turn. The caller reads the prompt from the interrupt
@@ -1199,49 +1165,6 @@ def _make_node_fn(
                     policies=judgment_policies or [],
                     contact=contact,
                 )
-                # Top-level firewall: decide if we should refuse outright before
-                # attempting any FAQ/Handler matching.
-                try:
-                    from engine.runtime.global_router import (
-                        should_block_message,
-                        find_firewall_faq,
-                        find_firewall_handler,
-                        handle_global_router_match,
-                    )
-                except Exception:
-                    should_block_message = None  # type: ignore
-                if callable(should_block_message) and should_block_message(llm_client, router_ctx):
-                    # Prefer a dedicated firewall Handler if present: allows routing.
-                    firewall_handler = find_firewall_handler(router)
-                    if firewall_handler is not None:
-                        goto_target = handle_global_router_match(
-                            ("handler", firewall_handler),
-                            router_ctx,
-                            resolve_edges=resolve_edges,
-                            on_say=_on_router_say,
-                        )
-                        if goto_target is not None and goto_target in node_by_id:
-                            return Command(
-                                update={
-                                    "slots": slots,
-                                    "current_state": goto_target,
-                                    "last_user_message": reply,
-                                    "history": history,
-                                },
-                                goto=goto_target,
-                            )
-                        # else: no route or dynamic -> re-ask
-                        continue
-
-                    # Else use a dedicated firewall FAQ if present: say then resume.
-                    firewall_faq = find_firewall_faq(router)
-                    if firewall_faq is not None and firewall_faq.say:
-                        _on_router_say(firewall_faq, firewall_faq.say)
-                        # Re-ask the same pending question
-                        continue
-
-                    # Else, no firewall node defined — simply re-ask without extra text.
-                    continue
                 match = match_global_router(llm_client, router, router_ctx)
                 if match is None:
                     last_user_message = reply
@@ -1323,16 +1246,11 @@ def _make_node_fn(
                             if slot_name.endswith(key):
                                 slots[slot_name] = value
                                 break
-                
-                # Second pass for action nodes: Process STORE/DO mutations
-                # AFTER execution, so they can reference captured tool results.
-                # (e.g. normalizing a date using the result of time_now).
-                for line in all_mutation_lines:
-                    _apply_store_line(line, ctx, llm_client)
 
         elif node.node_type == "registration":
-            # Already handled by the universal pass above.
-            pass
+            for line in node.store:
+                _apply_store_line(line, ctx, llm_client)
+            _apply_conditional_mutations(node.store, ctx, llm_client)
 
         return {
             "slots": slots,
@@ -1491,7 +1409,7 @@ def fresh_state(
     `f"user: {text}"`), since that phrasing is a harness/UI concern, not
     part of the compiled agent.
     """
-    from engine.runtime.session_resolver import now_iso
+    from agent_compiler.runtime.session_resolver import now_iso
 
     return {
         "slots": initial_slots(artifact),

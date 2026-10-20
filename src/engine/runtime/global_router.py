@@ -19,9 +19,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
+from engine.dsl.utils import is_dynamic_target
 import unicodedata
 import re
-from engine.dsl.utils import is_dynamic_target
 from engine.runtime.llm_client import LLMClient, LLMContext
 from engine.targets.langgraph.graph_renderer import (
     FaqNode,
@@ -32,28 +32,6 @@ from engine.targets.langgraph.graph_renderer import (
 
 RouterMatch = tuple[str, "GraphNode | FaqNode"]
 """`(kind, node)` where `kind` is `"handler"` or `"faq"`."""
-
-
-# Acceptable FAQ ids to source firewall content from the agent spec.
-FIREWALL_FAQ_IDS: tuple[str, ...] = ("FAQ_FIREWALL", "F_FIREWALL", "FAQ__FIREWALL", "F__FIREWALL")
-
-
-def find_firewall_faq(router: GlobalRouterDefinition) -> FaqNode | None:
-    for faq in router.faqs:
-        if getattr(faq, "faq_id", None) in FIREWALL_FAQ_IDS:
-            return faq
-    return None
-
-
-# Acceptable Handler ids to source firewall behavior from the agent spec.
-FIREWALL_HANDLER_IDS: tuple[str, ...] = ("HANDLER_FIREWALL", "H_FIREWALL", "HANDLER__FIREWALL", "H__FIREWALL")
-
-
-def find_firewall_handler(router: GlobalRouterDefinition) -> GraphNode | None:
-    for handler in router.handlers:
-        if getattr(handler, "node_id", None) in FIREWALL_HANDLER_IDS:
-            return handler
-    return None
 
 
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
@@ -118,8 +96,7 @@ def _continues_the_flow(
     3/3 to 7/10 live. The saving this stage exists for is the *second*
     call, not this one skipping context.
     """
-    # Rely on recent history + pending question first; don't pre-empt with
-    # phrase checks here. Deterministic matching happens in Stage 2.
+    # No deterministic pre-check: always consult the LLM for Stage 1.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
@@ -148,37 +125,6 @@ def _continues_the_flow(
     return llm_client.complete(prompt).strip().upper() != "INTERRUPT"
 
 
-def should_block_message(llm_client: LLMClient, ctx: LLMContext) -> bool:
-    """Top-level firewall: decide whether the agent should refuse to answer.
-
-    Runs before evaluating handlers or FAQs. Returns True to BLOCK when the
-    user's last message clearly asks for something out of scope, disallowed by
-    house rules, or unsafe to answer (medical/legal/financial diagnosis or
-    advice, personal data collection, explicit content, or operational actions
-    the agent cannot perform). Otherwise returns False to ALLOW normal flow.
-
-    The refusal copy is owned by the agent via a dedicated Handler or FAQ.
-    """
-    policy_block = f"House rules (non-exhaustive):\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
-    question_context = (
-        f"The agent just asked the user: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
-    )
-    prompt = (
-        "You are a gatekeeper for a production assistant. Decide if the assistant "
-        "is allowed to respond SUBSTANTIVELY to the user's latest message below. "
-        "BLOCK when the request is clearly outside the assistant's domain, asks for "
-        "prohibited or unsafe content (medical/legal/financial advice or diagnosis, "
-        "explicit content, sensitive personal data collection), or requests actions "
-        "the assistant cannot perform per house rules. Otherwise ALLOW.\n\n"
-        f"{ctx.block()}"
-        f"{question_context}"
-        f"{policy_block}"
-        "Reply with just one word: ALLOW or BLOCK."
-    )
-    decision = llm_client.complete(prompt).strip().upper()
-    return decision == "BLOCK"
-
-
 def _match_candidate(
     llm_client: LLMClient,
     candidates: list[RouterMatch],
@@ -194,16 +140,7 @@ def _match_candidate(
     "only match if truly unrelated" wording rather than trusting Stage 1
     blindly, since a wrong Stage-1 call here is otherwise unrecoverable.
     """
-    # Deterministic phrase match.
-    try:
-        msg_norm = _normalize(getattr(ctx, "last_user_message", "") or "")
-        for idx, (kind, node) in enumerate(candidates):
-            phrases = node.trigger if kind == "handler" else node.match
-            for p in phrases or []:
-                if _phrase_matches(msg_norm, str(p)):
-                    return candidates[idx]
-    except Exception:
-        pass
+    # Do not short-circuit deterministically; rely on the LLM for selection.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
