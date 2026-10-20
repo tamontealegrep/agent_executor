@@ -224,17 +224,6 @@ def handle_global_router_match(
     return target
 
 
-UNANSWERED_QUESTION_ACK: list[str] = [
-    "Buena pregunta — eso te lo puede aclarar mejor tu asesor en la charla."
-]
-"""Fixed, non-specific deflection said when `has_unanswered_side_question`
-fires (2026-09-21). Deliberately generic and fact-free — never mentions
-anything about the business, so it carries zero fabrication risk. Authored
-in Spanish and left to `render_say`'s own translate-via-rephrase (already
-how the rest of this agent's `say`/FAQ content reaches other languages),
-not per-language here."""
-
-
 def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool:
     """Does `ctx.last_user_message` also ask something this turn's normal
     handling (capture, FAQs, handlers — already checked by the time this is
@@ -264,8 +253,8 @@ def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool
         "information (a fact, a number, a procedure detail, a personal-situation "
         "judgment) that is not already covered by the conversation so far, and that "
         "this agent has no specific approved content to answer? A bare answer to the "
-        "pending question, a greeting, or a short acknowledgement (\"ok\", \"sí\", "
-        "\"gracias\") is NOT this case.\n\n"
+        "pending question, a greeting, or a short acknowledgement (\"ok\", \"sí\"\"yes\", "
+        "\"gracias\"\"thank you\") is NOT this case.\n\n"
         "Reply with just YES or NO."
     )
     return llm_client.complete(prompt).strip().upper().startswith("Y")
