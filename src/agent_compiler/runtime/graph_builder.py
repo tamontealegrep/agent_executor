@@ -1057,6 +1057,14 @@ def _make_node_fn(
         history = list(state.get("history", []))
         contact = state.get("contact") or {}
 
+        # Ensure [current_state] is available in slots for DSL references
+        # (2026-10-20). Tracks the "last stable waiting point" — only updated
+        # on question nodes, so registration/message nodes (e.g. a language-
+        # switching subflow) can capture the interrupted question's ID as a
+        # resume target instead of capturing their own ID and looping.
+        if node.node_type == "question":
+            slots["current_state"] = node.node_id
+
         # One `LLMContext` per decision point (2026-09-17) — rebuilt whenever
         # `history`/`last_user_message` change below (the interrupt loop
         # replaces both), never reused stale. `slots` is never reassigned in
@@ -1371,13 +1379,17 @@ def build_graph(
 
 
 def initial_slots(artifact: RuntimeArtifact) -> dict[str, Any]:
-    """Seed constants (e.g. `MAX_RETRY_ATTEMPTS`) into the slot namespace.
+    """Seed constants (e.g. `MAX_RETRY_ATTEMPTS`) and the [current_state] slot.
 
     Without this, every retry-limit check referencing a constant would
     raise `NameError` inside `_resolve_edges`'s `eval()` and silently never
-    match.
+    match. [current_state] (2026-10-20) is seeded as an empty string so
+    registration nodes can reference it (e.g. `[resume_state] = [current_state]`)
+    even before the first question is reached.
     """
-    return {name: _coerce_constant(value) for name, value in artifact.constants.items()}
+    slots = {name: _coerce_constant(value) for name, value in artifact.constants.items()}
+    slots["current_state"] = ""
+    return slots
 
 
 def fresh_state(
