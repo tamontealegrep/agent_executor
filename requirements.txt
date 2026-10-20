@@ -1,3 +1,5 @@
+# Install runtime package that provides the `agent_compiler` module
+-e ../agent_runtime
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 httpx==0.28.1
