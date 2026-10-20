@@ -28,7 +28,7 @@ that command requires a clean working tree -- same as the original manual
 vendoring needed.
 
 Usage:
-    python scripts/resync_vendored_agent_compiler.py
+    python scripts/resync_vendored_engine.py
 """
 
 from __future__ import annotations
