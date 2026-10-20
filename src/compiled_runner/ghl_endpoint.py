@@ -23,8 +23,8 @@ from fastapi import APIRouter, status
 from langgraph.types import Command
 from starlette.concurrency import run_in_threadpool
 
-from engine.runtime.graph_builder import fresh_state
-from engine.runtime.session_resolver import resolve_session
+from agent_compiler.runtime.graph_builder import fresh_state
+from agent_compiler.runtime.session_resolver import resolve_session
 from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async, search_conversation_async
 from agents.helpers.ghl_request import GhlAgentRequest
 from agents.helpers.runner import derive_execution_id

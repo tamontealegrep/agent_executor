@@ -84,10 +84,10 @@ except Exception:
     pass
 
 from compiled_runner.tool_routing import candidate_urls
-from engine.runtime.graph_builder import build_graph, fresh_state
-from engine.runtime.llm_client import OpenAILLMClient
-from engine.runtime.session_resolver import resolve_session
-from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
+from agent_compiler.runtime.graph_builder import build_graph, fresh_state
+from agent_compiler.runtime.llm_client import OpenAILLMClient
+from agent_compiler.runtime.session_resolver import resolve_session
+from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 
 console = Console()
 COMPILED_AGENTS_DIR = PROJECT_ROOT / "agent_executor" / "compiled_agents"

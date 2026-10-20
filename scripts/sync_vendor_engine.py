@@ -28,7 +28,7 @@ AGENT_EXECUTOR_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE_ROOT = AGENT_EXECUTOR_ROOT.parent
 AGENT_RUNTIME_ROOT = WORKSPACE_ROOT / "agent_runtime"
 SRC_SUBDIR = AGENT_RUNTIME_ROOT / "src" / "agent_compiler"
-DST_ENGINE_DIR = AGENT_EXECUTOR_ROOT / "src" / "engine"
+DST_ENGINE_DIR = AGENT_EXECUTOR_ROOT / "src" / "agent_compiler"
 
 
 EXCLUDE_DIRS = {"tests", "__pycache__"}

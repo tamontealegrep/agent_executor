@@ -16,9 +16,9 @@ import sqlite3
 import threading
 from pathlib import Path
 
-from engine.runtime.graph_builder import build_graph
-from engine.runtime.llm_client import OpenAILLMClient
-from engine.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
+from agent_compiler.runtime.graph_builder import build_graph
+from agent_compiler.runtime.llm_client import OpenAILLMClient
+from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from compiled_runner.postgres import build_postgres_checkpointer, postgres_enabled
