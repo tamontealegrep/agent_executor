@@ -20,8 +20,6 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from agent_compiler.dsl.utils import is_dynamic_target
-import unicodedata
-import re
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
 from agent_compiler.targets.langgraph.graph_renderer import (
     FaqNode,
@@ -36,24 +34,6 @@ RouterMatch = tuple[str, "GraphNode | FaqNode"]
 
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
     return [("handler", h) for h in router.handlers] + [("faq", f) for f in router.faqs]
-
-
-def _normalize(text: str) -> str:
-    try:
-        return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii").lower()
-    except Exception:
-        return (text or "").lower()
-
-
-def _phrase_matches(msg_norm: str, phrase: str) -> bool:
-    p = unicodedata.normalize("NFKD", str(phrase) or "").encode("ascii", "ignore").decode("ascii").lower()
-    if not p:
-        return False
-    tokens = [re.escape(t) for t in p.split() if t]
-    if not tokens:
-        return False
-    pattern = r"\b" + r"\s+".join(tokens) + r"\b"
-    return re.search(pattern, msg_norm) is not None
 
 
 def _candidate_lines(candidates: list[RouterMatch]) -> str:
@@ -71,56 +51,43 @@ def _continues_the_flow(
     candidates: list[RouterMatch],
     candidate_lines: str,
 ) -> bool:
-    """Stage 1: does `user_reply` continue the pending question normally?
+    """Stage 1: Determine if the user message is a normal continuation.
 
-    A cheap, narrow judgment call, deliberately separate from candidate
-    matching (2026-09-17, requested directly — repeated router misfires
-    prompted asking whether the FAQ/handler mechanism needed a single
-    generic redesign; this two-stage split, with real conversation history
-    instead of just the one pending question, is that redesign, done in
-    place rather than as a parallel system). Recent history matters here in
-    a way a single `pending_question` string can't capture — a reply can
-    continue a *topic* the conversation has been on for several turns even
-    when it doesn't read as a direct answer to the literal last question
-    asked (e.g. still discussing a FAQ topic raised a couple of turns back).
-    When this returns `True`, the caller skips candidate matching (Stage 2,
-    `_match_candidate`) entirely — one call, not two, for the common case.
+    This stage decides if the reply is a plausible answer to the pending question
+    or a simple acknowledgement, skipping the interrupt matching process for the
+    common case of a normal flow.
 
-    Still shown the actual candidate list, even though this stage never
-    picks one: dropping it (an earlier version of this function did, to
-    keep the call "cheap") measurably hurt recall on real content — a reply
-    that is *itself* one of the trigger phrases verbatim (e.g. `"visa
-    colombia"`, `F_VISA`'s own trigger) needs to be compared against real
-    candidates to be recognized as an interrupt at all; judged in the
-    abstract, without seeing what interrupts even exist, it dropped from
-    3/3 to 7/10 live. The saving this stage exists for is the *second*
-    call, not this one skipping context.
+    Parameters:
+        llm_client: Client used to execute completion prompts.
+        ctx: The current conversation context.
+        candidates: List of all possible global interrupts.
+        candidate_lines: Formatted string of candidate descriptions for the prompt.
+
+    Returns:
+        True if the message is a continuation, False if it might be an interrupt.
     """
     # No deterministic pre-check: always consult the LLM for Stage 1.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
-        "A conversational agent asked the user a question. Does the user's latest "
-        "reply continue answering it normally, in the context of the recent "
-        "conversation — or does it match one of the global interrupts listed below "
-        "(things the agent should handle regardless of what it just asked)?\n\n"
+        "You are a conversation flow analyzer. An agent is interacting with a user. "
+        "Your task is to decide if the user's latest reply is a normal CONTINUATION "
+        "of the current topic or if it represents an INTERRUPT that matches one of the "
+        "global triggers listed below.\n\n"
         f"{ctx.block()}"
         f"{question_context}"
-        f"Global interrupts:\n{candidate_lines}\n\n"
-        "A reply that directly and plausibly answers the pending question is always "
-        "a continuation, even if it also loosely resembles one of the interrupts "
-        "above (e.g. stating a specific nationality answers a nationality question, "
-        "it does not raise a foreign-residency FAQ). A bare one- or two-word reply "
-        "(a lone \"sí\"/\"no\"/\"ok\"/\"claro\") is almost always a continuation too — a "
-        "genuine interrupt takes more than a couple of words to express, unless it "
-        "IS itself, word for word, one of the trigger phrases listed.\n\n"
-        "However, if the reply explicitly asks to EXPLAIN or DEFINE one of the service "
-        "or program names mentioned by the agent (e.g. IVF/FIV, ROPA, gestational "
-        "surrogacy) — such as \"aclárame el método ROPA\", \"qué es la FIV\", or \"explica la "
-        "gestación subrogada\" — treat it as an INTERRUPT so the agent can answer via the "
-        "corresponding FAQ, even if the overall topic matches the current question.\n\n"
-        "Reply with just CONTINUE, or INTERRUPT if it clearly matches one of the "
-        "interrupts above."
+        f"Global triggers (interrupts):\n{candidate_lines}\n\n"
+        "GUIDELINES:\n"
+        "1. A CONTINUATION is any reply that directly answers the pending question, "
+        "provides relevant information for the current topic, or is a simple "
+        "acknowledgement (e.g., \"ok\", \"fine\", \"thanks\", \"hello\").\n"
+        "2. An INTERRUPT is a clear shift to a different topic, a request for "
+        "information not asked for, a correction of a previous choice (e.g., \"I "
+        "changed my mind\", \"sorry I meant...\"), or an explicit match to one "
+        "of the triggers listed.\n"
+        "3. If the user's reply is ambiguous but could reasonably be an answer to "
+        "the pending question, prefer CONTINUE.\n\n"
+        "Reply with just CONTINUE or INTERRUPT."
     )
     return llm_client.complete(prompt).strip().upper() != "INTERRUPT"
 
@@ -131,29 +98,34 @@ def _match_candidate(
     ctx: LLMContext,
     candidate_lines: str,
 ) -> RouterMatch | None:
-    """Stage 2: which handler/FAQ, if any, does `user_reply` actually match?
+    """Stage 2: Identify which specific handler or FAQ matches the interrupt.
 
-    Only reached once Stage 1 (`_continues_the_flow`) has already decided
-    this reply is NOT a normal continuation — so this prompt's own job is
-    narrower than it used to be (picking *which* interrupt, not also
-    re-deciding *whether* there is one), but keeps the same defensive
-    "only match if truly unrelated" wording rather than trusting Stage 1
-    blindly, since a wrong Stage-1 call here is otherwise unrecoverable.
+    This stage is only called if Stage 1 decided the message is not a
+    continuation. It selects the best match among the provided candidates.
+
+    Parameters:
+        llm_client: Client used to execute completion prompts.
+        candidates: List of all possible global interrupts.
+        ctx: The current conversation context.
+        candidate_lines: Formatted string of candidate descriptions for the prompt.
+
+    Returns:
+        The matched (kind, node) tuple, or None if no candidate matches.
     """
     # Do not short-circuit deterministically; rely on the LLM for selection.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
-        "A conversational agent is mid-question. The user's reply below has already "
-        "been judged to be something other than a normal answer to that question — "
-        "which of these global interrupts (things the agent should handle regardless "
-        "of what it just asked) does it actually match?\n\n"
+        "The user's reply below has been judged as an interrupt. Which specific "
+        "global interrupt (handler or FAQ) does it match best?\n\n"
         f"{ctx.block()}"
         f"{question_context}"
         f"Candidates:\n{candidate_lines}\n\n"
-        "Only match when the reply is clearly, unambiguously one of these — reply "
-        "NONE rather than force a match if none genuinely fits.\n\n"
-        "Reply with just the number, or NONE if none apply."
+        "Select the candidate that best captures the user's intent. If the reply is "
+        "a correction of a previous choice, match it to the trigger that represents "
+        "the newly requested topic. If none of the candidates are a clear and "
+        "unambiguous match, reply NONE.\n\n"
+        "Reply with just the number of the matching candidate, or NONE."
     )
     text = llm_client.complete(prompt)
     if text.isdigit() and int(text) < len(candidates):
@@ -166,59 +138,22 @@ def match_global_router(
     router: GlobalRouterDefinition,
     ctx: LLMContext,
 ) -> RouterMatch | None:
-    """Does `ctx.last_user_message` match a handler trigger or FAQ match phrase?
+    """Check if the user message matches a global handler or FAQ.
 
-    Checked on every reply to a `question` node, before that reply is
-    treated as the answer to the pending question — mirrors how the
-    no-code text target evaluates GLOBAL_HANDLERS/FAQ_POLICY ahead of the
-    active state's own ROUTE.
+    Evaluates the message in two stages: first determining if it's a flow
+    continuation, then matching it to a specific interrupt if not.
 
-    Two stages (2026-09-17): `_continues_the_flow` first decides whether
-    this is a normal continuation at all; only a reply judged NOT a
-    continuation goes to `_match_candidate` to pick which interrupt it is.
-    One call for the common case (continuing normally), two only when
-    something genuinely looks like an interrupt — both stages see the same
-    candidate list (see `_continues_the_flow`'s docstring for why Stage 1
-    needs it too, not just Stage 2) and the same `history`: recent `"agent:
-    ..."` / `"user: ..."` turns (`graph_builder.py`'s `_HISTORY_WINDOW`).
-    Without `history`, the only context describing the conversation is one
-    bare `pending_question` string, and the model has nothing to judge "is
-    this clearly answering it" against beyond a single isolated reply,
-    which reliably over-matches a short, on-topic answer against a
-    semantically related trigger. Confirmed on real content:
-    `family_aims_sam_text_2_0`'s `CL_ASK_NAT` asks for the lead's
-    nationality, and the reply `"soy venezolana"` was consistently matched
-    to FAQ `F_FOREIGN` (triggers on `"soy extranjero"`) instead of being
-    captured as the answer — plausible in isolation ("Venezuelan" and
-    "foreigner" are related), wrong once the actual pending question and
-    conversation are known.
+    Parameters:
+        llm_client: Client used to execute completion prompts.
+        router: The definition of global handlers and FAQs.
+        ctx: The current conversation context.
 
-    Takes the shared `LLMContext` (2026-09-17) instead of `user_reply`/
-    `pending_question`/`history` as separate parameters — every runtime LLM
-    decision now takes this same type, `graph_builder.py`'s `node_fn` builds
-    one per decision point, so this stage sees `ctx.slots` too now (previously
-    absent here entirely, unlike almost every other decision call).
+    Returns:
+        The matched (kind, node) tuple if an interrupt is found, else None.
     """
     candidates = _candidates(router)
     if not candidates:
         return None
-    # Deterministic pre-check for explicit explain/define requests about services
-    try:
-        msg = getattr(ctx, "last_user_message", "") or ""
-        norm = unicodedata.normalize("NFKD", msg).encode("ascii", "ignore").decode("ascii").lower()
-        explain_markers = (
-            "que es", "que es el", "que es la", "explica", "explicame", "aclarame", "aclarar",
-            "what is", "explain", "define",
-            "o que e", "o que e o", "o que e a", "explique",
-        )
-        topic_markers = ("ropa", "fiv", "ivf", "subrog", "surrog", "gestacion", "gestacion subrogada")
-        if any(m in norm for m in explain_markers) and any(t in norm for t in topic_markers):
-            lines = _candidate_lines(candidates)
-            picked = _match_candidate(llm_client, candidates, ctx, lines)
-            if picked is not None:
-                return picked
-    except Exception:
-        pass
 
     lines = _candidate_lines(candidates)
     if _continues_the_flow(llm_client, ctx, candidates, lines):
@@ -233,24 +168,19 @@ def handle_global_router_match(
     resolve_edges: Callable[[list[GraphEdge], LLMContext], str | None],
     on_say: Callable[[GraphNode | FaqNode, list[str]], None] | None = None,
 ) -> str | None:
-    """Resolve where the matched handler/FAQ sends the conversation.
+    """Resolve the destination of a matched handler or FAQ.
+
+    Executes the matched node's logic, including rendering its message and
+    resolving its routing edges to determine the next state.
 
     Parameters:
-        match (RouterMatch): The `(kind, node)` pair from `match_global_router`.
-        ctx (LLMContext): The session's current context — `resolve_edges` for a
-            matched handler gets a copy of this with `goal`/`do` swapped to the
-            handler's own (not the originating question node's), since the
-            routing decision it's about to make is the handler's, not the
-            question's.
-        resolve_edges: Given a list of `GraphEdge` (route or fallback),
-            return the target of the first satisfied edge, or `None`.
-        on_say: Optional callback invoked with `(node, node.say)` so the
-            caller can render/emit the matched handler's or FAQ's message.
+        match: The (kind, node) pair from match_global_router.
+        ctx: The current conversation context.
+        resolve_edges: Callback to evaluate routing conditions.
+        on_say: Optional callback to handle the node's output message.
 
     Returns:
-        `None` to mean "resume the pending question" (the common case — a
-        dynamic `[current_state]`/`[resume_state]` target, or no route at
-        all), or a concrete state id to jump to via `Command(goto=...)`.
+        The ID of the next state to jump to, or None to resume the previous flow.
     """
     kind, node = match
     if node.say and on_say is not None:
@@ -284,21 +214,18 @@ not per-language here."""
 
 
 def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool:
-    """Does `ctx.last_user_message` also ask something this turn's normal
-    handling (capture, FAQs, handlers — already checked by the time this is
-    called) has no approved content to address?
+    """Check if the reply contains a side question not covered by FAQs or handlers.
 
-    A narrow, cheap judgment call, never a source of new facts: the only
-    thing a caller does with `True` is say the fixed, non-specific
-    `UNANSWERED_QUESTION_ACK` — this function's own reasoning never reaches
-    the user, so there is nothing here for it to hallucinate. Exists
-    because a real gap was found live (2026-09-21): a reply that answers
-    the pending question *and* asks something extra (e.g. "Soy una pareja
-    heterosexual. ¿Eso influye en el proceso?") got its side question
-    silently dropped — `render_say` (the only thing rendering the *next*
-    turn's message) deliberately never sees `last_user_message`/history at
-    all, by design, so it structurally cannot notice or acknowledge it; a
-    policy line asking it to was unreachable dead weight, not a fix.
+    Determines if the user's message contains a fact-seeking request that is
+    not handled by existing logic, allowing the agent to provide a generic
+    deflection rather than ignoring it.
+
+    Parameters:
+        llm_client: Client used to execute completion prompts.
+        ctx: The current conversation context.
+
+    Returns:
+        True if an unanswered side question is detected, else False.
     """
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
     prompt = (
