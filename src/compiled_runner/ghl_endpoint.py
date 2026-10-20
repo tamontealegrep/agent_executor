@@ -25,7 +25,7 @@ from starlette.concurrency import run_in_threadpool
 
 from engine.runtime.graph_builder import fresh_state
 from engine.runtime.session_resolver import resolve_session
-from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
+from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async, search_conversation_async
 from agents.helpers.ghl_request import GhlAgentRequest
 from agents.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
@@ -219,6 +219,32 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
             reply_channel = row.get("channel")
             if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
                 reply_channel = "WHATSAPP"
+
+            # Pre-flight: si no existe contacto/conversacion, evitar 400 y liberar el claim
+            conv_id = await search_conversation_async(
+                contact_id=row["contact_id"],
+                location_id=row["location_id"],
+                config=cfg.ghl_client_config(),
+                logger=logger,
+            )
+            if conv_id is None:
+                logger.warning(
+                    "[%s] Skipping closing message: contact not found or no conversation (location_id=%s contact_id=%s)",
+                    thread_id,
+                    row["location_id"],
+                    row["contact_id"],
+                )
+                try:
+                    await run_in_threadpool(
+                        reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
+                    )
+                except Exception:
+                    logger.warning(
+                        "[%s] Failed to reset closing message claim after missing contact (non-fatal).",
+                        thread_id,
+                        exc_info=True,
+                    )
+                continue
 
             await send_ghl_message_async(
                 contact_id=row["contact_id"],

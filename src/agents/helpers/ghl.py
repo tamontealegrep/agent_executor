@@ -186,8 +186,23 @@ async def send_ghl_message_async(
     )
 
     async with httpx.AsyncClient(timeout=config.send_message_timeout_seconds) as client:
-        response = await client.post(url, json=payload, headers=get_ghl_headers(config))
-        response.raise_for_status()
-        body = response.json()
-        active_logger.info("[%s] GHL outbound message accepted.", exec_id)
-        return body
+        try:
+            response = await client.post(url, json=payload, headers=get_ghl_headers(config))
+            response.raise_for_status()
+            body = response.json()
+            active_logger.info("[%s] GHL outbound message accepted.", exec_id)
+            return body
+        except httpx.HTTPStatusError as exc:
+            # Log detalle del error para diagnosticar 4xx/5xx (sin incluir el token)
+            text = exc.response.text if exc.response is not None else ""
+            active_logger.error(
+                "[%s] GHL send failed: %s %s -> %s | payload.type=%s len=%s | body=%s",
+                exec_id,
+                exc.response.status_code if exc.response is not None else "?",
+                exc.request.url if exc.request is not None else url,
+                "HTTPStatusError",
+                payload.get("type"),
+                len(payload.get("message") or ""),
+                text[:2000],  # recorta para no inundar logs
+            )
+            raise
