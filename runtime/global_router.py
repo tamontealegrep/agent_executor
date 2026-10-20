@@ -96,16 +96,8 @@ def _continues_the_flow(
     3/3 to 7/10 live. The saving this stage exists for is the *second*
     call, not this one skipping context.
     """
-    # Deterministic early check.
-    try:
-        msg_norm = _normalize(getattr(ctx, "last_user_message", "") or "")
-        for kind, node in candidates:
-            phrases = node.trigger if kind == "handler" else node.match
-            for p in phrases or []:
-                if _phrase_matches(msg_norm, str(p)):
-                    return False
-    except Exception:
-        pass
+    # No deterministic pre-check here: Stage 1 always consults the LLM so
+    # tests can validate two calls (Stage 1 + Stage 2) when appropriate.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
@@ -149,16 +141,8 @@ def _match_candidate(
     "only match if truly unrelated" wording rather than trusting Stage 1
     blindly, since a wrong Stage-1 call here is otherwise unrecoverable.
     """
-    # Deterministic phrase match.
-    try:
-        msg_norm = _normalize(getattr(ctx, "last_user_message", "") or "")
-        for idx, (kind, node) in enumerate(candidates):
-            phrases = node.trigger if kind == "handler" else node.match
-            for p in phrases or []:
-                if _phrase_matches(msg_norm, str(p)):
-                    return candidates[idx]
-    except Exception:
-        pass
+    # Always use the LLM to pick among candidates; do not short-circuit
+    # deterministically here to preserve expected prompt calls in tests.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
