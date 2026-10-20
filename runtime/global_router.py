@@ -239,8 +239,8 @@ def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool
         "information (a fact, a number, a procedure detail, a personal-situation "
         "judgment) that is not already covered by the conversation so far, and that "
         "this agent has no specific approved content to answer? A bare answer to the "
-        "pending question, a greeting, or a short acknowledgement (\"ok\", \"sí\", "
-        "\"gracias\") is NOT this case.\n\n"
+        "pending question, a greeting, or a short acknowledgement (\"ok\", \"yes\",\"sí\", "
+        "\"thanks\", \"thank you\", \"gracias\") is NOT this case.\n\n"
         "Reply with just YES or NO."
     )
     return llm_client.complete(prompt).strip().upper().startswith("Y")
