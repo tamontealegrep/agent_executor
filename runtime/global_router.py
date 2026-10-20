@@ -96,8 +96,7 @@ def _continues_the_flow(
     3/3 to 7/10 live. The saving this stage exists for is the *second*
     call, not this one skipping context.
     """
-    # No deterministic pre-check here: Stage 1 always consults the LLM so
-    # tests can validate two calls (Stage 1 + Stage 2) when appropriate.
+    # No deterministic pre-check: always consult the LLM for Stage 1.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
@@ -141,8 +140,7 @@ def _match_candidate(
     "only match if truly unrelated" wording rather than trusting Stage 1
     blindly, since a wrong Stage-1 call here is otherwise unrecoverable.
     """
-    # Always use the LLM to pick among candidates; do not short-circuit
-    # deterministically here to preserve expected prompt calls in tests.
+    # Do not short-circuit deterministically; rely on the LLM for selection.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
