@@ -3778,6 +3778,33 @@
         "eval": "code",
         "route": [
           {
+            "target": "SP__SP_PAUSE_G2NG",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SP__SP_PAUSE_G2NG",
+        "node_type": "action",
+        "goal": [
+          "Insert a 5-second pause so messages are not sent together."
+        ],
+        "do": [
+          "seconds = '5'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": true,
+        "execute": "pause",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
             "target": "SP__SP_VAL_NG",
             "condition_text": null,
             "is_mechanical": true,
@@ -5717,6 +5744,31 @@
         "route": [
           {
             "target": "[lm__resume_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SM__SM_S",
+        "node_type": "start",
+        "goal": [
+          "Enter safety management."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SM__SM_END",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7695,6 +7747,23 @@
         "fallback": []
       },
       {
+        "node_id": "SM__SM_END",
+        "node_type": "terminal",
+        "goal": [
+          "Close the interaction due to abusive behavior without further messaging."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
+        "fallback": []
+      },
+      {
         "node_id": "SC__SC_TRUE_END",
         "node_type": "terminal",
         "goal": [
@@ -7716,6 +7785,91 @@
   "global_router": {
     "handlers": [
       {
+        "node_id": "H_SAFETY",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "hate messages toward the company",
+          "insults or offensive language",
+          "aggressive or hateful comments about the services",
+          "hate speech",
+          "mensajes de odio",
+          "insultos",
+          "lenguaje ofensivo",
+          "comentarios agresivos u odiosos",
+          "mensagens de ódio",
+          "insultos (pt)",
+          "linguagem ofensiva",
+          "comentários agressivos ou de ódio"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SM__SM_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_SPECIFIC_Q",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "specific questions about costs, prices, or requirements",
+          "prices",
+          "costs",
+          "how much does it cost",
+          "initial requirements",
+          "what do I need to start",
+          "process duration",
+          "budget",
+          "precios",
+          "costos",
+          "cuanto cuesta",
+          "cuánto cuesta",
+          "requisitos iniciales",
+          "que necesito para empezar",
+          "qué necesito para empezar",
+          "duracion del proceso",
+          "duración del proceso",
+          "presupuesto",
+          "preços",
+          "custos",
+          "quanto custa",
+          "requisitos iniciais",
+          "o que preciso para começar",
+          "duração do processo",
+          "orçamento"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "H_SUR_CAND",
         "node_type": "message",
         "goal": [],
@@ -7726,7 +7880,18 @@
           "I want to apply as a surrogate",
           "I want to work as a surrogate",
           "how can I become a surrogate",
-          "I want to become a surrogate"
+          "I want to become a surrogate",
+          "quiero ser gestante",
+          "quiero ser madre sustituta",
+          "quiero postularme como gestante",
+          "quiero trabajar como gestante",
+          "como puedo ser gestante",
+          "cómo puedo ser gestante",
+          "quero ser barriga de aluguel",
+          "quero ser mãe substituta",
+          "quero me candidatar a barriga de aluguel",
+          "quero trabalhar como gestante",
+          "como posso ser barriga de aluguel"
         ],
         "say": [
           "Thank you for letting us know. At this time, this line does not handle surrogate applications. We appreciate your interest and for now, we will close the conversation."
@@ -7755,10 +7920,19 @@
         "trigger": [
           "I want surrogacy",
           "I want gestational surrogacy",
-          "I am interested in surrogacy"
+          "I am interested in surrogacy",
+          "quiero subrogacion",
+          "quiero subrogación",
+          "quiero gestacion subrogada",
+          "quiero gestación subrogada",
+          "estoy interesado en subrogacion",
+          "estoy interesado en subrogación",
+          "quero subrogação",
+          "quero gestação de substituição",
+          "estou interessado em subrogação"
         ],
         "say": [
-          "Perfect, let's go straight through that path."
+          "Perfect."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7785,10 +7959,21 @@
           "I want IVF",
           "I am interested in IVF",
           "I want in vitro fertilization",
-          "I want ROPA method"
+          "I want ROPA method",
+          "quiero fiv",
+          "estoy interesado en fiv",
+          "quiero fertilizacion in vitro",
+          "quiero fertilización in vitro",
+          "quiero metodo ropa",
+          "quiero método ropa",
+          "quero fiv",
+          "estou interessado em fiv",
+          "quero fertilização in vitro",
+          "quero metodo ropa",
+          "quero método ropa"
         ],
         "say": [
-          "Perfect, let's go straight through that path."
+          "Perfect."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7815,7 +8000,9 @@
           "I am not interested",
           "I don't want to continue",
           "no me interesa",
-          "no quiero continuar"
+          "no quiero continuar",
+          "não estou interessado",
+          "não quero continuar"
         ],
         "say": [
           "I understand. I am here to help if you change your mind later. Have a great day!"
@@ -7927,7 +8114,24 @@
           "cancel my meeting",
           "reschedule appointment",
           "cancel appointment",
-          "change my appointment time"
+          "change my appointment time",
+          "quiero cancelar mi cita",
+          "necesito reprogramar",
+          "puedo cambiar la hora de mi cita",
+          "quiero ver mis citas",
+          "cancelar mi reunion",
+          "cancelar mi reunión",
+          "reprogramar cita",
+          "cancelar cita",
+          "cambiar la hora de mi cita",
+          "quero cancelar minha consulta",
+          "preciso remarcar",
+          "posso mudar o horário da minha consulta",
+          "quero ver minhas consultas",
+          "cancelar minha reunião",
+          "remarcar consulta",
+          "cancelar consulta",
+          "mudar o horário da minha consulta"
         ],
         "say": [
           "I can help you with that."
@@ -7964,7 +8168,15 @@
           "can you repeat that",
           "I did not understand",
           "I don't understand",
-          "what did you mean"
+          "what did you mean",
+          "puedes repetir eso",
+          "no entendi",
+          "no entendí",
+          "que quisiste decir",
+          "qué quisiste decir",
+          "pode repetir",
+          "não entendi",
+          "o que você quis dizer"
         ],
         "say": [
           "Sure, I'll repeat it for you."
@@ -7993,7 +8205,7 @@
           "__FIREWALL__"
         ],
         "say": [
-          "No puedo responder a esa solicitud. Soy un agente de IA. ¿Puedo ayudarte con algo más?"
+          "I cannot fulfill that request. I am an AI assistant. Can I help you with anything else?"
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -8005,7 +8217,15 @@
           "same-sex couple",
           "do you accept same-sex couples",
           "homoparental",
-          "lgbt"
+          "lgbt",
+          "pareja gay",
+          "pareja del mismo sexo",
+          "aceptan parejas del mismo sexo",
+          "pareja homoparental",
+          "casal gay",
+          "casal do mesmo sexo",
+          "aceitam casais do mesmo sexo",
+          "casal homoafetivo"
         ],
         "say": [
           "Yes. We accompany same-sex couples within the programs approved by Family Aims."
@@ -8019,7 +8239,17 @@
           "single father",
           "single mother",
           "single person",
-          "can I do it alone"
+          "can I do it alone",
+          "padre soltero",
+          "madre soltera",
+          "persona soltera",
+          "puedo hacerlo solo",
+          "puedo hacerlo sola",
+          "pai solteiro",
+          "mãe solteira",
+          "pessoa solteira",
+          "posso fazer sozinho",
+          "posso fazer sozinha"
         ],
         "say": [
           "Yes. Family Aims accompanies both couples and some individual profiles, such as single fathers or single mothers, depending on the program and the most suitable country."
@@ -8032,7 +8262,14 @@
         "match": [
           "single woman",
           "I am a single woman",
-          "double donation"
+          "double donation",
+          "mujer soltera",
+          "soy una mujer soltera",
+          "doble donacion",
+          "doble donación",
+          "mulher solteira",
+          "sou uma mulher solteira",
+          "doação dupla"
         ],
         "say": [
           "For single women, the destination that best fits is Mexico, where it is possible to accompany that process."
@@ -8046,7 +8283,16 @@
           "do I need a visa",
           "can I enter Colombia",
           "Colombia visa",
-          "passport eligible"
+          "passport eligible",
+          "necesito visa",
+          "puedo entrar a colombia",
+          "visa para colombia",
+          "pasaporte elegible",
+          "requiere visa",
+          "preciso de visto",
+          "posso entrar na colômbia",
+          "visto para a colômbia",
+          "passaporte elegível"
         ],
         "say": [
           "Migration eligibility for surrogacy in Colombia is reviewed based on the reported nationality and, in some cases, whether you have a valid USA or Schengen visa."
@@ -8060,7 +8306,15 @@
           "I live outside Colombia",
           "I am a foreigner",
           "I live abroad",
-          "I am outside Colombia"
+          "I am outside Colombia",
+          "vivo fuera de colombia",
+          "soy extranjero",
+          "vivo en el exterior",
+          "estoy fuera de colombia",
+          "moro fora da colômbia",
+          "sou estrangeiro",
+          "moro no exterior",
+          "estou fora da colômbia"
         ],
         "say": [
           "Yes. We accompany both international patients and local residents, always within the conditions approved for each program."
@@ -8073,7 +8327,15 @@
         "match": [
           "what documents do you need",
           "initial requirements",
-          "what do I need to start"
+          "what do I need to start",
+          "que documentos necesitan",
+          "qué documentos necesitan",
+          "requisitos iniciales",
+          "que necesito para empezar",
+          "qué necesito para empezar",
+          "quais documentos precisam",
+          "requisitos iniciais",
+          "o que preciso para começar"
         ],
         "say": [
           "To start, we first need to place your case in the correct program. Specific documents are reviewed with you during the advisory session."
@@ -8087,7 +8349,18 @@
           "do you guarantee the result",
           "guaranteed baby",
           "medical guarantee",
-          "legal guarantee"
+          "legal guarantee",
+          "garantizan el resultado",
+          "bebe garantizado",
+          "bebé garantizado",
+          "garantia medica",
+          "garantía médica",
+          "garantia legal",
+          "garantía legal",
+          "garantem o resultado",
+          "bebê garantido",
+          "garantia médica",
+          "garantia legal"
         ],
         "say": [
           "No medical or legal program can guarantee absolute results. Each case is analyzed individually to guide you honestly."
@@ -8101,7 +8374,16 @@
           "who helps me",
           "human advisor",
           "real person",
-          "human specialist"
+          "human specialist",
+          "quien me ayuda",
+          "quién me ayuda",
+          "asesor humano",
+          "persona real",
+          "especialista humano",
+          "quem me ajuda",
+          "assessor humano",
+          "pessoa real",
+          "especialista humano"
         ],
         "say": [
           "I am an AI assistant that helps with initial orientation and scheduling. Personalized advisory is led by a human specialist from the commercial team."
@@ -8115,7 +8397,17 @@
           "I can't right now",
           "call me later",
           "call later",
-          "I am not available now"
+          "I am not available now",
+          "no puedo ahora",
+          "llamame mas tarde",
+          "llámame más tarde",
+          "llamar despues",
+          "llamar después",
+          "no estoy disponible ahora",
+          "não posso agora",
+          "ligue mais tarde",
+          "ligar depois",
+          "não estou disponível agora"
         ],
         "say": [
           "Of course. We can resume via message later or request a callback for another time."
@@ -8128,7 +8420,18 @@
         "match": [
           "who are you",
           "who is writing to me",
-          "who is contacting me"
+          "who is contacting me",
+          "quien eres",
+          "quién eres",
+          "quien me escribe",
+          "quién me escribe",
+          "quien me contacta",
+          "quién me contacta",
+          "quem é você",
+          "quem esta me escrevendo",
+          "quem está me escrevendo",
+          "quem esta me contactando",
+          "quem está me contactando"
         ],
         "say": [
           "I am <AGENT_NAME>, an AI assistant for <COMPANY_NAME>. I am here to guide the initial conversation and help you define the next step with the commercial team."
@@ -8141,7 +8444,18 @@
         "match": [
           "why are you writing to me",
           "why am I being contacted",
-          "what is the reason for the message"
+          "what is the reason for the message",
+          "por que me escribes",
+          "por qué me escribes",
+          "por que me contactan",
+          "por qué me contactan",
+          "cual es el motivo del mensaje",
+          "cuál es el motivo del mensaje",
+          "por que você está me escrevendo",
+          "por que voce esta me escrevendo",
+          "por que estão me contactando",
+          "por que estao me contactando",
+          "qual o motivo da mensagem"
         ],
         "say": [
           "I am writing to you because we received your information and we know you are interested in learning more about our fertility treatments."
@@ -8154,7 +8468,24 @@
         "match": [
           "what is IVF",
           "what is in vitro fertilization",
-          "ROPA method"
+          "explain in vitro fertilization",
+          "que es fiv",
+          "qué es fiv",
+          "que es la fiv",
+          "qué es la fiv",
+          "fertilizacion in vitro",
+          "fertilización in vitro",
+          "explicame fiv",
+          "explícame fiv",
+          "explicame la fiv",
+          "explícame la fiv",
+          "o que é fiv",
+          "o que e fiv",
+          "o que é fertilização in vitro",
+          "o que e fertilizacao in vitro",
+          "fertilização in vitro",
+          "fertilizacao in vitro",
+          "explique fiv"
         ],
         "say": [
           "In vitro fertilization is an assisted reproduction technique in which eggs and sperm are joined in the laboratory to form embryos.\n\nDepending on the case, it can be performed with own or donated genetic material."
@@ -8163,13 +8494,52 @@
         "resume_to": "[current_state]"
       },
       {
+        "faq_id": "F_ROPA",
+        "match": [
+          "what is the ROPA method",
+          "explain ROPA",
+          "ROPA method",
+          "metodo ropa",
+          "método ropa",
+          "que es el metodo ropa",
+          "qué es el método ropa",
+          "aclarame el metodo ropa",
+          "aclárame el método ropa",
+          "explicame el metodo ropa",
+          "explícame el método ropa",
+          "método ropa",
+          "metodo ropa",
+          "o que é o método ropa",
+          "o que e o metodo ropa",
+          "explique o método ropa"
+        ],
+        "say": [
+          "The ROPA method is an assisted reproduction treatment for female couples where one partner provides the eggs and the other carries the pregnancy, allowing both to participate biologically in the process."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
         "faq_id": "F_SUR",
         "match": [
           "what is surrogacy",
+          "explain gestational surrogacy",
           "gestational surrogacy",
           "surrogacy in Colombia",
           "surrogacy in Mexico",
-          "how does surrogacy work"
+          "how does surrogacy work",
+          "que es la subrogacion",
+          "qué es la subrogación",
+          "gestacion subrogada",
+          "gestación subrogada",
+          "como funciona la subrogacion",
+          "cómo funciona la subrogación",
+          "o que é a subrogação",
+          "o que e a subrogacao",
+          "gestação de substituição",
+          "gestacao de substituicao",
+          "como funciona a subrogação",
+          "como funciona a subrogacao"
         ],
         "say": [
           "Surrogacy is an assisted reproduction process in which a surrogate carries the pregnancy for the person or couple who wishes to form their family. The exact path depends on the case and the suitable country."
@@ -8183,7 +8553,18 @@
           "how much does it cost",
           "price of the process",
           "value of surrogacy",
-          "surrogacy prices"
+          "surrogacy prices",
+          "cuanto cuesta",
+          "cuánto cuesta",
+          "precio del proceso",
+          "valor de la subrogacion",
+          "valor de la subrogación",
+          "precios de subrogacion",
+          "precios de subrogación",
+          "quanto custa",
+          "preço do processo",
+          "valor da subrogação",
+          "preços da subrogação"
         ],
         "say": [
           "Values depend on the program and the specific needs of each case. That is why they are reviewed in detail during the commercial advisory session."
@@ -8200,7 +8581,27 @@
           "how long does IVF take",
           "stimulation time",
           "surrogacy timeline",
-          "process duration"
+          "process duration",
+          "cuanto dura la subrogacion",
+          "cuánto dura la subrogación",
+          "tiempo del proceso",
+          "duracion del tratamiento",
+          "duración del tratamiento",
+          "cuanto tarda la fiv",
+          "cuánto tarda la fiv",
+          "tiempo de estimulacion",
+          "tiempo de estimulación",
+          "cronograma de subrogacion",
+          "cronograma de subrogación",
+          "duracion del proceso",
+          "duración del proceso",
+          "quanto tempo dura a subrogação",
+          "tempo do processo",
+          "duração do tratamento",
+          "quanto tempo leva a fiv",
+          "tempo de estimulação",
+          "cronograma da subrogação",
+          "duração do processo"
         ],
         "say": [
           "The estimated duration of the process depends on the treatment:",
@@ -8218,7 +8619,17 @@
           "network error",
           "connection problem",
           "not working",
-          "technical error"
+          "technical error",
+          "error de red",
+          "problema de conexion",
+          "problema de conexión",
+          "no funciona",
+          "error tecnico",
+          "error técnico",
+          "erro de rede",
+          "problema de conexão",
+          "não está funcionando",
+          "erro técnico"
         ],
         "say": [
           "I apologize for the inconvenience. If you experience a network or technical error, please try refreshing the conversation. If the problem persists, our human team will contact you soon for support."
@@ -8231,7 +8642,15 @@
         "match": [
           "my data",
           "privacy",
-          "how do you handle my information"
+          "how do you handle my information",
+          "mis datos",
+          "privacidad",
+          "como manejan mi informacion",
+          "cómo manejan mi información",
+          "meus dados",
+          "privacidade",
+          "como tratam minhas informações",
+          "como tratam minhas informacoes"
         ],
         "say": [
           "Your data is handled confidentially according to <DATA_LAW_REFERENCE> in Colombia and is used only to manage your care."
@@ -8245,24 +8664,22 @@
           "what steps should I follow",
           "how do I start",
           "what comes next after this",
-          "what are the next steps"
+          "what are the next steps",
+          "que pasos debo seguir",
+          "qué pasos debo seguir",
+          "como empiezo",
+          "cómo empiezo",
+          "que sigue despues de esto",
+          "qué sigue después de esto",
+          "cuales son los proximos pasos",
+          "cuáles son los próximos pasos",
+          "quais passos devo seguir",
+          "como começo",
+          "o que vem depois disso",
+          "quais são os próximos passos"
         ],
         "say": [
           "The next steps are simple: you talk to your advisor about your specific situation, they resolve all your specific doubts, and then you define together how to proceed — that's why it's so important to schedule that first talk."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_PROCESS_DURATION",
-        "match": [
-          "how long does the process take",
-          "how much time does it take",
-          "how long does all this take",
-          "how long is the process"
-        ],
-        "say": [
-          "The time varies depending on the program: in gestational surrogacy, the estimate is <PROCESS_DURATION_MONTHS>, although it may change according to each case; in IVF, your advisor gives you the estimated time according to your specific situation in the first talk."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -9092,7 +9509,7 @@
     "Do not mix service tools: if [appt_svc] == 'ivf', use the IVF scheduling path; if [appt_svc] == 'surrogacy', use the surrogacy scheduling path.",
     "Emails and contact data may be repeated back for confirmation, but never invented or completed from guesswork.",
     "Multilingual normalization: interpret responses, intents, FAQ matches, and semantic captures in Spanish, English, or Brazilian Portuguese. Normalize yes/no, services, objections, and preferences to the declared DSL literals without changing slot names or state IDs.",
-    "No hallucinations: if the user asks for a detail that is not in the approved content or a tool result, say you do not have that detail right now and offer the appointment or specialist follow-up.",
+    "No hallucinations: if the user asks for a detail that is not in the approved content or a tool result, briefly explain that you don't have that specific information right now and that the human specialist will clarify it during the appointment. Avoid using repetitive filler phrases.",
     "PROCESS DURATION: When asked about duration (F_TIME), if [svc] is known, focus your answer on that service. For surrogacy, emphasize the 24-month estimate. For IVF, explain the 20-30 day (stimulation in Colombia) or 10-15 day (already stimulated) timelines, and always mention that the second phase is the transfer.",
     "TECHNICAL ERRORS: If a network error or technical failure occurs during a tool call, apologize to the user, explain that there is a temporary connection issue, and suggest retrying later or waiting for a human advisor."
   ]
