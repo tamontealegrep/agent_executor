@@ -1,4 +1,6 @@
-"""Helpers de parsing flexible (texto, booleanos, fechas), usados por servicios de negocio."""
+"""
+Helpers de parsing flexible (texto, booleanos, fechas), usados por servicios de negocio.
+"""
 
 import re
 import unicodedata
@@ -7,8 +9,15 @@ from typing import Any, Optional
 
 
 def normalize(val: Any) -> str:
-    """Quita acentos, pasa a mayúsculas y recorta espacios."""
-    if val is None:
+    """
+Quita acentos, pasa a mayúsculas y recorta espacios.
+
+    Parameters:
+        val: Description.
+
+    Returns:
+        The result.
+"""    if val is None:
         return ""
     s = unicodedata.normalize("NFD", str(val))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
@@ -16,13 +25,27 @@ def normalize(val: Any) -> str:
 
 
 def is_present(val: Any) -> bool:
-    """Indica si el valor no es None y no es una cadena vacía tras recortar espacios."""
-    return val is not None and str(val).strip() != ""
+    """
+Indica si el valor no es None y no es una cadena vacía tras recortar espacios.
+
+    Parameters:
+        val: Description.
+
+    Returns:
+        The result.
+"""    return val is not None and str(val).strip() != ""
 
 
 def parse_boolean(val: Any) -> Optional[bool]:
-    """Conversión flexible a booleano. Devuelve None si no se reconoce el valor."""
-    if isinstance(val, bool):
+    """
+Conversión flexible a booleano. Devuelve None si no se reconoce el valor.
+
+    Parameters:
+        val: Description.
+
+    Returns:
+        The result.
+"""    if isinstance(val, bool):
         return val
     s = normalize(val)
     if s in ("TRUE", "1", "SI", "YES"):
@@ -33,8 +56,15 @@ def parse_boolean(val: Any) -> Optional[bool]:
 
 
 def parse_float(val: Any) -> Optional[float]:
-    """Conversión flexible a float. Devuelve None si el valor no se puede convertir."""
-    if val is None:
+    """
+Conversión flexible a float. Devuelve None si el valor no se puede convertir.
+
+    Parameters:
+        val: Description.
+
+    Returns:
+        The result.
+"""    if val is None:
         return None
     try:
         return float(str(val).strip())
@@ -43,7 +73,15 @@ def parse_float(val: Any) -> Optional[float]:
 
 
 def parse_flexible_date(val: Any) -> Optional[date]:
-    """Parser flexible de fechas (YYYY/MM/DD, DD/MM/YYYY, ISO)."""
+    """
+Parser flexible de fechas (YYYY/MM/DD, DD/MM/YYYY, ISO).
+
+    Parameters:
+        val: Description.
+
+    Returns:
+        The result.
+"""
     if val is None:
         return None
     if isinstance(val, datetime):

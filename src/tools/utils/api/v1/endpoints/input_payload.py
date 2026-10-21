@@ -15,9 +15,17 @@ LOG_FILE = ROOT_DIR / "backups" / "discovery_payloads.jsonl"
 @router.post("/input-payload", response_model=InputPayloadResponse)
 async def receive_payload(request: Request):
     """
+receive_payload.
+
     Endpoint de utilidad para capturar y loguear cualquier payload enviado por GHL.
-    Útil para ingeniería inversa de webhooks y disparadores.
-    """
+        Útil para ingeniería inversa de webhooks y disparadores.
+
+    Parameters:
+        request: Description.
+
+    Returns:
+        None.
+"""
     try:
         body = await request.body()
         payload = await request.json() if body else {}

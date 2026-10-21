@@ -7,13 +7,21 @@ router = APIRouter()
 @router.post("/update_custom_field", response_model=GhlCustomUpdateResponse)
 async def update_custom_field(req: GhlCustomFieldUpdate):
     """
+update_custom_field.
+
     Herramienta para actualizar campos o valores personalizados en GoHighLevel.
-    
-    - Si se provee `contact_id`: Actualiza un Custom Field del contacto (ej: idioma).
-    - Si NO se provee `contact_id` pero sí `location_id`: Actualiza un Custom Value global.
-    
-    Permite usar nombres legibles (ej: 'language') en lugar de IDs técnicos si se provee el `location_id`.
-    """
+
+        - Si se provee `contact_id`: Actualiza un Custom Field del contacto (ej: idioma).
+        - Si NO se provee `contact_id` pero sí `location_id`: Actualiza un Custom Value global.
+
+        Permite usar nombres legibles (ej: 'language') en lugar de IDs técnicos si se provee el `location_id`.
+
+    Parameters:
+        req: Description.
+
+    Returns:
+        None.
+"""
     result = await update_custom_field_service(
         name=req.name,
         value=req.value,

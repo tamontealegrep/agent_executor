@@ -1,29 +1,30 @@
-"""Pydantic v2 schemas for the agent DSL.
+"""
+Pydantic v2 schemas for the agent DSL.
 
-This module defines every typed data model used by the loaders, classifier,
-validators, deduplicator, renderers, and compiler. Schemas are split into:
+    This module defines every typed data model used by the loaders, classifier,
+    validators, deduplicator, renderers, and compiler. Schemas are split into:
 
-- Compilation parameters (``CompilationParams`` and the supporting enums).
-- Channel and compliance profiles (``ChannelProfile``, ``ComplianceProfile``).
-- Manifest and includes (``ManifestConfig``, ``ManifestIncludes``,
-  ``SubflowInstanceRef``).
-- Static agent content (constants, input variables, tools, contracts, memory
-  slots, identity, objectives, context, policies, flow rules, faq policy).
-- Flow objects (``FlowObjectBase``, ``HandlerModel``, ``FAQModel``,
-  ``StateModel``), including ``say_verbatim`` and ``eval``. ``eval``'s
-  mechanical-parseability requirement (``dsl/condition_grammar.py`` +
-  ``dsl/validators.py``) is enforced for every compile, either target —
-  not LangGraph-only (see ``dsl/validators.py``'s module docstring).
-- Subflow templates (``SubflowTemplate``, ``TemplateParamDefinition``,
-  ``SubflowExports``).
-- Aggregate ``AgentSpec`` plus the pipeline output dataclasses
-  (``CompilationStats``, ``CompilationOutputs``).
+    - Compilation parameters (``CompilationParams`` and the supporting enums).
+    - Channel and compliance profiles (``ChannelProfile``, ``ComplianceProfile``).
+    - Manifest and includes (``ManifestConfig``, ``ManifestIncludes``,
+      ``SubflowInstanceRef``).
+    - Static agent content (constants, input variables, tools, contracts, memory
+      slots, identity, objectives, context, policies, flow rules, faq policy).
+    - Flow objects (``FlowObjectBase``, ``HandlerModel``, ``FAQModel``,
+      ``StateModel``), including ``say_verbatim`` and ``eval``. ``eval``'s
+      mechanical-parseability requirement (``dsl/condition_grammar.py`` +
+      ``dsl/validators.py``) is enforced for every compile, either target —
+      not LangGraph-only (see ``dsl/validators.py``'s module docstring).
+    - Subflow templates (``SubflowTemplate``, ``TemplateParamDefinition``,
+      ``SubflowExports``).
+    - Aggregate ``AgentSpec`` plus the pipeline output dataclasses
+      (``CompilationStats``, ``CompilationOutputs``).
 
-All schemas inherit from ``StrictModel`` which forbids unknown fields and
-trims whitespace from string inputs. ``PoliciesFragmentFile`` is the only
-exception: its section names are dynamic (driven by the active channel
-profile), so it uses ``extra='allow'`` with a ``model_validator`` that vets
-every dynamic section.
+    All schemas inherit from ``StrictModel`` which forbids unknown fields and
+    trims whitespace from string inputs. ``PoliciesFragmentFile`` is the only
+    exception: its section names are dynamic (driven by the active channel
+    profile), so it uses ``extra='allow'`` with a ``model_validator`` that vets
+    every dynamic section.
 """
 
 from __future__ import annotations
@@ -65,7 +66,9 @@ RULE_ID_RE = re.compile(r"^[A-Z]+_[0-9]+$")
 
 
 class StrictModel(BaseModel):
-    """Base model: forbid extra fields, trim string inputs, validate on assignment."""
+    """
+Base model: forbid extra fields, trim string inputs, validate on assignment.
+"""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -75,7 +78,17 @@ class StrictModel(BaseModel):
 
 
 def validate_pattern(value: str, pattern: re.Pattern[str], label: str) -> str:
-    """Return ``value`` if it matches ``pattern``; otherwise raise ``ValueError``."""
+    """
+Return ``value`` if it matches ``pattern``; otherwise raise ``ValueError``.
+
+    Parameters:
+        value: Description.
+        pattern: Description.
+        label: Description.
+
+    Returns:
+        The result.
+"""
     if not value or not pattern.fullmatch(value):
         raise ValueError(f"Invalid {label}: {value!r}")
     return value
@@ -84,10 +97,19 @@ def validate_pattern(value: str, pattern: re.Pattern[str], label: str) -> str:
 def validate_non_empty_lines(
     lines: list[str], label: str, *, allow_empty: bool = True
 ) -> list[str]:
-    """Validate that every item in ``lines`` is a non-empty trimmed string.
+    """
+Validate that every item in ``lines`` is a non-empty trimmed string.
 
     If ``allow_empty`` is ``False``, the list itself must be non-empty too.
-    """
+
+    Parameters:
+        lines: Description.
+        label: Description.
+        allow_empty: Description.
+
+    Returns:
+        The result.
+"""
     if not allow_empty and not lines:
         raise ValueError(f"{label} must not be empty.")
     for item in lines:
@@ -102,7 +124,9 @@ def validate_non_empty_lines(
 
 
 class ChannelType(str, Enum):
-    """Delivery channel of the compiled agent."""
+    """
+Delivery channel of the compiled agent.
+"""
 
     VOICE = "voice"
     CHAT = "chat"
@@ -110,14 +134,18 @@ class ChannelType(str, Enum):
 
 
 class ReferenceAssetFormat(str, Enum):
-    """Output format for the auxiliary Reference Asset."""
+    """
+Output format for the auxiliary Reference Asset.
+"""
 
     MARKDOWN = "markdown"
     JSON = "json"
 
 
 class ComplianceSeverity(str, Enum):
-    """Severity assigned to a compliance rule violation."""
+    """
+Severity assigned to a compliance rule violation.
+"""
 
     ERROR = "error"
     WARNING = "warning"
@@ -125,12 +153,13 @@ class ComplianceSeverity(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class CompilationParams:
-    """User-facing knobs that drive the compile pipeline.
+    """
+User-facing knobs that drive the compile pipeline.
 
     Threaded through ``compiler.py``, ``dsl/loaders.py``, and the target
-    renderers. Frozen and slotted so it cannot be mutated accidentally
-    during compilation.
-    """
+        renderers. Frozen and slotted so it cannot be mutated accidentally
+        during compilation.
+"""
 
     channel: ChannelType = ChannelType.VOICE
     include_reference_asset: bool = True
@@ -158,7 +187,9 @@ class CompilationParams:
 
 
 class PolicySectionDefinition(StrictModel):
-    """One row in a channel profile's ``policy_sections`` list."""
+    """
+One row in a channel profile's ``policy_sections`` list.
+"""
 
     name: str
     label: str
@@ -176,7 +207,9 @@ class PolicySectionDefinition(StrictModel):
 
 
 class ChannelProfile(StrictModel):
-    """Channel-specific compilation profile loaded from ``profiles/channels/*.yaml``."""
+    """
+Channel-specific compilation profile loaded from ``profiles/channels/*.yaml``.
+"""
 
     channel: ChannelType
     display_name: str
@@ -197,7 +230,9 @@ class ChannelProfile(StrictModel):
 
 
 class ComplianceRuleDefinition(StrictModel):
-    """One rule entry inside a compliance profile."""
+    """
+One rule entry inside a compliance profile.
+"""
 
     rule_id: str
     description: str
@@ -216,7 +251,9 @@ class ComplianceRuleDefinition(StrictModel):
 
 
 class ComplianceProfile(StrictModel):
-    """Compliance profile loaded from ``profiles/compliance/*.yaml``."""
+    """
+Compliance profile loaded from ``profiles/compliance/*.yaml``.
+"""
 
     profile_id: str
     display_name: str
@@ -242,7 +279,9 @@ class ComplianceProfile(StrictModel):
 
 
 class ManifestIncludes(StrictModel):
-    """Lists of relative paths referenced from the agent's ``manifest.yaml``."""
+    """
+Lists of relative paths referenced from the agent's ``manifest.yaml``.
+"""
 
     memory_slots: list[str] = Field(default_factory=list)
     flow_rules: list[str] = Field(default_factory=list)
@@ -267,7 +306,9 @@ class ManifestIncludes(StrictModel):
 
 
 class SubflowInstanceRef(StrictModel):
-    """Manifest entry that instantiates a subflow template with optional params."""
+    """
+Manifest entry that instantiates a subflow template with optional params.
+"""
 
     template: str
     instance_id: str
@@ -303,11 +344,12 @@ class SubflowInstanceRef(StrictModel):
 
 
 class ManifestConfig(StrictModel):
-    """Top-level config loaded from each agent's ``manifest.yaml``.
+    """
+Top-level config loaded from each agent's ``manifest.yaml``.
 
     ``channel`` is a ``CompilationParam`` (CLI-level choice), not part of
-    the manifest; the output directory is the convention ``dist/{agent_id}/``.
-    """
+        the manifest; the output directory is the convention ``dist/{agent_id}/``.
+"""
 
     agent_id: str
     version: str = "1.0.0"
@@ -405,7 +447,9 @@ class ManifestConfig(StrictModel):
 
 
 class ConstantItem(StrictModel):
-    """One row in ``constants.yaml``."""
+    """
+One row in ``constants.yaml``.
+"""
 
     name: str
     description: str
@@ -418,7 +462,9 @@ class ConstantItem(StrictModel):
 
 
 class ConstantsFile(StrictModel):
-    """Schema for ``constants.yaml``."""
+    """
+Schema for ``constants.yaml``.
+"""
 
     constants: list[ConstantItem]
 
@@ -431,7 +477,9 @@ class ConstantsFile(StrictModel):
 
 
 class InputVariable(StrictModel):
-    """Runtime variable injected by the platform at execution time."""
+    """
+Runtime variable injected by the platform at execution time.
+"""
 
     name: str
     description: str
@@ -444,7 +492,9 @@ class InputVariable(StrictModel):
 
 
 class InputVariablesFile(StrictModel):
-    """Schema for ``input_variables.yaml``."""
+    """
+Schema for ``input_variables.yaml``.
+"""
 
     input_variables: list[InputVariable]
 
@@ -457,27 +507,28 @@ class InputVariablesFile(StrictModel):
 
 
 class ToolContractField(StrictModel):
-    """Input or output field declared in a tool contract.
+    """
+Input or output field declared in a tool contract.
 
     ``type_expr`` reuses the exact same canonical type grammar as
-    ``CaptureField.type_expr`` (``dsl/capture_types.py``) — deliberately:
-    a tool argument the agent must fill in, or a tool result the agent
-    captures, is the same kind of "what shape is this value" question
-    either way, so it gets the same enum construct (``Literal[a, b, c]``)
-    for a field that can only return one of a fixed set of categories,
-    the same semantic scalars (``email``, ``phone_number``, ...), and the
-    same ``list[T]``.
+        ``CaptureField.type_expr`` (``dsl/capture_types.py``) — deliberately:
+        a tool argument the agent must fill in, or a tool result the agent
+        captures, is the same kind of "what shape is this value" question
+        either way, so it gets the same enum construct (``Literal[a, b, c]``)
+        for a field that can only return one of a fixed set of categories,
+        the same semantic scalars (``email``, ``phone_number``, ...), and the
+        same ``list[T]``.
 
-    Unlike ``CaptureField.type_expr``, ``type_expr`` here is **optional**
-    (``None`` by default) rather than required — retrofitting a type onto
-    every field of every existing tool contract is a real-content
-    migration effort, not a mechanical one, so it isn't forced in one
-    step. ``dsl/validators.py``'s ``_validate_tool_contract_fields``
-    warns on every field still missing one (``TOOL_CONTRACT_FIELD_UNTYPED``)
-    but only *errors* when a declared ``type_expr`` is actually invalid —
-    same asymmetry as ``eval: "llm"`` (§6 of docs/DSL_REFERENCE.md):
-    silence is flagged, a wrong answer is rejected.
-    """
+        Unlike ``CaptureField.type_expr``, ``type_expr`` here is **optional**
+        (``None`` by default) rather than required — retrofitting a type onto
+        every field of every existing tool contract is a real-content
+        migration effort, not a mechanical one, so it isn't forced in one
+        step. ``dsl/validators.py``'s ``_validate_tool_contract_fields``
+        warns on every field still missing one (``TOOL_CONTRACT_FIELD_UNTYPED``)
+        but only *errors* when a declared ``type_expr`` is actually invalid —
+        same asymmetry as ``eval: "llm"`` (§6 of docs/DSL_REFERENCE.md):
+        silence is flagged, a wrong answer is rejected.
+"""
 
     name: str
     required: bool = True
@@ -514,13 +565,14 @@ class ToolContractField(StrictModel):
 
 
 class ToolContract(StrictModel):
-    """A complete contract for one tool — agent-facing interface only.
+    """
+A complete contract for one tool — agent-facing interface only.
 
     Deliberately holds no endpoint/transport information (URL, method,
-    auth) — that mechanics lives entirely in ``runtime/tool_executor.py``,
-    resolved uniformly from ``name`` at call time. See DESIGN_PATTERNS.md
-    P05 and CLAUDE.md §5.2.4.
-    """
+        auth) — that mechanics lives entirely in ``runtime/tool_executor.py``,
+        resolved uniformly from ``name`` at call time. See DESIGN_PATTERNS.md
+        P05 and CLAUDE.md §5.2.4.
+"""
 
     name: str
     description: str
@@ -540,14 +592,17 @@ class ToolContract(StrictModel):
 
 
 class ToolContractsFragmentFile(StrictModel):
-    """Schema for fragments of tool contract declarations."""
+    """
+Schema for fragments of tool contract declarations.
+"""
 
     tool_contracts: list[ToolContract] = Field(default_factory=list)
 
 
 class ToolContractsFile(ToolContractsFragmentFile):
-    """Schema for the merged list of tool contracts — must be non-empty."""
-
+    """
+Schema for the merged list of tool contracts — must be non-empty.
+"""
     @model_validator(mode="after")
     def validate_contracts(self) -> ToolContractsFile:
         if not self.tool_contracts:
@@ -556,7 +611,9 @@ class ToolContractsFile(ToolContractsFragmentFile):
 
 
 class MemorySlot(StrictModel):
-    """A typed memory slot used during the conversation."""
+    """
+A typed memory slot used during the conversation.
+"""
 
     name: str
     description: str
@@ -572,13 +629,17 @@ class MemorySlot(StrictModel):
 
 
 class MemorySlotsFile(StrictModel):
-    """Schema for ``memory_slots.yaml``."""
+    """
+Schema for ``memory_slots.yaml``.
+"""
 
     memory_slots: list[MemorySlot] = Field(default_factory=list)
 
 
 class IdentityFile(StrictModel):
-    """Schema for ``identity.yaml``."""
+    """
+Schema for ``identity.yaml``.
+"""
 
     identity: list[str]
 
@@ -589,7 +650,9 @@ class IdentityFile(StrictModel):
 
 
 class ObjectivesFile(StrictModel):
-    """Schema for ``objectives.yaml``."""
+    """
+Schema for ``objectives.yaml``.
+"""
 
     primary_objective: list[str]
     secondary_objectives: list[str]
@@ -602,7 +665,9 @@ class ObjectivesFile(StrictModel):
 
 
 class SummaryServiceItem(StrictModel):
-    """One entry in ``context.summary_services_library``."""
+    """
+One entry in ``context.summary_services_library``.
+"""
 
     key: str
     procedure: str
@@ -620,15 +685,18 @@ class SummaryServiceItem(StrictModel):
 
 
 class ApprovedProcessStep(StrictModel):
-    """One step in ``context.approved_process_steps``."""
+    """
+One step in ``context.approved_process_steps``.
+"""
 
     title: str
     text: str
 
 
 class ContextFile(StrictModel):
-    """Schema for ``context.yaml`` — purely static information about company/services."""
-
+    """
+Schema for ``context.yaml`` — purely static information about company/services.
+"""
     company_context: list[str]
     approved_services: list[str]
     summary_services_library: list[SummaryServiceItem]
@@ -662,12 +730,13 @@ class ContextFile(StrictModel):
 
 
 class PoliciesFragmentFile(StrictModel):
-    """Schema for a policies YAML fragment.
+    """
+Schema for a policies YAML fragment.
 
     Section names are dynamic — the loader validates them at merge time
-    against the active channel profile. Each section value must be a list
-    of non-empty strings.
-    """
+        against the active channel profile. Each section value must be a list
+        of non-empty strings.
+"""
 
     model_config = ConfigDict(extra="allow", validate_assignment=True, str_strip_whitespace=True)
 
@@ -687,22 +756,36 @@ class PoliciesFragmentFile(StrictModel):
         return data
 
     def get_section(self, name: str) -> list[str]:
-        """Return the lines of ``name`` section, or an empty list if absent."""
+            """
+Return the lines of ``name`` section, or an empty list if absent.
+
+    Parameters:
+        name: Description.
+
+    Returns:
+        The result.
+    """
         value = getattr(self, name, None)
         return list(value) if value else []
 
     def all_sections(self) -> dict[str, list[str]]:
-        """Return all sections as a dict, including dynamically declared ones."""
+            """
+Return all sections as a dict, including dynamically declared ones.
+
+    Returns:
+        The result.
+    """
         return self.model_dump()
 
 
 class PoliciesFile(PoliciesFragmentFile):
-    """Final merged policies after channel-profile validation.
+    """
+Final merged policies after channel-profile validation.
 
     Same shape as ``PoliciesFragmentFile``; subclassed for semantic clarity
-    so consumers can type-hint against ``PoliciesFile`` to signal they
-    expect the merged result rather than a raw fragment.
-    """
+        so consumers can type-hint against ``PoliciesFile`` to signal they
+        expect the merged result rather than a raw fragment.
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -711,7 +794,9 @@ class PoliciesFile(PoliciesFragmentFile):
 
 
 class FlowRulesFile(StrictModel):
-    """Schema for a ``flow_rules.yaml`` fragment."""
+    """
+Schema for a ``flow_rules.yaml`` fragment.
+"""
 
     flow_rules: list[str]
 
@@ -722,7 +807,9 @@ class FlowRulesFile(StrictModel):
 
 
 class FAQPolicyFile(StrictModel):
-    """Schema for a ``faq_policy.yaml`` fragment."""
+    """
+Schema for a ``faq_policy.yaml`` fragment.
+"""
 
     faq_policy: list[str]
 
@@ -738,21 +825,22 @@ class FAQPolicyFile(StrictModel):
 
 
 class CaptureField(StrictModel):
-    """One slot to capture from a flow object.
+    """
+One slot to capture from a flow object.
 
     ``type_expr`` is validated against the canonical type grammar
-    (``dsl.capture_types.classify_type_expr``) rather than accepted as
-    free text: the LLM extracting the value, and any author reading the
-    compiled prompt, must see exactly one unambiguous type — ``str``,
-    ``bool``, ``int``, a registered semantic scalar (``email``,
-    ``phone_number``, ...), an enum (``Literal[a, b, c]``), or
-    ``list[T]`` of one of those. A non-canonical but recognized synonym
-    (``string``, ``integer``, ``boolean``, ``text``, ``number``) is
-    silently normalized to its canonical spelling rather than rejected,
-    since it carries no ambiguity of its own. Anything else — free prose,
-    a bare unparametrized ``list``, a made-up type name — is a hard
-    validation error at load time, not a runtime surprise.
-    """
+        (``dsl.capture_types.classify_type_expr``) rather than accepted as
+        free text: the LLM extracting the value, and any author reading the
+        compiled prompt, must see exactly one unambiguous type — ``str``,
+        ``bool``, ``int``, a registered semantic scalar (``email``,
+        ``phone_number``, ...), an enum (``Literal[a, b, c]``), or
+        ``list[T]`` of one of those. A non-canonical but recognized synonym
+        (``string``, ``integer``, ``boolean``, ``text``, ``number``) is
+        silently normalized to its canonical spelling rather than rejected,
+        since it carries no ambiguity of its own. Anything else — free prose,
+        a bare unparametrized ``list``, a made-up type name — is a hard
+        validation error at load time, not a runtime surprise.
+"""
 
     slot: str
     type_expr: str
@@ -779,18 +867,19 @@ class CaptureField(StrictModel):
 
 
 class FlowObjectBase(StrictModel):
-    """Common fields and semantics shared by handlers and states.
+    """
+Common fields and semantics shared by handlers and states.
 
     ``say_verbatim`` controls how a renderer treats SAY blocks: ``False`` →
-    paraphrasable, ``True`` → literal (never paraphrased, never re-languaged
-    by the LangGraph runtime). ``eval``'s mechanical-parseability
-    requirement (``dsl/condition_grammar.py`` + ``dsl/validators.py``) is
-    checked for every agent regardless of target — the text-prompt
-    renderer doesn't read ``eval`` to change its own output, but a
-    ``route``/``fallback`` line it prints as literal text is exactly as
-    much of a hallucination risk there as it would be as an LLM-judged
-    LangGraph edge, so the grammar is enforced once, for both.
-    """
+        paraphrasable, ``True`` → literal (never paraphrased, never re-languaged
+        by the LangGraph runtime). ``eval``'s mechanical-parseability
+        requirement (``dsl/condition_grammar.py`` + ``dsl/validators.py``) is
+        checked for every agent regardless of target — the text-prompt
+        renderer doesn't read ``eval`` to change its own output, but a
+        ``route``/``fallback`` line it prints as literal text is exactly as
+        much of a hallucination risk there as it would be as an LLM-judged
+        LangGraph edge, so the grammar is enforced once, for both.
+"""
 
     type: NODE_TYPE
     goal: list[str] = Field(default_factory=list)
@@ -929,7 +1018,9 @@ class FlowObjectBase(StrictModel):
 
 
 class HandlerModel(FlowObjectBase):
-    """A global interrupt available from any active state."""
+    """
+A global interrupt available from any active state.
+"""
 
     handler_id: str
     trigger: list[str] = Field(default_factory=list)
@@ -946,7 +1037,9 @@ class HandlerModel(FlowObjectBase):
 
 
 class HandlersFile(StrictModel):
-    """Schema for handler files (local or shared)."""
+    """
+Schema for handler files (local or shared).
+"""
 
     handlers: list[HandlerModel]
 
@@ -959,12 +1052,13 @@ class HandlersFile(StrictModel):
 
 
 class FAQModel(StrictModel):
-    """An approved FAQ card — semantic match phrases plus a SAY payload.
+    """
+An approved FAQ card — semantic match phrases plus a SAY payload.
 
     ``resume_to`` is an optional routing hint (e.g. ``[current_state]``).
-    Unlike ``faq_resume_to`` on flow objects it is not validated against
-    ``UPPER_ID_RE`` so it can hold slot-style dynamic values.
-    """
+        Unlike ``faq_resume_to`` on flow objects it is not validated against
+        ``UPPER_ID_RE`` so it can hold slot-style dynamic values.
+"""
 
     faq_id: str
     type: Literal["message"]
@@ -997,7 +1091,9 @@ class FAQModel(StrictModel):
 
 
 class FAQsFile(StrictModel):
-    """Schema for FAQ catalog files."""
+    """
+Schema for FAQ catalog files.
+"""
 
     faqs: list[FAQModel]
 
@@ -1010,7 +1106,9 @@ class FAQsFile(StrictModel):
 
 
 class StateModel(FlowObjectBase):
-    """A node in the main conversational state machine."""
+    """
+A node in the main conversational state machine.
+"""
 
     state_id: str
 
@@ -1021,7 +1119,9 @@ class StateModel(FlowObjectBase):
 
 
 class StatesFile(StrictModel):
-    """Schema for non-terminal state files."""
+    """
+Schema for non-terminal state files.
+"""
 
     states: list[StateModel]
 
@@ -1034,7 +1134,9 @@ class StatesFile(StrictModel):
 
 
 class TerminalStatesFile(StrictModel):
-    """Schema for terminal state files. Every entry must have type=terminal and final=yes."""
+    """
+Schema for terminal state files. Every entry must have type=terminal and final=yes.
+"""
 
     terminal_states: list[StateModel]
 
@@ -1060,7 +1162,9 @@ class TerminalStatesFile(StrictModel):
 
 
 class TemplateParamDefinition(StrictModel):
-    """Definition of a parameter consumed by a subflow template."""
+    """
+Definition of a parameter consumed by a subflow template.
+"""
 
     name: str
     description: str = ""
@@ -1074,7 +1178,9 @@ class TemplateParamDefinition(StrictModel):
 
 
 class SubflowExports(StrictModel):
-    """Maps export aliases used by other subflows to local state ids and slot names."""
+    """
+Maps export aliases used by other subflows to local state ids and slot names.
+"""
 
     states: dict[str, str] = Field(default_factory=dict)
     slots: dict[str, str] = Field(default_factory=dict)
@@ -1091,7 +1197,9 @@ class SubflowExports(StrictModel):
 
 
 class SubflowTemplate(StrictModel):
-    """A reusable subflow template, instantiated from the manifest with parameters."""
+    """
+A reusable subflow template, instantiated from the manifest with parameters.
+"""
 
     template_id: str
     description: str
@@ -1183,13 +1291,14 @@ class SubflowTemplate(StrictModel):
 
 
 class AgentSpec(StrictModel):
-    """The fully merged agent specification fed into the rest of the pipeline.
+    """
+The fully merged agent specification fed into the rest of the pipeline.
 
     Built by ``dsl.loaders.load_agent_spec`` from the manifest, shared
-    includes and instantiated subflows. Carries provenance metadata
-    (``object_sources``) and subflow export maps so downstream stages can
-    surface helpful diagnostics.
-    """
+        includes and instantiated subflows. Carries provenance metadata
+        (``object_sources``) and subflow export maps so downstream stages can
+        surface helpful diagnostics.
+"""
 
     manifest: ManifestConfig
 
@@ -1228,7 +1337,9 @@ class AgentSpec(StrictModel):
 
 @dataclass(frozen=True, slots=True)
 class CompilationStats:
-    """Lightweight numerical summary of a compilation run."""
+    """
+Lightweight numerical summary of a compilation run.
+"""
 
     total_states: int
     total_handlers: int
@@ -1244,23 +1355,24 @@ class CompilationStats:
 
 @dataclass(frozen=True, slots=True)
 class CompilationOutputs:
-    """Bundle of every artifact produced by ``compile_agent``.
+    """
+Bundle of every artifact produced by ``compile_agent``.
 
     ``text_prompt_mini`` / ``subflow_documents_mini`` are the compact-
-    notation companions to ``text_prompt`` / ``subflow_documents`` (see
-    ``targets/text/renderer.py``'s mini renderers). ``text_prompt_mini`` is
-    ``None`` when the agent's channel has no mini template companion —
-    mini rendering is skipped rather than failing the whole compile.
+        notation companions to ``text_prompt`` / ``subflow_documents`` (see
+        ``targets/text/renderer.py``'s mini renderers). ``text_prompt_mini`` is
+        ``None`` when the agent's channel has no mini template companion —
+        mini rendering is skipped rather than failing the whole compile.
 
-    The ``validation_report``, ``deduplication_report``, and
-    ``orphan_report`` annotations are forward references resolved by the
-    type checker via ``TYPE_CHECKING``; the runtime classes live in
-    ``dsl/validators.py`` and ``dsl/deduplicator.py`` and are not imported
-    here to avoid a cycle. All three combine into one
-    ``compilation_report.md`` (``dsl/compilation_report.py``) rather than
-    three separate files, each also usable standalone via its own
-    ``to_markdown()``.
-    """
+        The ``validation_report``, ``deduplication_report``, and
+        ``orphan_report`` annotations are forward references resolved by the
+        type checker via ``TYPE_CHECKING``; the runtime classes live in
+        ``dsl/validators.py`` and ``dsl/deduplicator.py`` and are not imported
+        here to avoid a cycle. All three combine into one
+        ``compilation_report.md`` (``dsl/compilation_report.py``) rather than
+        three separate files, each also usable standalone via its own
+        ``to_markdown()``.
+"""
 
     agent_id: str
     text_prompt: str

@@ -1,12 +1,14 @@
 """
-Motor compartido por book-appointment-ivf y book-appointment-sur. Port de la
-parte de "code_01" que es común a los dos nodos GHL: parseo/validación de
-fecha, formateo del nombre de contacto, validación de email e idioma. Lo que
-cada tool aporta por su cuenta (nombre del agente, calendario, validador de
-horario laboral, templates de correo) vive en services/booking_ivf.py y
-services/booking_sur.py.
+Module.
 
-No sabe nada de HTTP ni de Google.
+    Motor compartido por book-appointment-ivf y book-appointment-sur. Port de la
+    parte de "code_01" que es común a los dos nodos GHL: parseo/validación de
+    fecha, formateo del nombre de contacto, validación de email e idioma. Lo que
+    cada tool aporta por su cuenta (nombre del agente, calendario, validador de
+    horario laboral, templates de correo) vive en services/booking_ivf.py y
+    services/booking_sur.py.
+
+    No sabe nada de HTTP ni de Google.
 """
 
 import re
@@ -46,9 +48,18 @@ def format_event_description(name: str, email: str, phone: str) -> str:
 
 
 def parse_start_date(start_date_str: str) -> datetime:
-    """Parsea start_date a un datetime aware. Si no trae offset, se asume
+    """
+Parsea start_date a un datetime aware. Si no trae offset, se asume
+
     hora de Bogotá (la zona del negocio) — pensado para encadenar con el
-    start_co que ya devuelve available-slots-*."""
+        start_co que ya devuelve available-slots-*.
+
+    Parameters:
+        start_date_str: Description.
+
+    Returns:
+        The result.
+"""
     dt = datetime.fromisoformat(start_date_str.strip().replace("Z", "+00:00"))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=ZoneInfo("America/Bogota"))
@@ -56,9 +67,19 @@ def parse_start_date(start_date_str: str) -> datetime:
 
 
 def parse_duration_minutes(raw: Optional[str], default: int = 20) -> int:
-    """Equivalente a `parseInt(x, 10) || 20` del JS original, con una guarda
+    """
+Equivalente a `parseInt(x, 10) || 20` del JS original, con una guarda
+
     extra: una duración <= 0 tampoco es válida (el JS original sí la dejaba
-    pasar, un descuido menor que no vale la pena replicar)."""
+        pasar, un descuido menor que no vale la pena replicar).
+
+    Parameters:
+        raw: Description.
+        default: Description.
+
+    Returns:
+        The result.
+"""
     if raw is None:
         return default
     match = _LEADING_INT_RE.match(raw)
@@ -77,7 +98,15 @@ def is_future(start_dt: datetime, now_utc: datetime) -> bool:
 
 
 def format_contact_name(raw_name: str) -> str:
-    """Recorta, colapsa espacios y capitaliza cada palabra."""
+    """
+Recorta, colapsa espacios y capitaliza cada palabra.
+
+    Parameters:
+        raw_name: Description.
+
+    Returns:
+        The result.
+"""
     return " ".join(word.capitalize() for word in raw_name.strip().split())
 
 
@@ -95,7 +124,15 @@ def is_valid_email(raw_email: str) -> bool:
 
 
 def normalize_language(raw_language: str) -> str:
-    """ES o PT si vienen explícitos; cualquier otra cosa cae a inglés (igual
-    que el JS original, que solo distinguía ES vs "todo lo demás")."""
-    lang = (raw_language or "").strip().upper()
+    """
+ES o PT si vienen explícitos; cualquier otra cosa cae a inglés (igual
+
+    que el JS original, que solo distinguía ES vs "todo lo demás").
+
+    Parameters:
+        raw_language: Description.
+
+    Returns:
+        The result.
+"""    lang = (raw_language or "").strip().upper()
     return lang if lang in ("ES", "PT") else "EN"

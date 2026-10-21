@@ -1,8 +1,10 @@
 """
-Core booking helpers: parsing start/duration, contact-name formatting, and
-Colombia business-hours validation. This is distinct from the availability
-calculator (this one does attend Saturday, and Mon–Fri closes at 18:00).
-Pure logic — no HTTP/Google concerns here.
+Module.
+
+    Core booking helpers: parsing start/duration, contact-name formatting, and
+    Colombia business-hours validation. This is distinct from the availability
+    calculator (this one does attend Saturday, and Mon–Fri closes at 18:00).
+    Pure logic — no HTTP/Google concerns here.
 """
 
 import re
@@ -20,7 +22,15 @@ EMAIL_TEMPLATE_NAME = "book_appointment"
 
 
 def parse_start_date(start_date_str: str) -> datetime:
-    """If start_date has no offset, assume America/Bogota (business TZ)."""
+    """
+If start_date has no offset, assume America/Bogota (business TZ).
+
+    Parameters:
+        start_date_str: Description.
+
+    Returns:
+        The result.
+"""
     dt = datetime.fromisoformat(start_date_str.strip().replace("Z", "+00:00"))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=ZoneInfo("America/Bogota"))
@@ -28,7 +38,16 @@ def parse_start_date(start_date_str: str) -> datetime:
 
 
 def parse_duration_minutes(raw: Optional[str], default: int = 10) -> int:
-    """JS-equivalent of parseInt(x, 10) || 10 (defaults to 10 minutes)."""
+    """
+JS-equivalent of parseInt(x, 10) || 10 (defaults to 10 minutes).
+
+    Parameters:
+        raw: Description.
+        default: Description.
+
+    Returns:
+        The result.
+"""
     if raw is None:
         return default
     match = _LEADING_INT_RE.match(raw)
@@ -47,15 +66,33 @@ def is_future(start_dt: datetime, now_utc: datetime) -> bool:
 
 
 def format_contact_name(raw_name: str) -> str:
-    """Trim, collapse spaces, and capitalize each word."""
+    """
+Trim, collapse spaces, and capitalize each word.
+
+    Parameters:
+        raw_name: Description.
+
+    Returns:
+        The result.
+"""
     return " ".join(word.capitalize() for word in raw_name.strip().split())
 
 
 def is_valid_business_hour(weekday: int, hour: int, minute: int) -> bool:
-    """Validate Colombia business hours.
-    Weekday uses project convention (0=Sunday ... 6=Saturday, see utils/timezones.py).
-    Sunday closed; Mon–Fri 07:00–18:00; Saturday 08:00–13:00.
     """
+Validate Colombia business hours.
+
+    Weekday uses project convention (0=Sunday ... 6=Saturday, see utils/timezones.py).
+        Sunday closed; Mon–Fri 07:00–18:00; Saturday 08:00–13:00.
+
+    Parameters:
+        weekday: Description.
+        hour: Description.
+        minute: Description.
+
+    Returns:
+        The result.
+"""
     if weekday == 0:  # Sunday
         return False
     if weekday in (1, 2, 3, 4, 5):  # Monday to Friday

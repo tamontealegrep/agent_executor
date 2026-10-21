@@ -1,7 +1,9 @@
 """
-Reglas de negocio puras de cálculo de BMI (índice de masa corporal). No sabe
-nada de HTTP. Port 1:1 del código JS del nodo "Calcular IMC" del flujo de GHL
-"calcular_imc".
+Module.
+
+    Reglas de negocio puras de cálculo de BMI (índice de masa corporal). No sabe
+    nada de HTTP. Port 1:1 del código JS del nodo "Calcular IMC" del flujo de GHL
+    "calcular_imc".
 """
 
 import math
@@ -18,7 +20,16 @@ def _parse_float(val: Any) -> Optional[float]:
 
 
 def calculate_bmi(raw_weight_kg: Any, raw_height_cm: Any) -> Dict[str, Optional[float]]:
-    """Calcula el BMI a partir de peso (kg) y altura (cm). Devuelve {bmi, errors}."""
+    """
+Calcula el BMI a partir de peso (kg) y altura (cm). Devuelve {bmi, errors}.
+
+    Parameters:
+        raw_weight_kg: Description.
+        raw_height_cm: Description.
+
+    Returns:
+        The result.
+"""
     weight_kg = _parse_float(raw_weight_kg)
     height_cm = _parse_float(raw_height_cm)
 

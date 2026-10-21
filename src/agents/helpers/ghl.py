@@ -25,14 +25,19 @@ GHL_OUTBOUND_CHANNEL_MAP: Dict[str, str] = {
 }
 
 def _load_inbound_type_map() -> Dict[Any, str]:
-    """Incoming message.type -> normalized channel name, from
-    config/ghl_defaults.json's inbound_type_map (edit that file, not this
-    function -- see its own "_note" field for provenance/confidence).
-    Numeric-looking keys ("19") are parsed back to int: a real GHL
-    payload's message.type for those entries is a JSON number, not a
-    string, but JSON object keys can only be strings, so the file spells
-    them as "19" and this loader turns that back into 19 to match.
     """
+Incoming message.type -> normalized channel name, from
+
+    config/ghl_defaults.json's inbound_type_map (edit that file, not this
+        function -- see its own "_note" field for provenance/confidence).
+        Numeric-looking keys ("19") are parsed back to int: a real GHL
+        payload's message.type for those entries is a JSON number, not a
+        string, but JSON object keys can only be strings, so the file spells
+        them as "19" and this loader turns that back into 19 to match.
+
+    Returns:
+        The result.
+"""
     raw = json.loads(GHL_DEFAULTS_PATH.read_text(encoding="utf-8")).get("inbound_type_map", {})
     return {(int(key) if key.isdigit() else key): value for key, value in raw.items() if key != "_note"}
 
@@ -96,16 +101,21 @@ def build_ghl_client_config(
 
 @lru_cache
 def default_ghl_client_config() -> GhlClientConfig:
-    """The agent-agnostic GhlClientConfig, read from config/ghl_defaults.json
-    at the project root -- edit that file directly for base_url, timeouts,
-    or the channel map; no code change needed.
-
-    For any agent whose GHL wiring doesn't need its own overrides (every
-    compiled agent so far -- see compiled_runner/ghl_endpoint.py). The
-    classic family_aims_sam agent keeps its own copy in agent.json instead,
-    since it also carries agent-specific runtime keys (allowed_phones, tool
-    timeouts) this file deliberately doesn't.
     """
+The agent-agnostic GhlClientConfig, read from config/ghl_defaults.json
+
+    at the project root -- edit that file directly for base_url, timeouts,
+        or the channel map; no code change needed.
+
+        For any agent whose GHL wiring doesn't need its own overrides (every
+        compiled agent so far -- see compiled_runner/ghl_endpoint.py). The
+        classic family_aims_sam agent keeps its own copy in agent.json instead,
+        since it also carries agent-specific runtime keys (allowed_phones, tool
+        timeouts) this file deliberately doesn't.
+
+    Returns:
+        The result.
+"""
     raw = json.loads(GHL_DEFAULTS_PATH.read_text(encoding="utf-8"))
     return build_ghl_client_config(
         raw.get("ghl", {}),

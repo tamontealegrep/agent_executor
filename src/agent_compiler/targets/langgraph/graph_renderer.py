@@ -1,18 +1,19 @@
-"""Graph-definition emitter for the LangGraph target.
+"""
+Graph-definition emitter for the LangGraph target.
 
-This module emits a declarative, ``dataclasses.asdict``-serializable graph
-definition per SPEC.md §2.4's strategic direction — it does not import or
-depend on the ``langgraph`` package, and it does not execute anything.
-Whatever runs the emitted graph against a real LangGraph runtime is
-``runtime/`` (a separate, optional consumer); this module only produces the
-artifact, the same way ``targets/text/renderer.py`` produces the System
-Prompt.
+    This module emits a declarative, ``dataclasses.asdict``-serializable graph
+    definition per SPEC.md §2.4's strategic direction — it does not import or
+    depend on the ``langgraph`` package, and it does not execute anything.
+    Whatever runs the emitted graph against a real LangGraph runtime is
+    ``runtime/`` (a separate, optional consumer); this module only produces the
+    artifact, the same way ``targets/text/renderer.py`` produces the System
+    Prompt.
 
-``render_subflow_graph`` operates on one ``SubflowTemplate`` at a time
-(local, pre-instantiation state ids); ``render_agent_graph`` operates on a
-whole merged ``AgentSpec``. Node types map 1:1 to ``FlowObjectBase.type`` —
-no renaming, since the DSL's own ``validate_semantics`` already constrains
-what each type may carry (DESIGN_PATTERNS.md P02).
+    ``render_subflow_graph`` operates on one ``SubflowTemplate`` at a time
+    (local, pre-instantiation state ids); ``render_agent_graph`` operates on a
+    whole merged ``AgentSpec``. Node types map 1:1 to ``FlowObjectBase.type`` —
+    no renaming, since the DSL's own ``validate_semantics`` already constrains
+    what each type may carry (DESIGN_PATTERNS.md P02).
 """
 
 from __future__ import annotations
@@ -27,8 +28,9 @@ from agent_compiler.targets.langgraph.condition_parser import classify_rule
 
 @dataclass(frozen=True, slots=True)
 class GraphEdge:
-    """One outgoing edge from a node — from a single `route`/`fallback` line."""
-
+    """
+One outgoing edge from a node — from a single `route`/`fallback` line.
+"""
     target: str
     condition_text: str | None
     is_mechanical: bool
@@ -38,11 +40,12 @@ class GraphEdge:
 
 @dataclass(frozen=True, slots=True)
 class GraphNode:
-    """One node — a handler, state, or terminal_state.
+    """
+One node — a handler, state, or terminal_state.
 
     Carries `capture`/`goal`/`do`/`trigger` from its first version
-    (DESIGN_PATTERNS.md P02) rather than being retrofitted per consumer.
-    """
+        (DESIGN_PATTERNS.md P02) rather than being retrofitted per consumer.
+"""
 
     node_id: str
     node_type: str
@@ -61,32 +64,45 @@ class GraphNode:
 
 @dataclass(frozen=True, slots=True)
 class GraphDefinition:
-    """The full emitted artifact for one subflow (or one whole agent)."""
+    """
+The full emitted artifact for one subflow (or one whole agent).
+"""
 
     subflow_id: str
     entry_point: str
     nodes: list[GraphNode]
 
     def to_dict(self) -> dict[str, Any]:
-        """Serializable representation — no `langgraph` types involved."""
-        return asdict(self)
+            """
+Serializable representation — no `langgraph` types involved.
+
+    Returns:
+        The result.
+    """        return asdict(self)
 
 
 def render_subflow_graph(template: SubflowTemplate) -> GraphDefinition:
-    """Build a `GraphDefinition` from a `SubflowTemplate`'s local states.
+    """
+Build a `GraphDefinition` from a `SubflowTemplate`'s local states.
 
     Parameters:
-        template (SubflowTemplate): The subflow template to render, with
-            local (pre-instantiation) state ids.
+            template (SubflowTemplate): The subflow template to render, with
+                local (pre-instantiation) state ids.
+
+        Returns:
+            GraphDefinition: One node per handler/state/terminal_state, edges
+                derived from `route`/`fallback` via `condition_parser`.
+
+        Raises:
+            ValueError: If `template.exports.states` has no `"entry"` key and
+                the template doesn't have exactly one `type=start` state either.
+
+    Parameters:
+        template: Description.
 
     Returns:
-        GraphDefinition: One node per handler/state/terminal_state, edges
-            derived from `route`/`fallback` via `condition_parser`.
-
-    Raises:
-        ValueError: If `template.exports.states` has no `"entry"` key and
-            the template doesn't have exactly one `type=start` state either.
-    """
+        The result.
+"""
     entry_point = template.exports.states.get("entry")
     if entry_point is None:
         entry_point = _infer_entry_from_start_state(template)
@@ -99,13 +115,20 @@ def render_subflow_graph(template: SubflowTemplate) -> GraphDefinition:
 
 
 def _infer_entry_from_start_state(template: SubflowTemplate) -> str:
-    """Fall back to the template's single `type=start` state as entry point.
+    """
+Fall back to the template's single `type=start` state as entry point.
 
     Several subflow templates never declare `exports.states.entry`,
-    relying instead on there being exactly one `type=start` state by
-    convention — the same convention an author-drawn Mermaid diagram for a
-    subflow already shows as the entry node.
-    """
+        relying instead on there being exactly one `type=start` state by
+        convention — the same convention an author-drawn Mermaid diagram for a
+        subflow already shows as the entry node.
+
+    Parameters:
+        template: Description.
+
+    Returns:
+        The result.
+"""
     start_states = [state for state in template.states if state.type == "start"]
     if len(start_states) != 1:
         raise ValueError(
@@ -157,22 +180,29 @@ def _render_edge(line: str, eval_mode: str) -> GraphEdge:
 
 
 def render_agent_graph(spec: AgentSpec) -> GraphDefinition:
-    """Build a `GraphDefinition` for an entire `AgentSpec`'s main flow.
+    """
+Build a `GraphDefinition` for an entire `AgentSpec`'s main flow.
 
     Unlike `render_subflow_graph` (one `SubflowTemplate`, local ids), this
-    operates on `spec.states`/`spec.terminal_states` directly — by the time
-    an `AgentSpec` exists, every subflow instance is already merged in with
-    namespaced ids (`dsl/loaders.py`), so no separate subflow pass is
-    needed here.
+        operates on `spec.states`/`spec.terminal_states` directly — by the time
+        an `AgentSpec` exists, every subflow instance is already merged in with
+        namespaced ids (`dsl/loaders.py`), so no separate subflow pass is
+        needed here.
+
+        Parameters:
+            spec (AgentSpec): The fully merged agent specification.
+
+        Returns:
+            GraphDefinition: `entry_point` is `spec.manifest.start_at`;
+                `subflow_id` is `spec.manifest.agent_id` (reusing the same
+                field — this is the whole agent's graph, not one subflow).
 
     Parameters:
-        spec (AgentSpec): The fully merged agent specification.
+        spec: Description.
 
     Returns:
-        GraphDefinition: `entry_point` is `spec.manifest.start_at`;
-            `subflow_id` is `spec.manifest.agent_id` (reusing the same
-            field — this is the whole agent's graph, not one subflow).
-    """
+        The result.
+"""
     nodes = [
         _render_node(state, state.state_id)
         for state in list(spec.states) + list(spec.terminal_states)
@@ -186,8 +216,11 @@ def render_agent_graph(spec: AgentSpec) -> GraphDefinition:
 
 @dataclass(frozen=True, slots=True)
 class FaqNode:
-    """A FAQ entry — simpler than `GraphNode` since FAQs have no `route`/
-    `eval`: answering one is always a single say-and-resume."""
+    """
+A FAQ entry — simpler than `GraphNode` since FAQs have no `route`/
+
+    `eval`: answering one is always a single say-and-resume.
+"""
 
     faq_id: str
     match: list[str] = field(default_factory=list)
@@ -198,13 +231,14 @@ class FaqNode:
 
 @dataclass(frozen=True, slots=True)
 class GlobalRouterDefinition:
-    """Declarative definition of every global handler and FAQ.
+    """
+Declarative definition of every global handler and FAQ.
 
     A real runtime checks these — handler `trigger` phrases and FAQ `match`
-    phrases — before dispatching to the active state's own node, on every
-    turn of a continuing session (DESIGN_PATTERNS.md P04). This module only
-    emits the data; the trigger/match evaluation itself is `runtime/`'s job.
-    """
+        phrases — before dispatching to the active state's own node, on every
+        turn of a continuing session (DESIGN_PATTERNS.md P04). This module only
+        emits the data; the trigger/match evaluation itself is `runtime/`'s job.
+"""
 
     handlers: list[GraphNode]
     faqs: list[FaqNode]
@@ -214,17 +248,24 @@ class GlobalRouterDefinition:
 
 
 def render_global_router(spec: AgentSpec) -> GlobalRouterDefinition:
-    """Build the `GlobalRouterDefinition` for an `AgentSpec`'s handlers and FAQs.
+    """
+Build the `GlobalRouterDefinition` for an `AgentSpec`'s handlers and FAQs.
 
     Parameters:
-        spec (AgentSpec): The fully merged agent specification.
+            spec (AgentSpec): The fully merged agent specification.
+
+        Returns:
+            GlobalRouterDefinition: One `GraphNode` per handler (reusing the
+                same node/edge shape as `render_subflow_graph`, since
+                `HandlerModel` is a `FlowObjectBase` too) and one `FaqNode` per
+                FAQ.
+
+    Parameters:
+        spec: Description.
 
     Returns:
-        GlobalRouterDefinition: One `GraphNode` per handler (reusing the
-            same node/edge shape as `render_subflow_graph`, since
-            `HandlerModel` is a `FlowObjectBase` too) and one `FaqNode` per
-            FAQ.
-    """
+        The result.
+"""
     handler_nodes = [_render_node(handler, handler.handler_id) for handler in spec.handlers]
     faq_nodes = [_render_faq_node(faq) for faq in spec.faqs]
     return GlobalRouterDefinition(handlers=handler_nodes, faqs=faq_nodes)

@@ -1,9 +1,11 @@
-"""Test-only HTTP endpoint for a compiled agent_compiler agent, served via
-agent_runtime. Pilot for the agent_compiler -> agent_runtime -> agent_executer
-pipeline (2026-09-16) — plain request/response, no GHL semantics. GHL
-webhook wiring is a separate, later step.
+"""
+Test-only HTTP endpoint for a compiled agent_compiler agent, served via
 
-Mounted in main.py at /compiled/{slug}/v1.
+    agent_runtime. Pilot for the agent_compiler -> agent_runtime -> agent_executer
+    pipeline (2026-09-16) — plain request/response, no GHL semantics. GHL
+    webhook wiring is a separate, later step.
+
+    Mounted in main.py at /compiled/{slug}/v1.
 """
 
 from __future__ import annotations
@@ -91,9 +93,19 @@ async def chat(slug: str, req: CompiledChatRequest) -> CompiledChatResponse:
 
 @router.post("/{slug}/v1/reset")
 async def reset(slug: str, thread_id: str) -> dict:
-    """Test-only convenience: wipe one thread's checkpoint so the next
+    """
+Test-only convenience: wipe one thread's checkpoint so the next
+
     /chat call starts a brand-new session. Not part of the compiled
-    agent's own contract."""
+        agent's own contract.
+
+    Parameters:
+        slug: Description.
+        thread_id: Description.
+
+    Returns:
+        The result.
+"""
     _, graph = load_compiled_agent(slug)
     config = {"configurable": {"thread_id": thread_id}}
     graph.checkpointer.delete_thread(thread_id)
@@ -102,14 +114,22 @@ async def reset(slug: str, thread_id: str) -> dict:
 
 @router.post("/{slug}/v1/admin/reload")
 async def reload_agent(slug: str) -> dict:
-    """Rebuild `slug` from the `graph.json` currently on disk, without
-    restarting the process -- agent_runtime's USAGE.md §9/§8.2
-    `/admin/reload` pattern. Call this after dropping a new compiled
-    `graph.json`/`assets.json` into compiled_agents/<slug>/ (e.g. via
-    scripts/sync_compiled_agents.py). Applies to every mount that reads
-    this agent through compiled_runner.loader, GHL webhook included --
-    slug is the shared cache key, not something specific to this router.
     """
+Rebuild `slug` from the `graph.json` currently on disk, without
+
+    restarting the process -- agent_runtime's USAGE.md §9/§8.2
+        `/admin/reload` pattern. Call this after dropping a new compiled
+        `graph.json`/`assets.json` into compiled_agents/<slug>/ (e.g. via
+        scripts/sync_compiled_agents.py). Applies to every mount that reads
+        this agent through compiled_runner.loader, GHL webhook included --
+        slug is the shared cache key, not something specific to this router.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     try:
         artifact = await run_in_threadpool(reload_compiled_agent, slug)
     except FileNotFoundError as exc:

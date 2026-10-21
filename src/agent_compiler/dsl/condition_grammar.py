@@ -1,30 +1,31 @@
-"""Canonical condition grammar for `route`/`fallback` lines — shared by both targets.
+"""
+Canonical condition grammar for `route`/`fallback` lines — shared by both targets.
 
-A `route`/`fallback` line is translated into a restricted Python
-expression and parsed with the stdlib ``ast`` module against a fixed
-node-type whitelist (see DESIGN_PATTERNS.md P01). A line that parses
-cleanly is "code"-eligible; anything else (bare flags, natural language,
-non-canonical synonyms like lowercase ``true``/``false`` or the retired
-``== null`` idiom) is "llm"-only by construction — there is no special-
-casing, only what the whitelist accepts.
+    A `route`/`fallback` line is translated into a restricted Python
+    expression and parsed with the stdlib ``ast`` module against a fixed
+    node-type whitelist (see DESIGN_PATTERNS.md P01). A line that parses
+    cleanly is "code"-eligible; anything else (bare flags, natural language,
+    non-canonical synonyms like lowercase ``true``/``false`` or the retired
+    ``== null`` idiom) is "llm"-only by construction — there is no special-
+    casing, only what the whitelist accepts.
 
-Lives in ``dsl/`` rather than ``targets/langgraph/`` (moved 2026-09-16,
-reversing the original 2026-09-13 decision — see SPEC.md's decision
-log): mechanical-vs-interpretive is not actually a LangGraph-only
-concern. A `route`/`fallback` line that can't be reduced to this
-whitelist is exactly the hallucination surface both targets share — an
-LLM reading it in the compiled text prompt has to *guess* its meaning
-the same way the LangGraph runtime would have to fall back to an LLM
-judgment call for it. `dsl/validators.py` enforces this grammar
-unconditionally (every compile, either target, unless a node opts out
-with `eval: "llm"`), which is also what guarantees the two targets stay
-semantically equivalent: a spec that validates is mechanically
-consistent everywhere, not just wherever someone happened to also
-compile it to LangGraph.
+    Lives in ``dsl/`` rather than ``targets/langgraph/`` (moved 2026-09-16,
+    reversing the original 2026-09-13 decision — see SPEC.md's decision
+    log): mechanical-vs-interpretive is not actually a LangGraph-only
+    concern. A `route`/`fallback` line that can't be reduced to this
+    whitelist is exactly the hallucination surface both targets share — an
+    LLM reading it in the compiled text prompt has to *guess* its meaning
+    the same way the LangGraph runtime would have to fall back to an LLM
+    judgment call for it. `dsl/validators.py` enforces this grammar
+    unconditionally (every compile, either target, unless a node opts out
+    with `eval: "llm"`), which is also what guarantees the two targets stay
+    semantically equivalent: a spec that validates is mechanically
+    consistent everywhere, not just wherever someone happened to also
+    compile it to LangGraph.
 
-This module is read-only diagnostics: it does not mutate ``dsl/schemas.py``
-models and does not touch agent content — it only classifies text that
-already exists on a spec.
+    This module is read-only diagnostics: it does not mutate ``dsl/schemas.py``
+    models and does not touch agent content — it only classifies text that
+    already exists on a spec.
 """
 
 from __future__ import annotations
@@ -132,12 +133,16 @@ _KEYWORD_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
 
 
 class _NotMechanical(Exception):
-    """Raised internally when a condition falls outside the whitelist."""
+    """
+Raised internally when a condition falls outside the whitelist.
+"""
 
 
 @dataclass(frozen=True, slots=True)
 class ParsedRule:
-    """Result of classifying one `route`/`fallback` line."""
+    """
+Result of classifying one `route`/`fallback` line.
+"""
 
     raw: str
     kind: Literal["unconditional", "conditional", "unrecognized"]
@@ -152,28 +157,42 @@ class ParsedRule:
 
 
 def find_used_predicates(condition_lines: list[str]) -> set[str]:
-    """Every `NAMED_PREDICATES` name referenced via `MATCHES <name>` in `condition_lines`.
+    """
+Every `NAMED_PREDICATES` name referenced via `MATCHES <name>` in `condition_lines`.
 
     Reuses `_MATCHES_RE` (the same pattern `classify_rule`'s mechanical
-    translation already matches against) rather than a second regex, so the
-    two can never drift on what counts as a `MATCHES` usage. Built for
-    `targets/text/renderer.py::render_matches_predicate_definitions` — an
-    agent's compiled prompt only needs the predicates it actually
-    references, not the full registry.
-    """
+        translation already matches against) rather than a second regex, so the
+        two can never drift on what counts as a `MATCHES` usage. Built for
+        `targets/text/renderer.py::render_matches_predicate_definitions` — an
+        agent's compiled prompt only needs the predicates it actually
+        references, not the full registry.
+
+    Parameters:
+        condition_lines: Description.
+
+    Returns:
+        The result.
+"""
     return {m.group(2) for line in condition_lines for m in _MATCHES_RE.finditer(line)}
 
 
 def classify_rule(line: str) -> ParsedRule:
-    """Classify one `route`/`fallback` line as `code`-eligible or `llm`-only.
+    """
+Classify one `route`/`fallback` line as `code`-eligible or `llm`-only.
 
     Parameters:
-        line (str): A single entry from a `route` or `fallback` list.
+            line (str): A single entry from a `route` or `fallback` list.
+
+        Returns:
+            ParsedRule: The classification, with `reason` set when `eval_class`
+                is `"llm"` because the line fell outside the whitelist.
+
+    Parameters:
+        line: Description.
 
     Returns:
-        ParsedRule: The classification, with `reason` set when `eval_class`
-            is `"llm"` because the line fell outside the whitelist.
-    """
+        The result.
+"""
     text = line.strip()
 
     match_if = _IF_RE.match(text)
@@ -213,10 +232,17 @@ def classify_rule(line: str) -> ParsedRule:
 
 
 def _validate_condition(condition_text: str) -> str:
-    """Return the translated Python expression if `condition_text` is mechanical.
+    """
+Return the translated Python expression if `condition_text` is mechanical.
 
     Raises `_NotMechanical` otherwise.
-    """
+
+    Parameters:
+        condition_text: Description.
+
+    Returns:
+        The result.
+"""
     expr, known_names = _translate_to_python(condition_text)
     try:
         tree = ast.parse(expr, mode="eval")

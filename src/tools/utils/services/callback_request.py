@@ -1,11 +1,13 @@
 """
-Reglas de negocio puras para validar y normalizar una solicitud de callback
-(llamada de vuelta). No sabe nada de HTTP, no envía correos ni crea eventos
-de calendario — eso queda a cargo de una acción del flujo GHL que consuma
-esta salida ya normalizada, ya que el mecanismo de notificación es
-específico de cada cliente (credencial de Gmail, contact center, etc.) y
-esta herramienta vive en tools.utils, sin lógica ni credencial de un
-cliente en particular.
+Module.
+
+    Reglas de negocio puras para validar y normalizar una solicitud de callback
+    (llamada de vuelta). No sabe nada de HTTP, no envía correos ni crea eventos
+    de calendario — eso queda a cargo de una acción del flujo GHL que consuma
+    esta salida ya normalizada, ya que el mecanismo de notificación es
+    específico de cada cliente (credencial de Gmail, contact center, etc.) y
+    esta herramienta vive en tools.utils, sin lógica ni credencial de un
+    cliente en particular.
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -25,7 +27,15 @@ def _is_present(val: Any) -> bool:
 
 
 def _split_list(raw: Optional[Union[str, List[str]]]) -> List[str]:
-    """Normalize input (comma-separated string or list) to a non-empty, lowercased list of strings."""
+    """
+Normalize input (comma-separated string or list) to a non-empty, lowercased list of strings.
+
+    Parameters:
+        raw: Description.
+
+    Returns:
+        The result.
+"""
     if raw is None:
         return []
     items = raw if isinstance(raw, list) else str(raw).split(",")
@@ -33,7 +43,15 @@ def _split_list(raw: Optional[Union[str, List[str]]]) -> List[str]:
 
 
 def _normalize_preferred_days(raw: Optional[Union[str, List[str]]]) -> Tuple[List[str], Optional[str]]:
-    """Accepts individual days and 'weekdays'/'weekend'/'any' shortcuts. Returns (ordered_days, error)."""
+    """
+Accepts individual days and 'weekdays'/'weekend'/'any' shortcuts. Returns (ordered_days, error).
+
+    Parameters:
+        raw: Description.
+
+    Returns:
+        The result.
+"""
     tokens = _split_list(raw)
     if not tokens:
         return [], None
@@ -97,10 +115,25 @@ def prepare_callback_request(
     raw_preferred_time_window: Optional[str],
     raw_timezone: Optional[str],
 ) -> Dict[str, Any]:
-    """Validate and normalize a callback request. No side effects.
+    """
+Validate and normalize a callback request. No side effects.
+
     An invalid/incomplete input is a normal business result (errors explains why),
-    not an exception — same convention as calculate_bmi and check_documentation."""
-    contact_name = raw_contact_name.strip() if _is_present(raw_contact_name) else None
+        not an exception — same convention as calculate_bmi and check_documentation.
+
+    Parameters:
+        raw_contact_name: Description.
+        raw_contact_phone: Description.
+        raw_contact_email: Description.
+        raw_reason: Description.
+        raw_context: Description.
+        raw_preferred_days: Description.
+        raw_preferred_time_window: Description.
+        raw_timezone: Description.
+
+    Returns:
+        The result.
+"""    contact_name = raw_contact_name.strip() if _is_present(raw_contact_name) else None
     contact_phone = raw_contact_phone.strip() if _is_present(raw_contact_phone) else None
     contact_email = raw_contact_email.strip() if _is_present(raw_contact_email) else None
 

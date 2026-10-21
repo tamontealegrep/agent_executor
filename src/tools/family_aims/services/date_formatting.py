@@ -1,10 +1,12 @@
 """
-Formato de fecha/hora "completo" para los correos de confirmación de citas
-(book-appointment-ivf / book-appointment-sur), en español, inglés y
-portugués. Port aproximado del `Intl.DateTimeFormat` original: no hay forma
-portable de igualar el string exacto que produce Node sin depender del
-locale del sistema operativo, así que se usan tablas propias de días/meses
-(mismo enfoque ya usado en slot_engine.py para available-slots).
+Module.
+
+    Formato de fecha/hora "completo" para los correos de confirmación de citas
+    (book-appointment-ivf / book-appointment-sur), en español, inglés y
+    portugués. Port aproximado del `Intl.DateTimeFormat` original: no hay forma
+    portable de igualar el string exacto que produce Node sin depender del
+    locale del sistema operativo, así que se usan tablas propias de días/meses
+    (mismo enfoque ya usado en slot_engine.py para available-slots).
 """
 
 from datetime import datetime
@@ -29,12 +31,29 @@ _MONTHS_PT = [
 
 
 def _weekday_index(dt: datetime) -> int:
-    """dt.weekday(): Lunes=0..Domingo=6 -> indice Domingo=0..Sabado=6 (para las tablas de arriba)."""
+    """
+dt.weekday(): Lunes=0..Domingo=6 -> indice Domingo=0..Sabado=6 (para las tablas de arriba).
+
+    Parameters:
+        dt: Description.
+
+    Returns:
+        The result.
+"""
     return (dt.weekday() + 1) % 7
 
 
 def format_full_date(dt: datetime, language: str) -> str:
-    """Fecha en prosa completa, ej. 'Martes, 8 de abril de 2026' (ES/PT) o 'Tuesday, April 8, 2026' (EN)."""
+    """
+Fecha en prosa completa, ej. 'Martes, 8 de abril de 2026' (ES/PT) o 'Tuesday, April 8, 2026' (EN).
+
+    Parameters:
+        dt: Description.
+        language: Description.
+
+    Returns:
+        The result.
+"""
     idx = _weekday_index(dt)
     if language == "ES":
         text = f"{_WEEKDAYS_ES[idx]}, {dt.day} de {_MONTHS_ES[dt.month - 1]} de {dt.year}"
@@ -46,8 +65,16 @@ def format_full_date(dt: datetime, language: str) -> str:
 
 
 def format_booking_time(dt: datetime, language: str) -> str:
-    """Hora local: 12h am/pm en español (ej. '03:30 pm'), 24h en inglés/portugués (ej. '15:30')."""
-    if language == "ES":
+    """
+Hora local: 12h am/pm en español (ej. '03:30 pm'), 24h en inglés/portugués (ej. '15:30').
+
+    Parameters:
+        dt: Description.
+        language: Description.
+
+    Returns:
+        The result.
+"""    if language == "ES":
         hour12 = dt.hour % 12 or 12
         period = "am" if dt.hour < 12 else "pm"
         return f"{hour12:02d}:{dt.minute:02d} {period}"

@@ -1,7 +1,9 @@
 """
-Toda la configuración del agente vive aquí, leída una sola vez desde el .env
-del root con prefijo NFS_. Nada más en el proyecto debe llamar a os.getenv
-directamente.
+Module.
+
+    Toda la configuración del agente vive aquí, leída una sola vez desde el .env
+    del root con prefijo NFS_. Nada más en el proyecto debe llamar a os.getenv
+    directamente.
 """
 
 import os

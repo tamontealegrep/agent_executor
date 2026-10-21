@@ -1,14 +1,16 @@
 """
-Reglas de negocio puras de validación de documentación por nacionalidad. No
-sabe nada de HTTP. Port 1:1 del código JS del nodo "Check Documentation Logic"
-del flujo de GHL "check_documentation", con modificaciones explícitas del
-owner: el PPT (Permiso de Protección Temporal) también aprueba a un
-extranjero, no solo la Cédula de Ciudadanía (2026-08-26); document_type
-ahora acepta más de un documento por candidato -- string separado por comas
-o lista -- aprobando si CUALQUIERA de ellos es un tipo válido (2026-08-27);
-y las llaves de salida y el texto de "reason" están en inglés, salvo
-"normalized_documents" -- nombres propios de documentos colombianos, que se
-dejan en español (2026-08-27).
+Module.
+
+    Reglas de negocio puras de validación de documentación por nacionalidad. No
+    sabe nada de HTTP. Port 1:1 del código JS del nodo "Check Documentation Logic"
+    del flujo de GHL "check_documentation", con modificaciones explícitas del
+    owner: el PPT (Permiso de Protección Temporal) también aprueba a un
+    extranjero, no solo la Cédula de Ciudadanía (2026-08-26); document_type
+    ahora acepta más de un documento por candidato -- string separado por comas
+    o lista -- aprobando si CUALQUIERA de ellos es un tipo válido (2026-08-27);
+    y las llaves de salida y el texto de "reason" están en inglés, salvo
+    "normalized_documents" -- nombres propios de documentos colombianos, que se
+    dejan en español (2026-08-27).
 """
 
 import re
@@ -44,7 +46,15 @@ _APPROVED_REASONS = {
 
 
 def _split_document_types(raw: Optional[Union[str, List[str]]]) -> List[str]:
-    """Normaliza el input (string separado por comas, 'y' o 'and', o lista) a una lista de strings sin vacios."""
+    """
+Normaliza el input (string separado por comas, 'y' o 'and', o lista) a una lista de strings sin vacios.
+
+    Parameters:
+        raw: Description.
+
+    Returns:
+        The result.
+"""
     if raw is None:
         return []
     
@@ -65,7 +75,15 @@ def _split_document_types(raw: Optional[Union[str, List[str]]]) -> List[str]:
 
 
 def _resolve_document_type(document_type: str) -> Optional[str]:
-    """Busca el tipo canonico de un documento entre sus alias conocidos, o None si no se reconoce."""
+    """
+Busca el tipo canonico de un documento entre sus alias conocidos, o None si no se reconoce.
+
+    Parameters:
+        document_type: Description.
+
+    Returns:
+        The result.
+"""
     doc_clean = document_type.lower()
     for tipo, variaciones in _DOCUMENT_ALIASES.items():
         if doc_clean in variaciones:
@@ -74,7 +92,16 @@ def _resolve_document_type(document_type: str) -> Optional[str]:
 
 
 def check_documentation(raw_nationality: Optional[str], raw_document_type: Optional[Union[str, List[str]]]) -> Dict[str, Union[bool, str, List[str]]]:
-    """Valida nacionalidad + tipo(s) de documento y devuelve {approved, reason, normalized_documents}."""
+    """
+Valida nacionalidad + tipo(s) de documento y devuelve {approved, reason, normalized_documents}.
+
+    Parameters:
+        raw_nationality: Description.
+        raw_document_type: Description.
+
+    Returns:
+        The result.
+"""
     nationality = (raw_nationality or "").strip().upper()
 
     if not _NATIONALITY_RE.match(nationality):

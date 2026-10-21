@@ -1,17 +1,18 @@
-"""Global router — the interrupt-loop mechanism (DESIGN_PATTERNS.md P04).
+"""
+Global router — the interrupt-loop mechanism (DESIGN_PATTERNS.md P04).
 
-A "global router" (checking handler triggers / FAQ matches before treating
-a reply as an answer) needs to intercept every inbound message — but in a
-compiled graph, a "turn" only exists at the exact point a paused
-`interrupt()` resumes. `graph_builder.py` wraps a question node's
-`interrupt()` call in a loop; this module supplies the two decisions that
-loop needs on each reply: whether it matches anything, and if so, where
-handling it leads.
+    A "global router" (checking handler triggers / FAQ matches before treating
+    a reply as an answer) needs to intercept every inbound message — but in a
+    compiled graph, a "turn" only exists at the exact point a paused
+    `interrupt()` resumes. `graph_builder.py` wraps a question node's
+    `interrupt()` call in a loop; this module supplies the two decisions that
+    loop needs on each reply: whether it matches anything, and if so, where
+    handling it leads.
 
-Decoupled from `graph_builder.py`'s condition-evaluation internals via
-dependency injection (`resolve_edges`, `on_say`) rather than an import —
-keeps this module trivially testable with fakes and avoids a circular
-import between the two.
+    Decoupled from `graph_builder.py`'s condition-evaluation internals via
+    dependency injection (`resolve_edges`, `on_say`) rather than an import —
+    keeps this module trivially testable with fakes and avoids a circular
+    import between the two.
 """
 
 from __future__ import annotations
@@ -51,21 +52,31 @@ def _continues_the_flow(
     candidates: list[RouterMatch],
     candidate_lines: str,
 ) -> bool:
-    """Stage 1: Determine if the user message is a normal continuation.
+    """
+Stage 1: Determine if the user message is a normal continuation.
 
     This stage decides if the reply is a plausible answer to the pending question
-    or a simple acknowledgement, skipping the interrupt matching process for the
-    common case of a normal flow.
+        or a simple acknowledgement, skipping the interrupt matching process for the
+        common case of a normal flow.
+
+        Parameters:
+            llm_client: Client used to execute completion prompts.
+            ctx: The current conversation context.
+            candidates: List of all possible global interrupts.
+            candidate_lines: Formatted string of candidate descriptions for the prompt.
+
+        Returns:
+            True if the message is a continuation, False if it might be an interrupt.
 
     Parameters:
-        llm_client: Client used to execute completion prompts.
-        ctx: The current conversation context.
-        candidates: List of all possible global interrupts.
-        candidate_lines: Formatted string of candidate descriptions for the prompt.
+        llm_client: Description.
+        ctx: Description.
+        candidates: Description.
+        candidate_lines: Description.
 
     Returns:
-        True if the message is a continuation, False if it might be an interrupt.
-    """
+        The result.
+"""
     # No deterministic pre-check: always consult the LLM for Stage 1.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
@@ -98,20 +109,30 @@ def _match_candidate(
     ctx: LLMContext,
     candidate_lines: str,
 ) -> RouterMatch | None:
-    """Stage 2: Identify which specific handler or FAQ matches the interrupt.
+    """
+Stage 2: Identify which specific handler or FAQ matches the interrupt.
 
     This stage is only called if Stage 1 decided the message is not a
-    continuation. It selects the best match among the provided candidates.
+        continuation. It selects the best match among the provided candidates.
+
+        Parameters:
+            llm_client: Client used to execute completion prompts.
+            candidates: List of all possible global interrupts.
+            ctx: The current conversation context.
+            candidate_lines: Formatted string of candidate descriptions for the prompt.
+
+        Returns:
+            The matched (kind, node) tuple, or None if no candidate matches.
 
     Parameters:
-        llm_client: Client used to execute completion prompts.
-        candidates: List of all possible global interrupts.
-        ctx: The current conversation context.
-        candidate_lines: Formatted string of candidate descriptions for the prompt.
+        llm_client: Description.
+        candidates: Description.
+        ctx: Description.
+        candidate_lines: Description.
 
     Returns:
-        The matched (kind, node) tuple, or None if no candidate matches.
-    """
+        The result.
+"""
     # Do not short-circuit deterministically; rely on the LLM for selection.
 
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
@@ -138,19 +159,28 @@ def match_global_router(
     router: GlobalRouterDefinition,
     ctx: LLMContext,
 ) -> RouterMatch | None:
-    """Check if the user message matches a global handler or FAQ.
+    """
+Check if the user message matches a global handler or FAQ.
 
     Evaluates the message in two stages: first determining if it's a flow
-    continuation, then matching it to a specific interrupt if not.
+        continuation, then matching it to a specific interrupt if not.
+
+        Parameters:
+            llm_client: Client used to execute completion prompts.
+            router: The definition of global handlers and FAQs.
+            ctx: The current conversation context.
+
+        Returns:
+            The matched (kind, node) tuple if an interrupt is found, else None.
 
     Parameters:
-        llm_client: Client used to execute completion prompts.
-        router: The definition of global handlers and FAQs.
-        ctx: The current conversation context.
+        llm_client: Description.
+        router: Description.
+        ctx: Description.
 
     Returns:
-        The matched (kind, node) tuple if an interrupt is found, else None.
-    """
+        The result.
+"""
     candidates = _candidates(router)
     if not candidates:
         return None
@@ -168,20 +198,30 @@ def handle_global_router_match(
     resolve_edges: Callable[[list[GraphEdge], LLMContext], str | None],
     on_say: Callable[[GraphNode | FaqNode, list[str]], None] | None = None,
 ) -> str | None:
-    """Resolve the destination of a matched handler or FAQ.
+    """
+Resolve the destination of a matched handler or FAQ.
 
     Executes the matched node's logic, including rendering its message and
-    resolving its routing edges to determine the next state.
+        resolving its routing edges to determine the next state.
+
+        Parameters:
+            match: The (kind, node) pair from match_global_router.
+            ctx: The current conversation context.
+            resolve_edges: Callback to evaluate routing conditions.
+            on_say: Optional callback to handle the node's output message.
+
+        Returns:
+            The ID of the next state to jump to, or None to resume the previous flow.
 
     Parameters:
-        match: The (kind, node) pair from match_global_router.
-        ctx: The current conversation context.
-        resolve_edges: Callback to evaluate routing conditions.
-        on_say: Optional callback to handle the node's output message.
+        match: Description.
+        ctx: Description.
+        resolve_edges: Description.
+        on_say: Description.
 
     Returns:
-        The ID of the next state to jump to, or None to resume the previous flow.
-    """
+        The result.
+"""
     kind, node = match
     if node.say and on_say is not None:
         on_say(node, node.say)
@@ -214,19 +254,27 @@ not per-language here."""
 
 
 def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool:
-    """Check if the reply contains a side question not covered by FAQs or handlers.
+    """
+Check if the reply contains a side question not covered by FAQs or handlers.
 
     Determines if the user's message contains a fact-seeking request that is
-    not handled by existing logic, allowing the agent to provide a generic
-    deflection rather than ignoring it.
+        not handled by existing logic, allowing the agent to provide a generic
+        deflection rather than ignoring it.
+
+        Parameters:
+            llm_client: Client used to execute completion prompts.
+            ctx: The current conversation context.
+
+        Returns:
+            True if an unanswered side question is detected, else False.
 
     Parameters:
-        llm_client: Client used to execute completion prompts.
-        ctx: The current conversation context.
+        llm_client: Description.
+        ctx: Description.
 
     Returns:
-        True if an unanswered side question is detected, else False.
-    """
+        The result.
+"""
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
     prompt = (
         "A conversational agent just received the user's latest reply below. It has "

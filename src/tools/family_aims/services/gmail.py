@@ -1,5 +1,6 @@
-"""Envío de correo vía la API de Gmail. Nada de reglas de negocio."""
-
+"""
+Envío de correo vía la API de Gmail. Nada de reglas de negocio.
+"""
 import base64
 from email.message import EmailMessage
 
@@ -7,9 +8,21 @@ import httpx
 
 
 async def send_email(access_token: str, sender: str, to: str, subject: str, html_body: str) -> dict:
-    """Envía un correo HTML vía Gmail API (users.messages.send), autenticado
-    con el access_token de la cuenta que envía."""
-    message = EmailMessage()
+    """
+Envía un correo HTML vía Gmail API (users.messages.send), autenticado
+
+    con el access_token de la cuenta que envía.
+
+    Parameters:
+        access_token: Description.
+        sender: Description.
+        to: Description.
+        subject: Description.
+        html_body: Description.
+
+    Returns:
+        The result.
+"""    message = EmailMessage()
     message["To"] = to
     message["From"] = sender
     message["Subject"] = subject

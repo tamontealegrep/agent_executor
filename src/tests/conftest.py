@@ -1,4 +1,6 @@
-"""Hace importable main.py y agents.py al correr pytest desde cualquier cwd."""
+"""
+Hace importable main.py y agents.py al correr pytest desde cualquier cwd.
+"""
 
 import sys
 from pathlib import Path

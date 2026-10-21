@@ -1,18 +1,19 @@
-"""Regex-driven text helpers and AgentSpec iteration utilities.
+"""
+Regex-driven text helpers and AgentSpec iteration utilities.
 
-This module concentrates every regex used by the compiler:
+    This module concentrates every regex used by the compiler:
 
-- Placeholder extraction: variables ``{{name}}``, constants ``<NAME>``,
-  slots ``[name]``.
-- ``GO_TO`` target extraction (static state ids, dynamic slot targets,
-  alias tokens).
-- Assignment detection: ``[slot] = ...`` and ``increment [slot] by 1``.
-- Subflow template parameters ``<<param>>``.
-- Subflow alias tokens: ``@instance.export`` and ``@slot(instance.export)``.
+    - Placeholder extraction: variables ``{{name}}``, constants ``<NAME>``,
+      slots ``[name]``.
+    - ``GO_TO`` target extraction (static state ids, dynamic slot targets,
+      alias tokens).
+    - Assignment detection: ``[slot] = ...`` and ``increment [slot] by 1``.
+    - Subflow template parameters ``<<param>>``.
+    - Subflow alias tokens: ``@instance.export`` and ``@slot(instance.export)``.
 
-It also exposes the namespace builders used by the loader when
-instantiating subflow templates, plus iteration helpers used by the
-validators and renderers to walk the ``AgentSpec``.
+    It also exposes the namespace builders used by the loader when
+    instantiating subflow templates, plus iteration helpers used by the
+    validators and renderers to walk the ``AgentSpec``.
 """
 
 from __future__ import annotations
@@ -51,42 +52,80 @@ GOTO_ALIAS_RE = re.compile(r"(GO_TO:\s*)(@[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)")
 
 
 def extract_variables(text: str) -> set[str]:
-    """Return all ``{{name}}`` runtime variable references in ``text``."""
+    """
+Return all ``{{name}}`` runtime variable references in ``text``.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return set(VAR_RE.findall(text))
 
 
 def extract_constants(text: str) -> set[str]:
-    """Return all ``<NAME>`` constant references in ``text``."""
+    """
+Return all ``<NAME>`` constant references in ``text``.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return set(CONST_RE.findall(text))
 
 
 def extract_slots(text: str) -> set[str]:
-    """Return all ``[slot]`` memory-slot references in ``text``."""
+    """
+Return all ``[slot]`` memory-slot references in ``text``.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return set(SLOT_RE.findall(text))
 
 
 def extract_goto_targets(text: str) -> list[str]:
-    """Return all ``GO_TO`` targets found in ``text``.
+    """
+Return all ``GO_TO`` targets found in ``text``.
 
     Targets can be:
 
-    - Static state ids: ``GO_TO: STATE_ID``.
-    - Dynamic slot targets: ``GO_TO: [slot_name]``.
-    - Subflow alias tokens: ``GO_TO: @instance.export``.
+        - Static state ids: ``GO_TO: STATE_ID``.
+        - Dynamic slot targets: ``GO_TO: [slot_name]``.
+        - Subflow alias tokens: ``GO_TO: @instance.export``.
 
-    Order is preserved for downstream diagnostics.
-    """
+        Order is preserved for downstream diagnostics.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return GOTO_RE.findall(text)
 
 
 def extract_assignment_slots(text: str) -> set[str]:
-    """Return all slot names that ``text`` writes to.
+    """
+Return all slot names that ``text`` writes to.
 
     Recognized assignment forms:
 
-    - ``[slot] = ...``
-    - ``increment [slot] by 1`` (case-insensitive).
-    """
+        - ``[slot] = ...``
+        - ``increment [slot] by 1`` (case-insensitive).
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return set(ASSIGN_SLOT_RE.findall(text)) | set(INCREMENT_SLOT_RE.findall(text))
 
 
@@ -96,22 +135,54 @@ def extract_assignment_slots(text: str) -> set[str]:
 
 
 def is_dynamic_target(target: str) -> bool:
-    """Return ``True`` if ``target`` is a dynamic GO_TO of the form ``[slot]``."""
+    """
+Return ``True`` if ``target`` is a dynamic GO_TO of the form ``[slot]``.
+
+    Parameters:
+        target: Description.
+
+    Returns:
+        The result.
+"""
     return target.startswith("[") and target.endswith("]")
 
 
 def dynamic_target_slot_name(target: str) -> str:
-    """Return the slot name inside a dynamic target. ``"[foo]" -> "foo"``."""
+    """
+Return the slot name inside a dynamic target. ``"[foo]" -> "foo"``.
+
+    Parameters:
+        target: Description.
+
+    Returns:
+        The result.
+"""
     return target[1:-1]
 
 
 def has_unresolved_slot_alias(text: str) -> bool:
-    """Return ``True`` if ``text`` still contains an ``@slot(instance.export)`` alias."""
+    """
+Return ``True`` if ``text`` still contains an ``@slot(instance.export)`` alias.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return bool(SLOT_ALIAS_RE.search(text))
 
 
 def has_unresolved_state_alias_target(text: str) -> bool:
-    """Return ``True`` if ``text`` still contains an unresolved ``GO_TO: @...`` alias."""
+    """
+Return ``True`` if ``text`` still contains an unresolved ``GO_TO: @...`` alias.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return "GO_TO: @" in text
 
 
@@ -121,12 +192,28 @@ def has_unresolved_state_alias_target(text: str) -> bool:
 
 
 def normalize_phrase(text: str) -> str:
-    """Return ``text`` lowercased with whitespace collapsed to single spaces."""
+    """
+Return ``text`` lowercased with whitespace collapsed to single spaces.
+
+    Parameters:
+        text: Description.
+
+    Returns:
+        The result.
+"""
     return re.sub(r"\s+", " ", text.strip().lower())
 
 
 def dedupe_preserve_order(items: Iterable[str]) -> list[str]:
-    """Return ``items`` with duplicates removed, preserving first-occurrence order."""
+    """
+Return ``items`` with duplicates removed, preserving first-occurrence order.
+
+    Parameters:
+        items: Description.
+
+    Returns:
+        The result.
+"""
     seen: set[str] = set()
     result: list[str] = []
     for item in items:
@@ -142,12 +229,30 @@ def dedupe_preserve_order(items: Iterable[str]) -> list[str]:
 
 
 def namespace_state_id(namespace: str, local_id: str) -> str:
-    """Build the global state id of a templated state (``NAMESPACE__local_id``)."""
+    """
+Build the global state id of a templated state (``NAMESPACE__local_id``).
+
+    Parameters:
+        namespace: Description.
+        local_id: Description.
+
+    Returns:
+        The result.
+"""
     return f"{namespace.upper()}__{local_id}"
 
 
 def namespace_slot_name(namespace: str, local_slot_name: str) -> str:
-    """Build the global slot name for a templated memory slot (``namespace__local``)."""
+    """
+Build the global slot name for a templated memory slot (``namespace__local``).
+
+    Parameters:
+        namespace: Description.
+        local_slot_name: Description.
+
+    Returns:
+        The result.
+"""
     return f"{namespace.lower()}__{local_slot_name}"
 
 
@@ -157,11 +262,19 @@ def namespace_slot_name(namespace: str, local_slot_name: str) -> str:
 
 
 def substitute_params(text: str, params: dict[str, str]) -> str:
-    """Replace every ``<<param>>`` in ``text`` with its value from ``params``.
+    """
+Replace every ``<<param>>`` in ``text`` with its value from ``params``.
 
     Raises ``ValueError`` if a parameter referenced in the text is missing
-    from the ``params`` dict — substitution is strict by design.
-    """
+        from the ``params`` dict — substitution is strict by design.
+
+    Parameters:
+        text: Description.
+        params: Description.
+
+    Returns:
+        The result.
+"""
 
     def repl(match: re.Match[str]) -> str:
         key = match.group(1)
@@ -173,11 +286,19 @@ def substitute_params(text: str, params: dict[str, str]) -> str:
 
 
 def rewrite_local_slots_in_text(text: str, local_slot_map: dict[str, str]) -> str:
-    """Rewrite ``[slot]`` references in ``text`` using ``local_slot_map``.
+    """
+Rewrite ``[slot]`` references in ``text`` using ``local_slot_map``.
 
     Slots not present in the map are left unchanged because they refer to
-    globally declared slots in the agent's ``memory_slots.yaml``.
-    """
+        globally declared slots in the agent's ``memory_slots.yaml``.
+
+    Parameters:
+        text: Description.
+        local_slot_map: Description.
+
+    Returns:
+        The result.
+"""
 
     def repl(match: re.Match[str]) -> str:
         slot_name = match.group(1)
@@ -188,11 +309,19 @@ def rewrite_local_slots_in_text(text: str, local_slot_map: dict[str, str]) -> st
 
 
 def rewrite_local_goto_targets(text: str, local_state_map: dict[str, str]) -> str:
-    """Rewrite ``GO_TO: <ID>`` targets in ``text`` to their namespaced ids.
+    """
+Rewrite ``GO_TO: <ID>`` targets in ``text`` to their namespaced ids.
 
     Only static state-id targets are rewritten. Dynamic targets ``[slot]``
-    and alias targets ``@instance.export`` are left untouched.
-    """
+        and alias targets ``@instance.export`` are left untouched.
+
+    Parameters:
+        text: Description.
+        local_state_map: Description.
+
+    Returns:
+        The result.
+"""
 
     def repl(match: re.Match[str]) -> str:
         original_target = match.group(1)
@@ -204,11 +333,19 @@ def rewrite_local_goto_targets(text: str, local_state_map: dict[str, str]) -> st
 
 
 def resolve_slot_aliases(text: str, flat_slot_export_map: dict[str, str]) -> str:
-    """Replace ``@slot(instance.export)`` aliases in ``text`` with ``[slot_name]``.
+    """
+Replace ``@slot(instance.export)`` aliases in ``text`` with ``[slot_name]``.
 
     Raises ``ValueError`` for unresolved aliases — every alias must resolve
-    to a real exported slot.
-    """
+        to a real exported slot.
+
+    Parameters:
+        text: Description.
+        flat_slot_export_map: Description.
+
+    Returns:
+        The result.
+"""
 
     def repl(match: re.Match[str]) -> str:
         instance_id = match.group(1)
@@ -222,7 +359,16 @@ def resolve_slot_aliases(text: str, flat_slot_export_map: dict[str, str]) -> str
 
 
 def resolve_state_alias_targets(text: str, flat_state_export_map: dict[str, str]) -> str:
-    """Replace ``GO_TO: @instance.export`` aliases with concrete state ids."""
+    """
+Replace ``GO_TO: @instance.export`` aliases with concrete state ids.
+
+    Parameters:
+        text: Description.
+        flat_state_export_map: Description.
+
+    Returns:
+        The result.
+"""
 
     def repl(match: re.Match[str]) -> str:
         prefix = match.group(1)
@@ -236,7 +382,16 @@ def resolve_state_alias_targets(text: str, flat_state_export_map: dict[str, str]
 
 
 def resolve_state_alias_value(value: str, flat_state_export_map: dict[str, str]) -> str:
-    """Resolve a standalone ``@instance.export`` value (e.g. ``faq_resume_to``)."""
+    """
+Resolve a standalone ``@instance.export`` value (e.g. ``faq_resume_to``).
+
+    Parameters:
+        value: Description.
+        flat_state_export_map: Description.
+
+    Returns:
+        The result.
+"""
     if not value.startswith("@"):
         return value
     key = value[1:]
@@ -251,7 +406,15 @@ def resolve_state_alias_value(value: str, flat_state_export_map: dict[str, str])
 
 
 def iter_all_flow_objects(spec: AgentSpec) -> Iterator[tuple[str, str, FlowObjectBase]]:
-    """Yield ``(category, object_id, object)`` for every handler / state / terminal."""
+    """
+Yield ``(category, object_id, object)`` for every handler / state / terminal.
+
+    Parameters:
+        spec: Description.
+
+    Returns:
+        The result.
+"""
     for handler in spec.handlers:
         yield ("handler", handler.handler_id, handler)
     for state in spec.states:
@@ -261,19 +424,33 @@ def iter_all_flow_objects(spec: AgentSpec) -> Iterator[tuple[str, str, FlowObjec
 
 
 def iter_state_objects(spec: AgentSpec) -> Iterator[FlowObjectBase]:
-    """Yield every state — both main and terminal — without category labels."""
-    for state in spec.states:
+    """
+Yield every state — both main and terminal — without category labels.
+
+    Parameters:
+        spec: Description.
+
+    Returns:
+        The result.
+"""    for state in spec.states:
         yield state
     for state in spec.terminal_states:
         yield state
 
 
 def terminal_state_ids(spec: AgentSpec) -> set[str]:
-    """Return the set of state ids that close the conversation.
+    """
+Return the set of state ids that close the conversation.
 
     A state is terminal if ``type == "terminal"`` or ``final == "yes"``.
-    Both forms are accepted because they coexist in legacy specs.
-    """
+        Both forms are accepted because they coexist in legacy specs.
+
+    Parameters:
+        spec: Description.
+
+    Returns:
+        The result.
+"""
     result: set[str] = set()
     for state in list(spec.states) + list(spec.terminal_states):
         if state.type == "terminal" or state.final == "yes":
@@ -282,16 +459,31 @@ def terminal_state_ids(spec: AgentSpec) -> set[str]:
 
 
 def tool_contract_map(spec: AgentSpec) -> dict[str, ToolContract]:
-    """Index ``spec.tool_contracts`` by tool name for O(1) lookups."""
+    """
+Index ``spec.tool_contracts`` by tool name for O(1) lookups.
+
+    Parameters:
+        spec: Description.
+
+    Returns:
+        The result.
+"""
     return {contract.name: contract for contract in spec.tool_contracts}
 
 
 def iter_text_fields(spec: AgentSpec) -> Iterator[tuple[str, str]]:
-    """Yield ``(location, text)`` for every textual field in ``spec``.
+    """
+Yield ``(location, text)`` for every textual field in ``spec``.
 
     Used by the placeholder validator to scan every line of the spec for
-    references to undeclared variables, constants, or memory slots.
-    """
+        references to undeclared variables, constants, or memory slots.
+
+    Parameters:
+        spec: Description.
+
+    Returns:
+        The result.
+"""
     for item in spec.constants:
         yield (f"constants.{item.name}.description", item.description)
         yield (f"constants.{item.name}.value", item.value)

@@ -1,12 +1,14 @@
-"""Covers the two things loader.py hand-rolls instead of using a plain
-@lru_cache: per-slug tool routing (_tools_base_url) and per-slug cache
-invalidation (reload_compiled_agent) -- see loader.py's own comments for
-why (the /admin/reload endpoint needs to rebuild one agent without
-evicting every other agent's already-open checkpointer connection).
+"""
+Covers the two things loader.py hand-rolls instead of using a plain
 
-_build_compiled_agent is monkeypatched everywhere here: actually building
-a graph needs a real graph.json plus a live OpenAI client, which is exactly
-what these tests should NOT depend on to stay fast and offline.
+    @lru_cache: per-slug tool routing (_tools_base_url) and per-slug cache
+    invalidation (reload_compiled_agent) -- see loader.py's own comments for
+    why (the /admin/reload endpoint needs to rebuild one agent without
+    evicting every other agent's already-open checkpointer connection).
+
+    _build_compiled_agent is monkeypatched everywhere here: actually building
+    a graph needs a real graph.json plus a live OpenAI client, which is exactly
+    what these tests should NOT depend on to stay fast and offline.
 """
 
 import pytest
@@ -16,9 +18,15 @@ from compiled_runner import loader
 
 @pytest.fixture(autouse=True)
 def _clear_agent_cache():
-    """Every test starts from a clean cache -- module-level state would
+    """
+Every test starts from a clean cache -- module-level state would
+
     otherwise leak between tests (and between this file and any other
-    test that happens to call load_compiled_agent for a real slug)."""
+        test that happens to call load_compiled_agent for a real slug).
+
+    Returns:
+        None.
+"""
     loader._agent_cache.clear()
     yield
     loader._agent_cache.clear()

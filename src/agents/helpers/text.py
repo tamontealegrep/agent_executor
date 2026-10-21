@@ -33,25 +33,33 @@ DEFAULT_LANGUAGE = "en"
 
 
 def normalize_language(value: Any) -> Optional[str]:
-    """Normalizes a free-form language value (GHL's `contact_language` or
-    `customData.language`, or anywhere else) to this project's canonical
-    2-letter code -- "es"/"en"/"pt", never anything else. Case- and
-    accent-insensitive, and accepts locale-style codes (en-US, es_CO,
-    pt-BR -- only the primary subtag matters).
-
-    Guards against GHL placeholders (e.g. "[[contact.language]]") by
-    returning None for anything containing brackets, allowing a caller
-    to fall back to a different source (like the user's latest message).
-
-    Two different "doesn't match" cases, deliberately not collapsed into
-    one:
-    - No value at all (None/empty/placeholder) -> returns None. A caller
-      with its own fallback (like opening.yaml's "if [contact.language]
-      is missing, infer it from the user's latest message") needs to know
-      nothing was said, not silently get handed a default.
-    - A real value that just isn't one of the 3 supported languages (e.g.
-      French, German) -> returns DEFAULT_LANGUAGE ("en").
     """
+Normalizes a free-form language value (GHL's `contact_language` or
+
+    `customData.language`, or anywhere else) to this project's canonical
+        2-letter code -- "es"/"en"/"pt", never anything else. Case- and
+        accent-insensitive, and accepts locale-style codes (en-US, es_CO,
+        pt-BR -- only the primary subtag matters).
+
+        Guards against GHL placeholders (e.g. "[[contact.language]]") by
+        returning None for anything containing brackets, allowing a caller
+        to fall back to a different source (like the user's latest message).
+
+        Two different "doesn't match" cases, deliberately not collapsed into
+        one:
+        - No value at all (None/empty/placeholder) -> returns None. A caller
+          with its own fallback (like opening.yaml's "if [contact.language]
+          is missing, infer it from the user's latest message") needs to know
+          nothing was said, not silently get handed a default.
+        - A real value that just isn't one of the 3 supported languages (e.g.
+          French, German) -> returns DEFAULT_LANGUAGE ("en").
+
+    Parameters:
+        value: Description.
+
+    Returns:
+        The result.
+"""
     text = normalize_text(value)
     if not text or "[" in text or "]" in text or "{{" in text:
         return None

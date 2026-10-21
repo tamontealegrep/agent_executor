@@ -1,4 +1,6 @@
-"""Prueba el endpoint /book-appointment-ivf de punta a punta con Google Calendar y Gmail mockeados."""
+"""
+Prueba el endpoint /book-appointment-ivf de punta a punta con Google Calendar y Gmail mockeados.
+"""
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -13,8 +15,18 @@ client = TestClient(app)
 
 
 def _next_business_datetime_iso(hour: int = 9, minute: int = 0) -> str:
-    """Próximo día hábil (lunes a viernes) a la hora dada, en Bogotá — válido
-    para las ventanas horarias de ambos tools (ivf y sur)."""
+    """
+Próximo día hábil (lunes a viernes) a la hora dada, en Bogotá — válido
+
+    para las ventanas horarias de ambos tools (ivf y sur).
+
+    Parameters:
+        hour: Description.
+        minute: Description.
+
+    Returns:
+        The result.
+"""
     now = datetime.now(ZoneInfo("America/Bogota"))
     candidate = (now + timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0)
     while candidate.weekday() >= 5 or candidate <= now:

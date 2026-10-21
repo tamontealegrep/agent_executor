@@ -1,31 +1,33 @@
-"""Postgres wiring for the compiled-agent pipeline: the LangGraph
-checkpointer (conversation replay state), a small `conversations` table we
-own ourselves, and the closing-message sweep that reads it.
+"""
+Postgres wiring for the compiled-agent pipeline: the LangGraph
 
-Why a separate table when the checkpointer already persists everything:
-LangGraph's own `checkpoints`/`checkpoint_blobs` tables are internal replay
-plumbing, not a queryable business table. `checkpoints.checkpoint` (JSONB)
-only inlines primitive channel values (plain str/int/float/bool) -- our
-`current_state`/`last_user_message`/`last_message_at` land there, but
-`slots` (which holds `preferred_language`), `history`, and `contact` are
-dicts/lists, so LangGraph pops them out and stores them separately in
-`checkpoint_blobs.blob` as msgpack-encoded bytes (see `put()` in
-`langgraph/checkpoint/postgres/__init__.py`) -- not plain SQL-queryable
-JSON. There's also no column anywhere for *which agent* a thread belongs
-to; a checkpointer is generic across any graph that uses it.
+    checkpointer (conversation replay state), a small `conversations` table we
+    own ourselves, and the closing-message sweep that reads it.
 
-`conversations` is a thin, denormalized, query-friendly mirror -- one row
-per thread_id, upserted after each turn -- for anything you'd want to ask
-with plain SQL (which agent, what language, is this contact idle, what did
-they last say) without touching msgpack blobs. Shared by every compiled
-agent (see compiled_runner/ghl_endpoint.py) -- `agent_slug` plus
-`slots_summary` being a schemaless JSONB, not fixed columns per business
-field, is what lets one table serve agents with completely different slot
-vocabularies (family_aims_sam_text's `vi__treat` vs. some future agent's
-own fields) without a migration per agent. It's also the durable source
-`find_conversations_needing_closing_message` sweeps -- durable specifically
-because in-memory timers (like the debounce in ghl_endpoint.py) don't
-survive a process restart, and this one has to survive ~24h.
+    Why a separate table when the checkpointer already persists everything:
+    LangGraph's own `checkpoints`/`checkpoint_blobs` tables are internal replay
+    plumbing, not a queryable business table. `checkpoints.checkpoint` (JSONB)
+    only inlines primitive channel values (plain str/int/float/bool) -- our
+    `current_state`/`last_user_message`/`last_message_at` land there, but
+    `slots` (which holds `preferred_language`), `history`, and `contact` are
+    dicts/lists, so LangGraph pops them out and stores them separately in
+    `checkpoint_blobs.blob` as msgpack-encoded bytes (see `put()` in
+    `langgraph/checkpoint/postgres/__init__.py`) -- not plain SQL-queryable
+    JSON. There's also no column anywhere for *which agent* a thread belongs
+    to; a checkpointer is generic across any graph that uses it.
+
+    `conversations` is a thin, denormalized, query-friendly mirror -- one row
+    per thread_id, upserted after each turn -- for anything you'd want to ask
+    with plain SQL (which agent, what language, is this contact idle, what did
+    they last say) without touching msgpack blobs. Shared by every compiled
+    agent (see compiled_runner/ghl_endpoint.py) -- `agent_slug` plus
+    `slots_summary` being a schemaless JSONB, not fixed columns per business
+    field, is what lets one table serve agents with completely different slot
+    vocabularies (family_aims_sam_text's `vi__treat` vs. some future agent's
+    own fields) without a migration per agent. It's also the durable source
+    `find_conversations_needing_closing_message` sweeps -- durable specifically
+    because in-memory timers (like the debounce in ghl_endpoint.py) don't
+    survive a process restart, and this one has to survive ~24h.
 """
 
 from __future__ import annotations
@@ -39,25 +41,30 @@ from urllib.parse import quote
 
 
 def _build_database_url() -> str:
-    """Prefers DATABASE_HOST/PORT/USER/PASSWORD/NAME (+ optional
-    DATABASE_REGION) over a single DATABASE_URL, when a host is actually
-    set -- pedido directamente (2026-09-29) para no duplicar la
-    contraseña entre dos connection strings completos (interno/externo de
-    Render). DATABASE_REGION es lo unico que distingue uno del otro:
-    el host interno de Render es solo el id corto de la instancia
-    (dpg-xxxxx-a); el externo es ese mismo id con un sufijo de region
-    (dpg-xxxxx-a.oregon-postgres.render.com) -- vacio = interno, seteado
-    = externo.
-
-    Sigue soportando DATABASE_URL tal cual (un solo string) si
-    DATABASE_HOST no esta seteado -- no rompe nada de lo que ya
-    funcionaba (el dashboard de Render, por ejemplo, puede seguir con su
-    propio DATABASE_URL sin tocarlo).
-
-    user/password se url-encodean (urllib.parse.quote) antes de armar el
-    string -- a mano, un caracter especial en la contraseña rompe el
-    parseo de la URL; con esto no importa que caracteres tenga.
     """
+Prefers DATABASE_HOST/PORT/USER/PASSWORD/NAME (+ optional
+
+    DATABASE_REGION) over a single DATABASE_URL, when a host is actually
+        set -- pedido directamente (2026-09-29) para no duplicar la
+        contraseña entre dos connection strings completos (interno/externo de
+        Render). DATABASE_REGION es lo unico que distingue uno del otro:
+        el host interno de Render es solo el id corto de la instancia
+        (dpg-xxxxx-a); el externo es ese mismo id con un sufijo de region
+        (dpg-xxxxx-a.oregon-postgres.render.com) -- vacio = interno, seteado
+        = externo.
+
+        Sigue soportando DATABASE_URL tal cual (un solo string) si
+        DATABASE_HOST no esta seteado -- no rompe nada de lo que ya
+        funcionaba (el dashboard de Render, por ejemplo, puede seguir con su
+        propio DATABASE_URL sin tocarlo).
+
+        user/password se url-encodean (urllib.parse.quote) antes de armar el
+        string -- a mano, un caracter especial en la contraseña rompe el
+        parseo de la URL; con esto no importa que caracteres tenga.
+
+    Returns:
+        The result.
+"""
     host = os.environ.get("DATABASE_HOST", "").strip()
     if not host:
         return os.environ.get("DATABASE_URL", "").strip()
@@ -180,13 +187,20 @@ _EXCLUDED_SLOT_SUFFIXES = ("available_slots",)
 
 
 def build_slots_summary(slots: dict[str, Any] | None) -> dict[str, Any]:
-    """Every captured slot, from any subflow of any agent, minus constants/retry counters/plumbing.
+    """
+Every captured slot, from any subflow of any agent, minus constants/retry counters/plumbing.
 
     Keeps each slot's real namespaced key as-is (e.g. `cl__nat`, `vi__treat`,
-    `ob__obj`) rather than a prettified label -- multiple subflows reuse
-    short names (`success`, `ok`, `appt`...) for unrelated things, and
-    stripping the namespace prefix would silently collide them.
-    """
+        `ob__obj`) rather than a prettified label -- multiple subflows reuse
+        short names (`success`, `ok`, `appt`...) for unrelated things, and
+        stripping the namespace prefix would silently collide them.
+
+    Parameters:
+        slots: Description.
+
+    Returns:
+        The result.
+"""
     slots = slots or {}
     return {
         key: value
@@ -213,32 +227,37 @@ _pool_lock = threading.Lock()
 
 
 def _pool():
-    """One shared connection pool, used by both the LangGraph checkpointer
-    and every query in this module -- replaces a single long-lived
-    connection reused across concurrently-running turns (each turn runs in
-    its own threadpool thread via run_in_threadpool; a single psycopg
-    connection isn't safe for that). `PostgresSaver` accepts a
-    `ConnectionPool` directly (checked internally via `isinstance(conn,
-    ConnectionPool)`), so nothing else needs its own connection strategy.
-
-    `prepare_threshold=0` matches what `PostgresSaver.from_conn_string`
-    itself uses -- needed for compatibility with a transaction-pooling
-    proxy in front of the real Postgres (common on hosted providers like
-    Supabase/Neon), harmless otherwise.
-
-    Manually double-checked-locked instead of `@lru_cache`: found live
-    (2026-09-29, real server, real Postgres) -- every compiled agent wired
-    to GHL starts its own closing-message sweep loop at startup
-    (`ghl_endpoint.py::_start_closing_sweep`), and with two agents both
-    calling this function for the first time within the same instant, via
-    separate `run_in_threadpool` threads, `lru_cache` doesn't stop both
-    from entering the function body before either has finished -- it only
-    dedupes *completed* calls. Each thread built its own real
-    `ConnectionPool`, one got cached and kept, the other got garbage
-    collected mid-open, logging (harmless, but noisy) `__del__` errors
-    from its own background worker threads. A real lock serializes
-    construction instead.
     """
+One shared connection pool, used by both the LangGraph checkpointer
+
+    and every query in this module -- replaces a single long-lived
+        connection reused across concurrently-running turns (each turn runs in
+        its own threadpool thread via run_in_threadpool; a single psycopg
+        connection isn't safe for that). `PostgresSaver` accepts a
+        `ConnectionPool` directly (checked internally via `isinstance(conn,
+        ConnectionPool)`), so nothing else needs its own connection strategy.
+
+        `prepare_threshold=0` matches what `PostgresSaver.from_conn_string`
+        itself uses -- needed for compatibility with a transaction-pooling
+        proxy in front of the real Postgres (common on hosted providers like
+        Supabase/Neon), harmless otherwise.
+
+        Manually double-checked-locked instead of `@lru_cache`: found live
+        (2026-09-29, real server, real Postgres) -- every compiled agent wired
+        to GHL starts its own closing-message sweep loop at startup
+        (`ghl_endpoint.py::_start_closing_sweep`), and with two agents both
+        calling this function for the first time within the same instant, via
+        separate `run_in_threadpool` threads, `lru_cache` doesn't stop both
+        from entering the function body before either has finished -- it only
+        dedupes *completed* calls. Each thread built its own real
+        `ConnectionPool`, one got cached and kept, the other got garbage
+        collected mid-open, logging (harmless, but noisy) `__del__` errors
+        from its own background worker threads. A real lock serializes
+        construction instead.
+
+    Returns:
+        None.
+"""
     global _pool_instance
     if _pool_instance is not None:
         return _pool_instance
@@ -262,17 +281,22 @@ def _pool():
 
 
 def build_postgres_checkpointer():
-    """A `PostgresSaver` backed by the shared pool, tables created once via
+    """
+A `PostgresSaver` backed by the shared pool, tables created once via
+
     `.setup()`.
 
-    Bug fixed here (2026-09-29, never caught because this was never run
-    against a real Postgres until now): `PostgresSaver.from_conn_string(...)`
-    is a `@contextmanager` -- calling it without `with` (as this function
-    used to) returns a `_GeneratorContextManager`, not a `PostgresSaver`,
-    so `.setup()` raised `AttributeError` on the very first real call.
-    Constructing `PostgresSaver(pool)` directly sidesteps the contextmanager
-    entirely and gets pooling for free.
-    """
+        Bug fixed here (2026-09-29, never caught because this was never run
+        against a real Postgres until now): `PostgresSaver.from_conn_string(...)`
+        is a `@contextmanager` -- calling it without `with` (as this function
+        used to) returns a `_GeneratorContextManager`, not a `PostgresSaver`,
+        so `.setup()` raised `AttributeError` on the very first real call.
+        Constructing `PostgresSaver(pool)` directly sidesteps the contextmanager
+        entirely and gets pooling for free.
+
+    Returns:
+        None.
+"""
     from langgraph.checkpoint.postgres import PostgresSaver
 
     checkpointer = PostgresSaver(_pool())
@@ -293,16 +317,32 @@ def upsert_conversation(
     history: list[str] | None = None,
     channel: str | None = None,
 ) -> None:
-    """Best-effort mirror write -- never raises into the caller's turn.
+    """
+Best-effort mirror write -- never raises into the caller's turn.
 
     Called after a turn finishes, so it reflects the latest known slots
-    (preferred_language, and the business fields in `slots_summary`),
-    current_state, and recent conversation preview without needing its own
-    copy of the graph's routing logic. Also the only place
-    `closing_message_sent_at` gets cleared (see `_UPSERT_SQL`'s own
-    comment) -- a real turn is exactly the event that starts a new 24h
-    WhatsApp window.
-    """
+        (preferred_language, and the business fields in `slots_summary`),
+        current_state, and recent conversation preview without needing its own
+        copy of the graph's routing logic. Also the only place
+        `closing_message_sent_at` gets cleared (see `_UPSERT_SQL`'s own
+        comment) -- a real turn is exactly the event that starts a new 24h
+        WhatsApp window.
+
+    Parameters:
+        thread_id: Description.
+        agent_slug: Description.
+        location_id: Description.
+        contact_id: Description.
+        contact: Description.
+        slots: Description.
+        current_state: Description.
+        last_user_message: Description.
+        history: Description.
+        channel: Description.
+
+    Returns:
+        The result.
+"""
     if not postgres_enabled():
         return
     from psycopg.types.json import Jsonb
@@ -339,18 +379,27 @@ def upsert_conversation(
 
 
 def find_conversations_needing_closing_message(agent_slug: str, lookback_days: float) -> list[dict[str, Any]]:
-    """Threads of `agent_slug` whose contact went quiet 23:45+ ago and
+    """
+Threads of `agent_slug` whose contact went quiet 23:45+ ago and
+
     haven't gotten their closing message for this window yet.
 
-    `lookback_days` bounds the query from below too -- without it, a sweep
-    that was down for a while (a redeploy, a Postgres outage) would catch
-    back up by messaging contacts from long-dead conversations the moment
-    it comes back online, which is exactly the kind of surprise a contact
-    from weeks ago doesn't need. Per-agent because different agents may
-    reasonably want a different tolerance (a slower-moving flow could
-    justify a wider window) -- see `CompiledAgentGhlConfig.closing_message_lookback_days`
-    in ghl_endpoint.py, one .env var per agent, same pattern as debounce.
-    """
+        `lookback_days` bounds the query from below too -- without it, a sweep
+        that was down for a while (a redeploy, a Postgres outage) would catch
+        back up by messaging contacts from long-dead conversations the moment
+        it comes back online, which is exactly the kind of surprise a contact
+        from weeks ago doesn't need. Per-agent because different agents may
+        reasonably want a different tolerance (a slower-moving flow could
+        justify a wider window) -- see `CompiledAgentGhlConfig.closing_message_lookback_days`
+        in ghl_endpoint.py, one .env var per agent, same pattern as debounce.
+
+    Parameters:
+        agent_slug: Description.
+        lookback_days: Description.
+
+    Returns:
+        The result.
+"""
     if not postgres_enabled():
         return []
     from psycopg.rows import dict_row
@@ -382,17 +431,26 @@ def find_conversations_needing_closing_message(agent_slug: str, lookback_days: f
 
 
 def claim_conversations_needing_closing_message(agent_slug: str, lookback_days: float, limit: int = 200) -> list[dict[str, Any]]:
-    """Atomically claims contacts due a closing message to avoid duplicate sends across processes.
+    """
+Atomically claims contacts due a closing message to avoid duplicate sends across processes.
 
     Uses a CTE to first select the latest thread per (contact_id, location_id)
-    that qualifies, then updates all rows for those contacts by setting
-    `closing_message_sent_at = now()` with a single UPDATE ... FROM ... statement.
-    The RETURNING clause yields exactly one row per claimed (contact, location),
-    preventing races across multiple sweep loops.
+        that qualifies, then updates all rows for those contacts by setting
+        `closing_message_sent_at = now()` with a single UPDATE ... FROM ... statement.
+        The RETURNING clause yields exactly one row per claimed (contact, location),
+        preventing races across multiple sweep loops.
 
-    If sending ultimately fails for a claimed contact, callers should reset the
-    mark back to NULL via `reset_closing_message_claim` so a later sweep retries.
-    """
+        If sending ultimately fails for a claimed contact, callers should reset the
+        mark back to NULL via `reset_closing_message_claim` so a later sweep retries.
+
+    Parameters:
+        agent_slug: Description.
+        lookback_days: Description.
+        limit: Description.
+
+    Returns:
+        The result.
+"""
     if not postgres_enabled():
         return []
     from psycopg.rows import dict_row
@@ -453,10 +511,19 @@ def claim_conversations_needing_closing_message(agent_slug: str, lookback_days: 
 
 
 def reset_closing_message_claim(agent_slug: str, location_id: str, contact_id: str) -> None:
-    """Clears a previously claimed `closing_message_sent_at` so the sweep can retry.
+    """
+Clears a previously claimed `closing_message_sent_at` so the sweep can retry.
 
     Call this if sending the closing message fails after a successful claim.
-    """
+
+    Parameters:
+        agent_slug: Description.
+        location_id: Description.
+        contact_id: Description.
+
+    Returns:
+        The result.
+"""
     if not postgres_enabled():
         return
     try:
@@ -479,12 +546,22 @@ def reset_closing_message_claim(agent_slug: str, location_id: str, contact_id: s
 
 
 def mark_closing_message_sent(agent_slug: str, location_id: str, contact_id: str) -> None:
-    """Records that this contact got its closing message for the current
-    24h window across ALL their threads for this agent -- prevents
-    `find_conversations_needing_closing_message` from picking up any of
-    them on the next sweep. Cleared back to NULL by `upsert_conversation`
-    the next time any thread has a real turn.
     """
+Records that this contact got its closing message for the current
+
+    24h window across ALL their threads for this agent -- prevents
+        `find_conversations_needing_closing_message` from picking up any of
+        them on the next sweep. Cleared back to NULL by `upsert_conversation`
+        the next time any thread has a real turn.
+
+    Parameters:
+        agent_slug: Description.
+        location_id: Description.
+        contact_id: Description.
+
+    Returns:
+        The result.
+"""
     if not postgres_enabled():
         return
     try:

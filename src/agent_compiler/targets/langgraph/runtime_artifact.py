@@ -1,24 +1,25 @@
-"""Bundles everything `runtime/` needs into one self-contained, file-shaped artifact.
+"""
+Bundles everything `runtime/` needs into one self-contained, file-shaped artifact.
 
-This is the answer to "can the compiled graph be a replaceable file in my
-backend?" — yes, specifically this one. `RuntimeArtifact.to_dict()` is a
-plain, JSON-serializable dict with zero Pydantic objects and zero
-`langgraph` types; `runtime_artifact_from_dict()` reconstructs it. A
-backend that only ever *runs* compiled agents needs:
+    This is the answer to "can the compiled graph be a replaceable file in my
+    backend?" — yes, specifically this one. `RuntimeArtifact.to_dict()` is a
+    plain, JSON-serializable dict with zero Pydantic objects and zero
+    `langgraph` types; `runtime_artifact_from_dict()` reconstructs it. A
+    backend that only ever *runs* compiled agents needs:
 
-- `runtime/*.py` (the LangGraph-executing engine)
-- `targets/langgraph/{condition_parser,type_parser,graph_renderer,runtime_artifact}.py`
-  (dataclass definitions + this loader — none of them touch disk or import
-  `langgraph`/`openai`)
-- `dsl/schemas.py` + `dsl/utils.py` (just the Pydantic models the artifact's
-  `tool_contracts` are typed with, and the GO_TO regexes — no YAML I/O)
+    - `runtime/*.py` (the LangGraph-executing engine)
+    - `targets/langgraph/{condition_parser,type_parser,graph_renderer,runtime_artifact}.py`
+      (dataclass definitions + this loader — none of them touch disk or import
+      `langgraph`/`openai`)
+    - `dsl/schemas.py` + `dsl/utils.py` (just the Pydantic models the artifact's
+      `tool_contracts` are typed with, and the GO_TO regexes — no YAML I/O)
 
-It does NOT need `dsl/loaders.py`, `dsl/validators.py`, `dsl/classifier.py`,
-`dsl/deduplicator.py`, `targets/text/`, `diagrams/`, `compiler.py`, or
-`cli.py` — none of that is "the engine," it's "the compiler," and the
-compiler's job ends the moment `artifact.json` is written. Swapping an
-agent in production means replacing that one file and reloading it —
-never touching or redeploying the engine code.
+    It does NOT need `dsl/loaders.py`, `dsl/validators.py`, `dsl/classifier.py`,
+    `dsl/deduplicator.py`, `targets/text/`, `diagrams/`, `compiler.py`, or
+    `cli.py` — none of that is "the engine," it's "the compiler," and the
+    compiler's job ends the moment `artifact.json` is written. Swapping an
+    agent in production means replacing that one file and reloading it —
+    never touching or redeploying the engine code.
 """
 
 from __future__ import annotations
@@ -78,14 +79,15 @@ _UNIVERSAL_JUDGMENT_SECTIONS: tuple[str, ...] = ("data_and_variable_rules",)
 
 @dataclass(frozen=True)
 class ChannelPolicyMapping:
-    """One channel profile's full say/judgment section mapping, grouped together.
+    """
+One channel profile's full say/judgment section mapping, grouped together.
 
     Deliberately one object per channel rather than two separate
-    channel-keyed dicts (one for say, one for judgment) — everything a
-    given channel gets lives in one place you can read top to bottom,
-    and a new channel is one entry instead of two lookups that could
-    silently drift apart from each other over time.
-    """
+        channel-keyed dicts (one for say, one for judgment) — everything a
+        given channel gets lives in one place you can read top to bottom,
+        and a new channel is one entry instead of two lookups that could
+        silently drift apart from each other over time.
+"""
 
     say_sections: tuple[str, ...]
     judgment_sections: tuple[str, ...] = _UNIVERSAL_JUDGMENT_SECTIONS
@@ -106,18 +108,25 @@ POLICY_SECTIONS_BY_CHANNEL: dict[str, ChannelPolicyMapping] = {
 
 
 def _policy_mapping_for_channel(channel_profile_name: str) -> ChannelPolicyMapping:
-    """Look up `channel_profile_name`'s `ChannelPolicyMapping`.
+    """
+Look up `channel_profile_name`'s `ChannelPolicyMapping`.
 
     Raises rather than falling back to something channel-agnostic: a
-    channel profile with no entry here is exactly the silent-content-gap
-    failure mode this mapping exists to prevent (see this module's
-    docstring above `POLICY_SECTIONS_BY_CHANNEL`) — better to fail loud at
-    compile time, pointing at the one line to add, than to ship a
-    `RuntimeArtifact` quietly missing tone/format guidance for that
-    channel. `render_runtime_artifact`'s own `channel_profile_name`
-    default ("generic") is always present in the dict below, so the
-    default path itself can never hit this.
-    """
+        channel profile with no entry here is exactly the silent-content-gap
+        failure mode this mapping exists to prevent (see this module's
+        docstring above `POLICY_SECTIONS_BY_CHANNEL`) — better to fail loud at
+        compile time, pointing at the one line to add, than to ship a
+        `RuntimeArtifact` quietly missing tone/format guidance for that
+        channel. `render_runtime_artifact`'s own `channel_profile_name`
+        default ("generic") is always present in the dict below, so the
+        default path itself can never hit this.
+
+    Parameters:
+        channel_profile_name: Description.
+
+    Returns:
+        The result.
+"""
     mapping = POLICY_SECTIONS_BY_CHANNEL.get(channel_profile_name)
     if mapping is None:
         known = sorted(POLICY_SECTIONS_BY_CHANNEL)
@@ -139,7 +148,9 @@ def _flatten_policy_sections(spec: AgentSpec, section_names: tuple[str, ...]) ->
 
 @dataclass(frozen=True, slots=True)
 class RuntimeArtifact:
-    """Everything `runtime.graph_builder.build_graph()` needs, and nothing else."""
+    """
+Everything `runtime.graph_builder.build_graph()` needs, and nothing else.
+"""
 
     agent_id: str
     graph: GraphDefinition
@@ -151,8 +162,12 @@ class RuntimeArtifact:
     judgment_policies: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Plain-dict, JSON-serializable form — write this with `json.dump`."""
-        return {
+            """
+Plain-dict, JSON-serializable form — write this with `json.dump`.
+
+    Returns:
+        The result.
+    """        return {
             "agent_id": self.agent_id,
             "graph": asdict(self.graph),
             "global_router": asdict(self.global_router),
@@ -165,24 +180,32 @@ class RuntimeArtifact:
 
 
 def render_runtime_artifact(spec: AgentSpec, channel_profile_name: str = "generic") -> RuntimeArtifact:
-    """Compile-time step: bundle an `AgentSpec` into a `RuntimeArtifact`.
+    """
+Compile-time step: bundle an `AgentSpec` into a `RuntimeArtifact`.
 
     Parameters:
-        spec (AgentSpec): The fully merged agent specification.
-        channel_profile_name (str): Which `profiles/channels/*.yaml` `spec`
-            was loaded against — the same name passed to
-            `load_channel_profile`/`compile_agent`. `AgentSpec` itself
-            never stores this (`ManifestConfig`'s own docstring: channel is
-            a compile-time parameter, not manifest content), so a caller
-            compiling against a real channel must pass its real name here
-            explicitly — the "generic" default matches `compile_agent`'s
-            own default and exists for callers (tests, fixtures) that
-            don't care about channel-specific say policies, not as
-            something a production caller should rely on silently.
+            spec (AgentSpec): The fully merged agent specification.
+            channel_profile_name (str): Which `profiles/channels/*.yaml` `spec`
+                was loaded against — the same name passed to
+                `load_channel_profile`/`compile_agent`. `AgentSpec` itself
+                never stores this (`ManifestConfig`'s own docstring: channel is
+                a compile-time parameter, not manifest content), so a caller
+                compiling against a real channel must pass its real name here
+                explicitly — the "generic" default matches `compile_agent`'s
+                own default and exists for callers (tests, fixtures) that
+                don't care about channel-specific say policies, not as
+                something a production caller should rely on silently.
+
+        Returns:
+            RuntimeArtifact: Ready to `.to_dict()` and write to a `.json` file.
+
+    Parameters:
+        spec: Description.
+        channel_profile_name: Description.
 
     Returns:
-        RuntimeArtifact: Ready to `.to_dict()` and write to a `.json` file.
-    """
+        The result.
+"""
     policy_mapping = _policy_mapping_for_channel(channel_profile_name)
     return RuntimeArtifact(
         agent_id=spec.manifest.agent_id,
@@ -224,13 +247,20 @@ def _global_router_from_dict(data: dict[str, Any]) -> GlobalRouterDefinition:
 
 
 def runtime_artifact_from_dict(data: dict[str, Any]) -> RuntimeArtifact:
-    """Load-time step: reconstruct a `RuntimeArtifact` from its `to_dict()` form.
+    """
+Load-time step: reconstruct a `RuntimeArtifact` from its `to_dict()` form.
 
     This is the one function a backend needs to load a compiled agent from
-    a plain `.json` file it read off disk (or fetched from wherever it
-    keeps swappable agent files) — no YAML, no `dsl.loaders`, no
-    filesystem convention to match.
-    """
+        a plain `.json` file it read off disk (or fetched from wherever it
+        keeps swappable agent files) — no YAML, no `dsl.loaders`, no
+        filesystem convention to match.
+
+    Parameters:
+        data: Description.
+
+    Returns:
+        The result.
+"""
     return RuntimeArtifact(
         agent_id=data["agent_id"],
         graph=_graph_definition_from_dict(data["graph"]),

@@ -1,13 +1,14 @@
-"""Resolves a contract's tool name to the endpoint the tools backend really exposes.
+"""
+Resolves a contract's tool name to the endpoint the tools backend really exposes.
 
-The engine POSTs to `{base_url}/{tool.name}` (snake_case, straight from the
-contract). The backend only exposes kebab-case routes, and not all of them
-under the agent's own vertical:
+    The engine POSTs to `{base_url}/{tool.name}` (snake_case, straight from the
+    contract). The backend only exposes kebab-case routes, and not all of them
+    under the agent's own vertical:
 
-  - `check_visa` -> `/family_aims/v1/check-visa`
-  - every babynova route carries a `-sur` suffix:
-    `book_appointment` -> `/babynova/v1/book-appointment-sur`
-  - shared utils live only under `/tools/v1`: `time_now` -> `/tools/v1/time-now`
+      - `check_visa` -> `/family_aims/v1/check-visa`
+      - every babynova route carries a `-sur` suffix:
+        `book_appointment` -> `/babynova/v1/book-appointment-sur`
+      - shared utils live only under `/tools/v1`: `time_now` -> `/tools/v1/time-now`
 """
 
 from __future__ import annotations
@@ -30,7 +31,15 @@ _ROUTE_SUFFIX_BY_APP = {"babynova": "-sur"}
 
 
 def candidate_urls(url: str) -> list[str]:
-    """Ordered URLs to try for a `{base}/{tool_name}` request, most likely first."""
+    """
+Ordered URLs to try for a `{base}/{tool_name}` request, most likely first.
+
+    Parameters:
+        url: Description.
+
+    Returns:
+        The result.
+"""
     parts = urlsplit(url)
     head, _, tail = parts.path.rpartition("/")
     kebab = tail.replace("_", "-")
@@ -52,14 +61,15 @@ def candidate_urls(url: str) -> list[str]:
 
 
 class ToolRoutingClient(httpx.Client):
-    """`httpx.Client` that retries a 404 tool POST on the other candidate URLs.
+    """
+`httpx.Client` that retries a 404 tool POST on the other candidate URLs.
 
     Pass it as `build_graph(tool_http_client=...)`. The first URL that does
-    not answer 404 is remembered per requested URL, so only a tool's first
-    call can pay for the extra requests. When every candidate answers 404 the
-    first candidate's response is returned, so a genuine application 404
-    keeps its own error body.
-    """
+        not answer 404 is remembered per requested URL, so only a tool's first
+        call can pay for the extra requests. When every candidate answers 404 the
+        first candidate's response is returned, so a genuine application 404
+        keeps its own error body.
+"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

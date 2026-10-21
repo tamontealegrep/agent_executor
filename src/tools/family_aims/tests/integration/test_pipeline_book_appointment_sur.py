@@ -1,4 +1,6 @@
-"""Prueba el endpoint /book-appointment-sur de punta a punta con Google Calendar y Gmail mockeados."""
+"""
+Prueba el endpoint /book-appointment-sur de punta a punta con Google Calendar y Gmail mockeados.
+"""
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo

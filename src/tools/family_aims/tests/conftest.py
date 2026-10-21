@@ -1,4 +1,6 @@
-"""Hace importable el paquete tools.family_aims al correr pytest desde cualquier cwd."""
+"""
+Hace importable el paquete tools.family_aims al correr pytest desde cualquier cwd.
+"""
 
 import sys
 from pathlib import Path

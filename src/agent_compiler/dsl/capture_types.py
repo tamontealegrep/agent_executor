@@ -1,23 +1,24 @@
-"""Canonical type grammar for `capture.type_expr` — shared by both targets.
+"""
+Canonical type grammar for `capture.type_expr` — shared by both targets.
 
-A `type_expr` string is parsed with the stdlib ``ast`` module (the same
-restricted-Python-subset design used by ``dsl/condition_grammar.py``,
-see DESIGN_PATTERNS.md P01) since ``Literal[...]``/``list[T]`` are already
-valid ``typing`` syntax.
+    A `type_expr` string is parsed with the stdlib ``ast`` module (the same
+    restricted-Python-subset design used by ``dsl/condition_grammar.py``,
+    see DESIGN_PATTERNS.md P01) since ``Literal[...]``/``list[T]`` are already
+    valid ``typing`` syntax.
 
-Lives in ``dsl/`` because both compiler targets need it: the text-prompt
-target already prints `type_expr` verbatim into every ``CAPTURE`` block
-so the LLM knows exactly what to extract
-(``renderer.py::_render_capture_block``), and ``CaptureField.type_expr``
-(``schemas.py``) enforces this grammar at load time for every agent
-regardless of which target it's ultimately compiled to — the same
-reasoning that moved ``dsl/condition_grammar.py`` here too (2026-09-16):
-an interpretive, ungrammatical value is a hallucination surface for
-whichever LLM reads it, not a concern specific to one target.
+    Lives in ``dsl/`` because both compiler targets need it: the text-prompt
+    target already prints `type_expr` verbatim into every ``CAPTURE`` block
+    so the LLM knows exactly what to extract
+    (``renderer.py::_render_capture_block``), and ``CaptureField.type_expr``
+    (``schemas.py``) enforces this grammar at load time for every agent
+    regardless of which target it's ultimately compiled to — the same
+    reasoning that moved ``dsl/condition_grammar.py`` here too (2026-09-16):
+    an interpretive, ungrammatical value is a hallucination surface for
+    whichever LLM reads it, not a concern specific to one target.
 
-PascalCase names (``Slot``, ``Appointment``) are accepted as canonical
-even when no object-types registry declares them — they stay valid,
-opaque type markers until an author deliberately gives them structure.
+    PascalCase names (``Slot``, ``Appointment``) are accepted as canonical
+    even when no object-types registry declares them — they stay valid,
+    opaque type markers until an author deliberately gives them structure.
 """
 
 from __future__ import annotations
@@ -56,7 +57,9 @@ Category = Literal["canonical", "synonym", "needs_item_type", "unrecognized"]
 
 @dataclass(frozen=True, slots=True)
 class ParsedType:
-    """Result of classifying one `capture.type_expr` value."""
+    """
+Result of classifying one `capture.type_expr` value.
+"""
 
     raw: str
     category: Category
@@ -65,18 +68,25 @@ class ParsedType:
 
 
 def classify_type_expr(type_expr: str) -> ParsedType:
-    """Classify one `capture.type_expr` value per the canonical type grammar.
+    """
+Classify one `capture.type_expr` value per the canonical type grammar.
 
     Parameters:
-        type_expr (str): The raw `type_expr` string from a capture field.
+            type_expr (str): The raw `type_expr` string from a capture field.
+
+        Returns:
+            ParsedType: The classification. `category` is `"canonical"` (already
+                conforms), `"synonym"` (a known non-canonical spelling —
+                `canonical_suggestion` names the fix), `"needs_item_type"` (bare
+                `list` with no parametrization), or `"unrecognized"` (does not
+                parse, or parses outside the whitelist).
+
+    Parameters:
+        type_expr: Description.
 
     Returns:
-        ParsedType: The classification. `category` is `"canonical"` (already
-            conforms), `"synonym"` (a known non-canonical spelling —
-            `canonical_suggestion` names the fix), `"needs_item_type"` (bare
-            `list` with no parametrization), or `"unrecognized"` (does not
-            parse, or parses outside the whitelist).
-    """
+        The result.
+"""
     text = type_expr.strip()
 
     try:

@@ -1,6 +1,8 @@
-"""GhlAgentRequest.fix_ghl_paths -- specifically the contact.language
-mapping fixed 2026-09-29 (see its own comment: opening.yaml's
-"{{contact.language}}" reference had nothing to read before this).
+"""
+GhlAgentRequest.fix_ghl_paths -- specifically the contact.language
+
+    mapping fixed 2026-09-29 (see its own comment: opening.yaml's
+    "{{contact.language}}" reference had nothing to read before this).
 """
 
 from agents.helpers.ghl_request import GhlAgentRequest
@@ -38,16 +40,28 @@ def test_contact_language_defaults_to_english_when_a_language_is_stated_but_not_
 
 
 def test_contact_language_is_none_when_no_source_present():
-    """No language field anywhere in the payload -- distinct from an
+    """
+No language field anywhere in the payload -- distinct from an
+
     unsupported one: opening.yaml's own fallback (infer from the user's
-    first message) is meant to run here, not get skipped by a default."""
+        first message) is meant to run here, not get skipped by a default.
+
+    Returns:
+        None.
+"""
     req = GhlAgentRequest(**_base_payload())
     assert req.contact["language"] is None
 
 
 def test_real_ghl_payload_maps_english_correctly():
-    """The exact real payload shared live (2026-09-29) -- contact_language
-    at root and customData.language both say "English"."""
+    """
+The exact real payload shared live (2026-09-29) -- contact_language
+
+    at root and customData.language both say "English".
+
+    Returns:
+        None.
+"""
     payload = {
         "contact_language": "English",
         "contact_id": "vWfwGE4zG0YkWeiZtKGJ",

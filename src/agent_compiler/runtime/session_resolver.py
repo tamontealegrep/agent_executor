@@ -1,12 +1,13 @@
-"""Session resolver — decides new / continuing / stale BEFORE the graph is invoked.
+"""
+Session resolver — decides new / continuing / stale BEFORE the graph is invoked.
 
-Lives outside the LangGraph graph on purpose (DESIGN_PATTERNS.md P03): the
-caller has to decide which of `invoke(fresh_state, config)` or
-`invoke(Command(resume=...), config)` to use before the graph can even be
-called, and a graph node only ever runs after that decision has already
-been made. `graph.get_state(config)` doubles as the session store: an
-empty `.values` means no checkpoint exists yet for this thread_id (brand
-new).
+    Lives outside the LangGraph graph on purpose (DESIGN_PATTERNS.md P03): the
+    caller has to decide which of `invoke(fresh_state, config)` or
+    `invoke(Command(resume=...), config)` to use before the graph can even be
+    called, and a graph node only ever runs after that decision has already
+    been made. `graph.get_state(config)` doubles as the session store: an
+    empty `.values` means no checkpoint exists yet for this thread_id (brand
+    new).
 """
 
 from __future__ import annotations
@@ -18,8 +19,12 @@ SessionResolution = Literal["new", "continuing", "stale"]
 
 
 def now_iso() -> str:
-    """Current UTC timestamp, ISO-8601 — the format stored in `last_message_at`."""
-    return datetime.now(UTC).isoformat()
+    """
+Current UTC timestamp, ISO-8601 — the format stored in `last_message_at`.
+
+    Returns:
+        The result.
+"""    return datetime.now(UTC).isoformat()
 
 
 def resolve_session(
@@ -28,24 +33,33 @@ def resolve_session(
     *,
     now: datetime | None = None,
 ) -> SessionResolution:
-    """Return `"new"`, `"continuing"`, or `"stale"`.
+    """
+Return `"new"`, `"continuing"`, or `"stale"`.
 
     Parameters:
-        values (dict[str, Any] | None): `graph.get_state(config).values`, or
-            `None`/empty for a thread_id with no checkpoint yet.
-        timeout_minutes (float | None): `None` means a session never goes stale.
-        now (datetime | None): Injected for deterministic tests; defaults to
-            the real current UTC time. Staleness must be measured against
-            the moment the reply actually arrived, not against when the
-            question was asked — callers resolve staleness AFTER waiting
-            for the reply, not before.
+            values (dict[str, Any] | None): `graph.get_state(config).values`, or
+                `None`/empty for a thread_id with no checkpoint yet.
+            timeout_minutes (float | None): `None` means a session never goes stale.
+            now (datetime | None): Injected for deterministic tests; defaults to
+                the real current UTC time. Staleness must be measured against
+                the moment the reply actually arrived, not against when the
+                question was asked — callers resolve staleness AFTER waiting
+                for the reply, not before.
+
+        Returns:
+            SessionResolution: `"new"` when no checkpoint exists yet for this
+                session key; `"stale"` when `timeout_minutes` is set and more
+                time than that has elapsed since `last_message_at`;
+                `"continuing"` otherwise.
+
+    Parameters:
+        values: Description.
+        timeout_minutes: Description.
+        now: Description.
 
     Returns:
-        SessionResolution: `"new"` when no checkpoint exists yet for this
-            session key; `"stale"` when `timeout_minutes` is set and more
-            time than that has elapsed since `last_message_at`;
-            `"continuing"` otherwise.
-    """
+        The result.
+"""
     if not values or not values.get("current_state"):
         return "new"
     if timeout_minutes is not None:

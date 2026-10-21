@@ -1,4 +1,6 @@
-"""Prueba el endpoint /request-callback de punta a punta. Sin dependencias externas."""
+"""
+Prueba el endpoint /request-callback de punta a punta. Sin dependencias externas.
+"""
 
 from fastapi.testclient import TestClient
 

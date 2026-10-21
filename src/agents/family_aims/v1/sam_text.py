@@ -1,22 +1,23 @@
-"""GHL webhook endpoint for the compiled family_aims_sam_text agent.
+"""
+GHL webhook endpoint for the compiled family_aims_sam_text agent.
 
-All the actual plumbing (202 immediately, debounce, session resolution,
-the run_in_threadpool deadlock fix, idempotency, conversations mirror,
-replies via send_ghl_message_async) lives in
-compiled_runner.ghl_endpoint.build_compiled_agent_router, shared by every
-compiled agent wired to GHL. This module is just this agent's config.
+    All the actual plumbing (202 immediately, debounce, session resolution,
+    the run_in_threadpool deadlock fix, idempotency, conversations mirror,
+    replies via send_ghl_message_async) lives in
+    compiled_runner.ghl_endpoint.build_compiled_agent_router, shared by every
+    compiled agent wired to GHL. This module is just this agent's config.
 
-"Memory" is the graph's own checkpointer (see compiled_runner/loader.py):
-session state is keyed by thread_id and survives across turns without
-re-fetching GHL history.
+    "Memory" is the graph's own checkpointer (see compiled_runner/loader.py):
+    session state is keyed by thread_id and survives across turns without
+    re-fetching GHL history.
 
-Pilot gate (2026-09-28): only messages from SAM_TEXT_ALLOWED_PHONES are
-processed by default -- this endpoint is still being validated live, so it
-stays opt-in to a handful of known test numbers. Both the number list and
-whether the gate applies at all live in .env now (2026-09-29, moved out of
-a hardcoded frozenset here) -- see load_phone_whitelist's own docstring.
-Set SAM_TEXT_ENFORCE_PHONE_WHITELIST=false to open this agent to every
-phone once it's cleared to go live, no code change needed.
+    Pilot gate (2026-09-28): only messages from SAM_TEXT_ALLOWED_PHONES are
+    processed by default -- this endpoint is still being validated live, so it
+    stays opt-in to a handful of known test numbers. Both the number list and
+    whether the gate applies at all live in .env now (2026-09-29, moved out of
+    a hardcoded frozenset here) -- see load_phone_whitelist's own docstring.
+    Set SAM_TEXT_ENFORCE_PHONE_WHITELIST=false to open this agent to every
+    phone once it's cleared to go live, no code change needed.
 """
 
 import os

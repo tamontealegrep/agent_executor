@@ -1,5 +1,6 @@
-"""Todo lo que habla por HTTP con Google Calendar vive aquí. Nada de reglas de negocio."""
-
+"""
+Todo lo que habla por HTTP con Google Calendar vive aquí. Nada de reglas de negocio.
+"""
 from datetime import datetime
 from typing import List, Optional, Tuple
 from urllib.parse import quote
@@ -10,7 +11,17 @@ from tools.family_aims.utils.timezones import parse_iso
 
 
 async def get_access_token(client_id: str, client_secret: str, refresh_token: str) -> Optional[str]:
-    """Intercambia el refresh token por un access token de Google OAuth."""
+    """
+Intercambia el refresh token por un access token de Google OAuth.
+
+    Parameters:
+        client_id: Description.
+        client_secret: Description.
+        refresh_token: Description.
+
+    Returns:
+        The result.
+"""
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
             "https://oauth2.googleapis.com/token",
@@ -29,7 +40,18 @@ async def get_access_token(client_id: str, client_secret: str, refresh_token: st
 async def get_free_busy(
     access_token: str, calendar_id: str, time_min: datetime, time_max: datetime
 ) -> List[Tuple[datetime, datetime]]:
-    """Consulta los intervalos ocupados del calendario en Google Calendar dentro del rango dado."""
+    """
+Consulta los intervalos ocupados del calendario en Google Calendar dentro del rango dado.
+
+    Parameters:
+        access_token: Description.
+        calendar_id: Description.
+        time_min: Description.
+        time_max: Description.
+
+    Returns:
+        The result.
+"""
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
             "https://www.googleapis.com/calendar/v3/freeBusy",
@@ -61,8 +83,24 @@ async def create_event(
     attendee_email: str,
     request_id: str,
 ) -> dict:
-    """Crea un evento en Google Calendar con videollamada de Google Meet y
-    notifica al asistente (sendUpdates=all)."""
+    """
+Crea un evento en Google Calendar con videollamada de Google Meet y
+
+    notifica al asistente (sendUpdates=all).
+
+    Parameters:
+        access_token: Description.
+        calendar_id: Description.
+        summary: Description.
+        description: Description.
+        start_dt: Description.
+        end_dt: Description.
+        attendee_email: Description.
+        request_id: Description.
+
+    Returns:
+        The result.
+"""
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
             f"https://www.googleapis.com/calendar/v3/calendars/{quote(calendar_id, safe='')}/events",
@@ -93,8 +131,19 @@ async def create_event(
 async def list_events(
     access_token: str, calendar_id: str, time_min: datetime, time_max: datetime, query: Optional[str] = None
 ) -> List[dict]:
-    """Lista eventos en el calendario dado dentro del rango de tiempo, manejando paginación."""
-    events = []
+    """
+Lista eventos en el calendario dado dentro del rango de tiempo, manejando paginación.
+
+    Parameters:
+        access_token: Description.
+        calendar_id: Description.
+        time_min: Description.
+        time_max: Description.
+        query: Description.
+
+    Returns:
+        The result.
+"""    events = []
     page_token = None
     
     async with httpx.AsyncClient(timeout=20) as client:
@@ -131,7 +180,17 @@ async def list_events(
 
 
 async def delete_event(access_token: str, calendar_id: str, event_id: str) -> bool:
-    """Elimina un evento del calendario."""
+    """
+Elimina un evento del calendario.
+
+    Parameters:
+        access_token: Description.
+        calendar_id: Description.
+        event_id: Description.
+
+    Returns:
+        The result.
+"""
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.delete(
             f"https://www.googleapis.com/calendar/v3/calendars/{quote(calendar_id, safe='')}/events/{event_id}",
@@ -154,7 +213,21 @@ async def update_event(
     summary: Optional[str] = None,
     description: Optional[str] = None,
 ) -> dict:
-    """Actualiza parcialmente un evento en Google Calendar (PATCH)."""
+    """
+Actualiza parcialmente un evento en Google Calendar (PATCH).
+
+    Parameters:
+        access_token: Description.
+        calendar_id: Description.
+        event_id: Description.
+        start_dt: Description.
+        end_dt: Description.
+        summary: Description.
+        description: Description.
+
+    Returns:
+        The result.
+"""
     body = {}
     if summary:
         body["summary"] = summary

@@ -1,7 +1,9 @@
 """
-Verifica que main.py (la app raíz) monta cada agente descubierto bajo su
-propio prefijo /<slug>/v1/..., el esquema de rutas que usa el deploy real
-(un único servidor/proceso para todos los agentes).
+Module.
+
+    Verifica que main.py (la app raíz) monta cada agente descubierto bajo su
+    propio prefijo /<slug>/v1/..., el esquema de rutas que usa el deploy real
+    (un único servidor/proceso para todos los agentes).
 """
 
 from fastapi.testclient import TestClient
@@ -50,10 +52,16 @@ def test_selective_log_filter_allows_http_and_ghl_endpoint_logs_only():
 
 
 def test_selective_log_filter_allows_postgres_connection_warnings():
-    """Found live (2026-09-29): a Postgres connection failure in
+    """
+Found live (2026-09-29): a Postgres connection failure in
+
     upsert_conversation/the closing-message sweep only ever logs through
-    compiled_runner.postgres -- silently dropped before, indistinguishable
-    from "everything's fine" in Render's logs."""
+        compiled_runner.postgres -- silently dropped before, indistinguishable
+        from "everything's fine" in Render's logs.
+
+    Returns:
+        None.
+"""
     log_filter = SelectiveLogFilter()
     postgres_record = logging.LogRecord(
         name="compiled_runner.postgres",
@@ -111,11 +119,17 @@ def test_tools_gateway_request_callback():
 
 
 def test_family_aims_callback_alias_matches_the_shared_tool_contract():
-    """family_aims_sam_text_2_0's manifest.yaml declares the tool as `callback`
+    """
+family_aims_sam_text_2_0's manifest.yaml declares the tool as `callback`
+
     (shared/tool_contracts/callback_contract_es.yaml), so agent_compiler's
-    tool_executor POSTs to /family_aims/v1/callback with `iana_timezone` --
-    this alias (and its field name) has to match exactly, or every callback
-    attempt 404s or silently drops the timezone (both found live, 2026-09-18)."""
+        tool_executor POSTs to /family_aims/v1/callback with `iana_timezone` --
+        this alias (and its field name) has to match exactly, or every callback
+        attempt 404s or silently drops the timezone (both found live, 2026-09-18).
+
+    Returns:
+        None.
+"""
     response = client.post(
         "/family_aims/v1/callback",
         json={

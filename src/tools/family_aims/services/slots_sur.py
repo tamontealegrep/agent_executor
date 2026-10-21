@@ -1,7 +1,9 @@
 """
-Reglas propias de available-slots-sur (port del nodo "code_02" de
-get_available_slots_surrogacy): ventana horaria, franja de almuerzo y hora
-de cierre del último día. La generación/formato de slots vive en slot_engine.py.
+Module.
+
+    Reglas propias de available-slots-sur (port del nodo "code_02" de
+    get_available_slots_surrogacy): ventana horaria, franja de almuerzo y hora
+    de cierre del último día. La generación/formato de slots vive en slot_engine.py.
 """
 
 from typing import Optional, Tuple
@@ -9,8 +11,15 @@ from tools.family_aims.core.config import load_slots_config
 
 
 def day_window(weekday: int) -> Optional[Tuple[int, int, int, int]]:
-    """Configuración de ventanas horarias desde YAML."""
-    config = load_slots_config().get("policies", {}).get("sur", {})
+    """
+Configuración de ventanas horarias desde YAML.
+
+    Parameters:
+        weekday: Description.
+
+    Returns:
+        The result.
+"""    config = load_slots_config().get("policies", {}).get("sur", {})
     window = config.get("windows", {}).get(weekday)
     if window:
         return tuple(window)
@@ -18,7 +27,16 @@ def day_window(weekday: int) -> Optional[Tuple[int, int, int, int]]:
 
 
 def lunch_break(start_min: int, end_min: int) -> bool:
-    """Excluye el slot si inicia dentro de la hora configurada (ej: 12:00-12:59)."""
+    """
+Excluye el slot si inicia dentro de la hora configurada (ej: 12:00-12:59).
+
+    Parameters:
+        start_min: Description.
+        end_min: Description.
+
+    Returns:
+        The result.
+"""
     config = load_slots_config().get("policies", {}).get("sur", {}).get("lunch_break", {})
     start_hour = config.get("start_hour", 12)
     end_hour = config.get("end_hour", 13)
@@ -26,8 +44,15 @@ def lunch_break(start_min: int, end_min: int) -> bool:
 
 
 def closing_hour(weekday: int) -> Tuple[int, int]:
-    """El rango de búsqueda cierra a la hora de fin de la ventana configurada."""
-    window = day_window(weekday)
+    """
+El rango de búsqueda cierra a la hora de fin de la ventana configurada.
+
+    Parameters:
+        weekday: Description.
+
+    Returns:
+        The result.
+"""    window = day_window(weekday)
     if window:
         return (window[2], window[3])
     # Fallback original

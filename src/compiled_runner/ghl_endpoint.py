@@ -1,14 +1,15 @@
-"""Generic GHL webhook -> compiled LangGraph agent -> GHL reply endpoint.
+"""
+Generic GHL webhook -> compiled LangGraph agent -> GHL reply endpoint.
 
-Every compiled agent wired to a real GHL webhook needs the exact same
-plumbing (202 immediately, per-thread debounce, session resolution with
-the terminal-state fix, run_in_threadpool for the graph.invoke() deadlock,
-idempotency by execution_id, reply via send_ghl_message_async, mirror the
-turn into `conversations`). Only the agent identity, phone allowlist, and
-debounce window differ -- see family_aims_sam_text/endpoint.py's own
-docstring for the diagnosis behind each of the fixes baked in here. One
-agent's endpoint module is now just a `CompiledAgentGhlConfig` plus a call
-to `build_compiled_agent_router` instead of duplicating this file.
+    Every compiled agent wired to a real GHL webhook needs the exact same
+    plumbing (202 immediately, per-thread debounce, session resolution with
+    the terminal-state fix, run_in_threadpool for the graph.invoke() deadlock,
+    idempotency by execution_id, reply via send_ghl_message_async, mirror the
+    turn into `conversations`). Only the agent identity, phone allowlist, and
+    debounce window differ -- see family_aims_sam_text/endpoint.py's own
+    docstring for the diagnosis behind each of the fixes baked in here. One
+    agent's endpoint module is now just a `CompiledAgentGhlConfig` plus a call
+    to `build_compiled_agent_router` instead of duplicating this file.
 """
 
 from __future__ import annotations
@@ -42,7 +43,9 @@ from compiled_runner.postgres import (
 
 @dataclass(frozen=True)
 class CompiledAgentGhlConfig:
-    """Everything that differs from one compiled agent's GHL endpoint to another."""
+    """
+Everything that differs from one compiled agent's GHL endpoint to another.
+"""
 
     slug: str
     """Must match a folder under compiled_agents/."""
@@ -121,10 +124,19 @@ _RESET_MARKERS = ("<\\>", "<\\\\>", "</>")
 
 
 def _strip_reset_marker(message: str) -> tuple[str, bool]:
-    """If `message` starts with a reset marker (either slash direction,
+    """
+If `message` starts with a reset marker (either slash direction,
+
     see _RESET_MARKERS), returns (message with the marker removed, True).
-    Otherwise returns (message unchanged, False). Whitespace around the
-    marker is ignored on both sides."""
+        Otherwise returns (message unchanged, False). Whitespace around the
+        marker is ignored on both sides.
+
+    Parameters:
+        message: Description.
+
+    Returns:
+        The result.
+"""
     stripped = message.lstrip()
     for marker in _RESET_MARKERS:
         if stripped.startswith(marker):
@@ -155,26 +167,36 @@ _FALSE_STRINGS = {"0", "false", "no", "off"}
 def load_phone_whitelist(
     list_env_var: str, enforce_env_var: str, default_phones: str = ""
 ) -> tuple[frozenset[str], bool]:
-    """Reads one agent's phone pilot gate from two .env vars, instead of a
-    hardcoded frozenset in that agent's own text.py -- moved here 2026-09-29
-    so the actual numbers (and whether the gate applies at all) can change
-    without touching code or redeploying.
-
-    `list_env_var`: comma-separated E.164 numbers, e.g.
-        "+573215616921,+573007011593". Spaces around commas are trimmed;
-        each number is normalized the same way an inbound request's phone
-        is (see _normalize_phone) so formatting differences never cause a
-        silent mismatch.
-    `enforce_env_var`: "true"/"false" (also accepts 1/0, yes/no, on/off,
-        case-insensitive). Defaults to enforcing (True) if unset or
-        unrecognized -- an agent stays gated unless a caller explicitly
-        opts out, never the other way around by accident. This is the
-        switch to flip when an agent is cleared to go live: set it to
-        false and every phone gets through, no code change needed.
-    `default_phones`: used only if `list_env_var` isn't set in .env at all
-        -- lets a caller keep working with zero .env setup, same as
-        before this moved out of hardcoded Python.
     """
+Reads one agent's phone pilot gate from two .env vars, instead of a
+
+    hardcoded frozenset in that agent's own text.py -- moved here 2026-09-29
+        so the actual numbers (and whether the gate applies at all) can change
+        without touching code or redeploying.
+
+        `list_env_var`: comma-separated E.164 numbers, e.g.
+            "+573215616921,+573007011593". Spaces around commas are trimmed;
+            each number is normalized the same way an inbound request's phone
+            is (see _normalize_phone) so formatting differences never cause a
+            silent mismatch.
+        `enforce_env_var`: "true"/"false" (also accepts 1/0, yes/no, on/off,
+            case-insensitive). Defaults to enforcing (True) if unset or
+            unrecognized -- an agent stays gated unless a caller explicitly
+            opts out, never the other way around by accident. This is the
+            switch to flip when an agent is cleared to go live: set it to
+            false and every phone gets through, no code change needed.
+        `default_phones`: used only if `list_env_var` isn't set in .env at all
+            -- lets a caller keep working with zero .env setup, same as
+            before this moved out of hardcoded Python.
+
+    Parameters:
+        list_env_var: Description.
+        enforce_env_var: Description.
+        default_phones: Description.
+
+    Returns:
+        The result.
+"""
     raw_phones = os.getenv(list_env_var, default_phones)
     phones = frozenset(_normalize_phone(p) for p in raw_phones.split(",") if p.strip())
 
@@ -186,7 +208,9 @@ def load_phone_whitelist(
 
 @dataclass
 class _PendingTurn:
-    """Text accumulated for one thread_id, waiting out the debounce window."""
+    """
+Text accumulated for one thread_id, waiting out the debounce window.
+"""
 
     execution_ids: list[str] = field(default_factory=list)
     message_parts: list[str] = field(default_factory=list)
@@ -195,19 +219,27 @@ class _PendingTurn:
 
 
 async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
-    """One pass: find every thread of `cfg.slug` sitting at 23:45+ of
-    inactivity with no closing message sent yet for this window, and send
-    one. Module-level (not a closure inside build_compiled_agent_router)
-    so it's directly testable/callable without spinning up the router.
-
-    Deliberately bypasses the compiled graph entirely -- there's no new
-    user message to run it against, and the message is intentionally
-    generic (see CompiledAgentGhlConfig.closing_message's own docstring),
-    so a direct send_ghl_message_async call is simpler and correct.
-
-    Returns how many closing messages were actually sent (tests read this;
-    production code doesn't need to).
     """
+One pass: find every thread of `cfg.slug` sitting at 23:45+ of
+
+    inactivity with no closing message sent yet for this window, and send
+        one. Module-level (not a closure inside build_compiled_agent_router)
+        so it's directly testable/callable without spinning up the router.
+
+        Deliberately bypasses the compiled graph entirely -- there's no new
+        user message to run it against, and the message is intentionally
+        generic (see CompiledAgentGhlConfig.closing_message's own docstring),
+        so a direct send_ghl_message_async call is simpler and correct.
+
+        Returns how many closing messages were actually sent (tests read this;
+        production code doesn't need to).
+
+    Parameters:
+        cfg: Description.
+
+    Returns:
+        The result.
+"""
     logger = logging.getLogger(f"compiled_runner.ghl_endpoint.{cfg.slug}")
     # Atomically claim candidates to avoid duplicate sends across processes
     candidates = await run_in_threadpool(
@@ -310,12 +342,19 @@ async def _closing_sweep_loop(cfg: CompiledAgentGhlConfig) -> None:
 
 
 def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
-    """Build a self-contained router for one compiled agent's GHL webhook.
+    """
+Build a self-contained router for one compiled agent's GHL webhook.
 
     State (processing_messages, pending turns) is local to this call, so
-    two agents built from this factory never share or race on each
-    other's in-flight messages, even though the shapes are identical.
-    """
+        two agents built from this factory never share or race on each
+        other's in-flight messages, even though the shapes are identical.
+
+    Parameters:
+        cfg: Description.
+
+    Returns:
+        The result.
+"""
     router = APIRouter()
     logger = logging.getLogger(f"compiled_runner.ghl_endpoint.{cfg.slug}")
 

@@ -1,4 +1,6 @@
-"""Prueba el endpoint /available-slots-sur de punta a punta con Google Calendar mockeado."""
+"""
+Prueba el endpoint /available-slots-sur de punta a punta con Google Calendar mockeado.
+"""
 
 import pytest
 from fastapi.testclient import TestClient

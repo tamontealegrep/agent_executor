@@ -1,10 +1,11 @@
-"""Backward-compatible re-export — the condition grammar now lives in `dsl/`.
+"""
+Backward-compatible re-export — the condition grammar now lives in `dsl/`.
 
-`route`/`fallback` classification moved to `dsl/condition_grammar.py`
-(2026-09-16) because it's a target-agnostic DSL concern — see that
-module's docstring — not LangGraph-specific. This module is kept only
-so existing imports of `agent_compiler.targets.langgraph.condition_parser`
-keep working.
+    `route`/`fallback` classification moved to `dsl/condition_grammar.py`
+    (2026-09-16) because it's a target-agnostic DSL concern — see that
+    module's docstring — not LangGraph-specific. This module is kept only
+    so existing imports of `agent_compiler.targets.langgraph.condition_parser`
+    keep working.
 """
 
 from __future__ import annotations

@@ -1,6 +1,8 @@
-"""Covers how a contract's snake_case tool name reaches the kebab-case routes
-the tools backend really exposes. Offline: an `httpx.MockTransport` stands in
-for the backend.
+"""
+Covers how a contract's snake_case tool name reaches the kebab-case routes
+
+    the tools backend really exposes. Offline: an `httpx.MockTransport` stands in
+    for the backend.
 """
 
 import httpx

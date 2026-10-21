@@ -1,9 +1,11 @@
-"""build_slots_summary is the mechanical (not hand-picked) filter that
-decides what lands in Postgres's queryable `conversations.slots_summary`
-column -- see postgres.py's own docstring for why a curated allowlist was
-replaced with this exclusion rule (found live: an earlier hand-picked list
-silently missed IVF/ROPA and other real business fields). These tests lock
-in that exclusion rule so a future edit can't quietly narrow it again.
+"""
+build_slots_summary is the mechanical (not hand-picked) filter that
+
+    decides what lands in Postgres's queryable `conversations.slots_summary`
+    column -- see postgres.py's own docstring for why a curated allowlist was
+    replaced with this exclusion rule (found live: an earlier hand-picked list
+    silently missed IVF/ROPA and other real business fields). These tests lock
+    in that exclusion rule so a future edit can't quietly narrow it again.
 """
 
 import time
@@ -59,10 +61,19 @@ def test_build_database_url_respects_custom_port(monkeypatch):
 
 
 def test_build_database_url_url_encodes_special_characters_in_password(monkeypatch):
-    """A hand-assembled connection string breaks on a password containing
+    """
+A hand-assembled connection string breaks on a password containing
+
     @, :, /, etc. -- this is exactly the gotcha component-based config was
-    supposed to sidestep, so it must actually be encoded, not just
-    concatenated."""
+        supposed to sidestep, so it must actually be encoded, not just
+        concatenated.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     _clear_database_env(monkeypatch)
     monkeypatch.setenv("DATABASE_HOST", "myhost")
     monkeypatch.setenv("DATABASE_USER", "admin")
@@ -109,11 +120,17 @@ def test_drops_explicitly_excluded_plumbing_fields():
 
 
 def test_drops_namespaced_available_slots():
-    """available_slots is a per-subflow `capture:` slot like any other --
+    """
+available_slots is a per-subflow `capture:` slot like any other --
+
     its real runtime key is namespaced (sc__available_slots in scheduling,
-    am__available_slots in appointment_management, confirmed against a
-    real graph.json), never the bare name the exclusion originally only
-    matched exactly."""
+        am__available_slots in appointment_management, confirmed against a
+        real graph.json), never the bare name the exclusion originally only
+        matched exactly.
+
+    Returns:
+        None.
+"""
     slots = {
         "vi__treat": "donor_eggs",
         "sc__available_slots": [{"start_co": "2026-01-01T09:00:00-05:00"}],
@@ -141,7 +158,15 @@ def test_postgres_enabled_reflects_database_url(monkeypatch):
 
 
 def test_upsert_conversation_is_a_noop_without_postgres(monkeypatch):
-    """No DATABASE_URL -> never touches the DB, never raises."""
+    """
+No DATABASE_URL -> never touches the DB, never raises.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     monkeypatch.setattr(postgres, "DATABASE_URL", "")
 
     def _fail_if_called():
@@ -183,19 +208,34 @@ def test_mark_closing_message_sent_is_a_noop_without_postgres(monkeypatch):
 
 
 def test_closing_message_inactivity_threshold_is_23h45m():
-    """The 15-minute safety margin before WhatsApp's hard 24h cutoff is the
-    whole point of this feature -- pin the exact value."""
+    """
+The 15-minute safety margin before WhatsApp's hard 24h cutoff is the
+
+    whole point of this feature -- pin the exact value.
+
+    Returns:
+        None.
+"""
     assert postgres.CLOSING_MESSAGE_INACTIVITY_THRESHOLD.total_seconds() == 23 * 3600 + 45 * 60
 
 
 def test_pool_construction_is_single_flight_under_concurrent_first_access(monkeypatch):
-    """Found live (2026-09-29, real server + real Postgres): two agents'
+    """
+Found live (2026-09-29, real server + real Postgres): two agents'
+
     closing-message sweep loops both call _pool() for the first time at
-    startup, from separate run_in_threadpool threads, at nearly the same
-    instant. @lru_cache alone doesn't stop both from entering the function
-    body before either finishes -- it only dedupes completed calls, so
-    both built a real ConnectionPool and one got discarded mid-open
-    (harmless but noisy __del__ errors). _pool_lock must serialize this."""
+        startup, from separate run_in_threadpool threads, at nearly the same
+        instant. @lru_cache alone doesn't stop both from entering the function
+        body before either finishes -- it only dedupes completed calls, so
+        both built a real ConnectionPool and one got discarded mid-open
+        (harmless but noisy __del__ errors). _pool_lock must serialize this.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     import threading as _threading
 
     class _FakeCursor:
@@ -244,15 +284,21 @@ def test_pool_construction_is_single_flight_under_concurrent_first_access(monkey
 
 @pytest.mark.skipif(not postgres.postgres_enabled(), reason="needs a real DATABASE_URL (e.g. local Docker Postgres)")
 def test_upsert_conversation_does_not_let_a_leaner_turn_erase_known_contact_fields():
-    """Found live (2026-09-29): a contact's email was present on the first
+    """
+Found live (2026-09-29): a contact's email was present on the first
+
     inbound webhook of a conversation, then came back NULL after the next
-    turn -- GHL's own "message received" event doesn't always resend the
-    full contact profile (apparently only the very first event for a
-    thread does). Before this fix, contact_name/contact_phone/contact_email/
-    channel were a blind overwrite on every turn, so a later, leaner
-    payload silently erased what an earlier one had already established.
-    Only runs against a real Postgres (COALESCE-in-ON-CONFLICT behavior
-    can't be verified through a mock)."""
+        turn -- GHL's own "message received" event doesn't always resend the
+        full contact profile (apparently only the very first event for a
+        thread does). Before this fix, contact_name/contact_phone/contact_email/
+        channel were a blind overwrite on every turn, so a later, leaner
+        payload silently erased what an earlier one had already established.
+        Only runs against a real Postgres (COALESCE-in-ON-CONFLICT behavior
+        can't be verified through a mock).
+
+    Returns:
+        None.
+"""
     thread_id = "_coalesce_test:loc:contact"
     try:
         postgres.upsert_conversation(

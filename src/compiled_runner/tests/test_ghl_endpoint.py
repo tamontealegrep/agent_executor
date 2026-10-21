@@ -1,16 +1,18 @@
-"""build_compiled_agent_router is hand-rolled request plumbing (phone
-allowlist, idempotency, debounce, the terminal-state-resolves-as-new fix,
-run_in_threadpool around graph.invoke) that every compiled agent's GHL
-webhook shares -- see ghl_endpoint.py's own module docstring for the live
-bugs each piece fixed. None of that was covered by an automated test
-before this file.
+"""
+build_compiled_agent_router is hand-rolled request plumbing (phone
 
-load_compiled_agent/fresh_state/send_ghl_message_async/upsert_conversation
-are monkeypatched throughout: a real turn needs a live OpenAI call and a
-real GHL token, which these tests must not depend on. asyncio.run() drives
-each scenario end-to-end (request -> background debounce -> threadpool
-invoke -> reply) instead of pytest-asyncio, which isn't a project
-dependency.
+    allowlist, idempotency, debounce, the terminal-state-resolves-as-new fix,
+    run_in_threadpool around graph.invoke) that every compiled agent's GHL
+    webhook shares -- see ghl_endpoint.py's own module docstring for the live
+    bugs each piece fixed. None of that was covered by an automated test
+    before this file.
+
+    load_compiled_agent/fresh_state/send_ghl_message_async/upsert_conversation
+    are monkeypatched throughout: a real turn needs a live OpenAI call and a
+    real GHL token, which these tests must not depend on. asyncio.run() drives
+    each scenario end-to-end (request -> background debounce -> threadpool
+    invoke -> reply) instead of pytest-asyncio, which isn't a project
+    dependency.
 """
 
 import asyncio
@@ -26,9 +28,12 @@ from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_
 
 
 class FakeGraph:
-    """Stands in for the real checkpointed LangGraph graph. `next`/`values`
+    """
+Stands in for the real checkpointed LangGraph graph. `next`/`values`
+
     are mutable so a test can simulate a thread that already reached a
-    terminal node before the request under test arrives."""
+        terminal node before the request under test arrives.
+"""
 
     def __init__(self, values=None, next_=()):
         self.values = values or {}
@@ -135,9 +140,18 @@ def test_non_allowlisted_phone_is_ignored_without_touching_the_graph(monkeypatch
 
 
 def test_enforce_phone_whitelist_false_lets_any_phone_through(monkeypatch):
-    """The go-live kill switch: enforce_phone_whitelist=False must let a
+    """
+The go-live kill switch: enforce_phone_whitelist=False must let a
+
     phone NOT in allowed_phones through anyway -- it's the whole point of
-    the flag."""
+        the flag.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     graph = FakeGraph()
     app, _, _ = _build_router(
         monkeypatch, graph, allowed_phones=frozenset({"+573215616921"}), enforce_phone_whitelist=False
@@ -219,10 +233,19 @@ def test_debounce_combines_a_burst_into_one_turn_and_replies(monkeypatch):
 
 
 def test_new_message_after_a_terminal_node_starts_a_fresh_turn(monkeypatch):
-    """snapshot.next == () means the thread already reached a terminal node
+    """
+snapshot.next == () means the thread already reached a terminal node
+
     -- resolve_session alone would call this "continuing" (current_state is
-    set) and try Command(resume=...), which has nothing to resume. The
-    endpoint's own fix must route this through fresh_state instead."""
+        set) and try Command(resume=...), which has nothing to resume. The
+        endpoint's own fix must route this through fresh_state instead.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     graph = FakeGraph(values={"current_state": "SC__SC_END"}, next_=())
     app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
 
@@ -240,15 +263,24 @@ def test_new_message_after_a_terminal_node_starts_a_fresh_turn(monkeypatch):
 
 
 def test_session_timeout_uses_the_shared_env_constant_not_the_compiled_artifact(monkeypatch):
-    """GHL_TEXT_HISTORY_MAX_DAYS (.env, shared across every text agent) must
+    """
+GHL_TEXT_HISTORY_MAX_DAYS (.env, shared across every text agent) must
+
     be what actually drives staleness now, not whatever session_timeout_minutes
-    the compiled artifact carries -- previously that was baked into each
-    agent's own manifest.yaml, requiring a recompile to change it. The fake
-    artifact here has session_timeout_minutes=None ("never stale" per
-    resolve_session's own docstring) -- if the old code path were still
-    active this conversation would resolve as "continuing"; overriding the
-    threshold to a few milliseconds proves the env-driven constant is what
-    actually gets used instead."""
+        the compiled artifact carries -- previously that was baked into each
+        agent's own manifest.yaml, requiring a recompile to change it. The fake
+        artifact here has session_timeout_minutes=None ("never stale" per
+        resolve_session's own docstring) -- if the old code path were still
+        active this conversation would resolve as "continuing"; overriding the
+        threshold to a few milliseconds proves the env-driven constant is what
+        actually gets used instead.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     monkeypatch.setattr(ghl_endpoint, "GHL_TEXT_SESSION_TIMEOUT_MINUTES", 0.001)
 
     from datetime import datetime, timedelta, timezone
@@ -273,8 +305,17 @@ def test_session_timeout_uses_the_shared_env_constant_not_the_compiled_artifact(
 
 
 def test_pending_interrupt_resumes_with_command(monkeypatch):
-    """snapshot.next non-empty means the graph is mid-conversation, waiting
-    on this exact reply -- must resume via Command, not start fresh."""
+    """
+snapshot.next non-empty means the graph is mid-conversation, waiting
+
+    on this exact reply -- must resume via Command, not start fresh.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     graph = FakeGraph(values={"current_state": "SC__SC_ASK_D"}, next_=("SC__SC_ASK_D",))
     app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
 
@@ -293,12 +334,22 @@ def test_pending_interrupt_resumes_with_command(monkeypatch):
 
 @pytest.mark.parametrize("marker", ["<\\>", "<\\\\>", "</>"])
 def test_reset_marker_forces_a_fresh_conversation_and_strips_itself(monkeypatch, marker):
-    """All three spellings (pedido directamente, 2026-09-29 -- "<\\>" is
-    what real GHL/WhatsApp payloads actually send, "<\\\\>" is what typing
-    the JSON-escaped form seen in a logged payload literally produces,
-    "</>" is kept for muscle memory from the classic agent's own marker).
-    Must override even a pending interrupt that would otherwise resume via
-    Command -- the whole point is an easy manual reset mid-conversation."""
+    """
+All three spellings (pedido directamente, 2026-09-29 -- "<\>" is
+
+    what real GHL/WhatsApp payloads actually send, "<\\>" is what typing
+        the JSON-escaped form seen in a logged payload literally produces,
+        "</>" is kept for muscle memory from the classic agent's own marker).
+        Must override even a pending interrupt that would otherwise resume via
+        Command -- the whole point is an easy manual reset mid-conversation.
+
+    Parameters:
+        monkeypatch: Description.
+        marker: Description.
+
+    Returns:
+        None.
+"""
     graph = FakeGraph(values={"current_state": "SC__SC_ASK_D"}, next_=("SC__SC_ASK_D",))
     app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
 
@@ -436,8 +487,17 @@ def test_run_closing_sweep_once_passes_lookback_days_and_slug_through(monkeypatc
 
 
 def test_closing_sweep_starts_only_when_postgres_is_enabled(monkeypatch):
-    """The startup hook must not spin up the sweep loop at all when
-    DATABASE_URL is unset -- nothing for it to read anyway."""
+    """
+The startup hook must not spin up the sweep loop at all when
+
+    DATABASE_URL is unset -- nothing for it to read anyway.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     started: list[object] = []
 
     async def fake_loop(cfg):
@@ -465,10 +525,18 @@ def test_closing_sweep_starts_only_when_postgres_is_enabled(monkeypatch):
 
 
 def test_widget_message_is_responded_to_via_whatsapp(monkeypatch):
-    """(2026-09-30, pedido directamente)
-    When a message comes from the widget (LIVE_CHAT), the reply must go
-    to WHATSAPP.
     """
+(2026-09-30, pedido directamente)
+
+    When a message comes from the widget (LIVE_CHAT), the reply must go
+        to WHATSAPP.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     graph = FakeGraph()
     app, _, replies = _build_router(monkeypatch, graph, debounce_seconds=0.01, redirect_widget_to_whatsapp=True)
 
@@ -488,10 +556,18 @@ def test_widget_message_is_responded_to_via_whatsapp(monkeypatch):
 
 
 def test_closing_message_for_widget_is_sent_via_whatsapp(monkeypatch):
-    """(2026-09-30, pedido directamente)
-    A closing message sweep for a conversation that started on the widget
-    (LIVE_CHAT) must send the closing message to WHATSAPP.
     """
+(2026-09-30, pedido directamente)
+
+    A closing message sweep for a conversation that started on the widget
+        (LIVE_CHAT) must send the closing message to WHATSAPP.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
     candidates = [
         {"thread_id": "t1", "contact_id": "c1", "location_id": "l1", "channel": "LIVE_CHAT", "preferred_language": "es"},
     ]

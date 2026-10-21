@@ -1,19 +1,21 @@
 """
-Toda la configuración del agente vive aquí, leída una sola vez desde el .env
-del root con prefijo FA_. Nada más en el proyecto debe llamar a os.getenv
-directamente.
+Module.
 
-IVF y SU son calendarios independientes: cada uno con su propia autorización
-OAuth (confirmado con el owner: no comparten refresh token) y su propia
-política de agenda — de ahí que ToolConfig agrupe credenciales + agenda por
-calendario, no solo las credenciales. Ese MISMO ToolConfig lo usan tanto
-available-slots-* (consulta disponibilidad) como book-appointment-* (agenda
-la cita) para ese calendario — son el mismo calendario de Google, dos tools
-distintas que lo consultan.
+    Toda la configuración del agente vive aquí, leída una sola vez desde el .env
+    del root con prefijo FA_. Nada más en el proyecto debe llamar a os.getenv
+    directamente.
 
-El envío de correos de confirmación usa una cuenta de Gmail COMPARTIDA entre
-IVF y SU (así estaba en los dos flujos de GHL: mismo credential id) — por
-eso GmailConfig vive aparte, no dentro de cada ToolConfig.
+    IVF y SU son calendarios independientes: cada uno con su propia autorización
+    OAuth (confirmado con el owner: no comparten refresh token) y su propia
+    política de agenda — de ahí que ToolConfig agrupe credenciales + agenda por
+    calendario, no solo las credenciales. Ese MISMO ToolConfig lo usan tanto
+    available-slots-* (consulta disponibilidad) como book-appointment-* (agenda
+    la cita) para ese calendario — son el mismo calendario de Google, dos tools
+    distintas que lo consultan.
+
+    El envío de correos de confirmación usa una cuenta de Gmail COMPARTIDA entre
+    IVF y SU (así estaba en los dos flujos de GHL: mismo credential id) — por
+    eso GmailConfig vive aparte, no dentro de cada ToolConfig.
 """
 
 import os

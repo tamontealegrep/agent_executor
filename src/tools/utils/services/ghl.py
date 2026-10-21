@@ -13,10 +13,21 @@ async def update_custom_field_service(
     location_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
+update_custom_field_service.
+
     Unifica la actualización de campos personalizados en GHL.
-    1. Si hay contact_id: Actualiza Custom Field del contacto.
-    2. Si NO hay contact_id pero hay location_id: Actualiza Custom Value global.
-    """
+        1. Si hay contact_id: Actualiza Custom Field del contacto.
+        2. Si NO hay contact_id pero hay location_id: Actualiza Custom Value global.
+
+    Parameters:
+        name: Description.
+        value: Description.
+        contact_id: Description.
+        location_id: Description.
+
+    Returns:
+        The result.
+"""
     config = default_ghl_client_config()
     headers = get_ghl_headers(config)
 
@@ -85,8 +96,18 @@ async def update_custom_field_service(
     return {"success": False, "type": "unknown", "errors": "Missing contact_id or location_id"}
 
 async def _find_custom_field_id_by_name(location_id: str, name: str, config, headers: dict) -> Optional[str]:
-    """Helper interno para mapear nombre de campo -> ID en una ubicación."""
-    url = f"{config.base_url}/locations/{location_id}/customFields"
+    """
+Helper interno para mapear nombre de campo -> ID en una ubicación.
+
+    Parameters:
+        location_id: Description.
+        name: Description.
+        config: Description.
+        headers: Description.
+
+    Returns:
+        The result.
+"""    url = f"{config.base_url}/locations/{location_id}/customFields"
     try:
         async with httpx.AsyncClient(timeout=config.history_timeout_seconds) as client:
             resp = await client.get(url, headers=headers)

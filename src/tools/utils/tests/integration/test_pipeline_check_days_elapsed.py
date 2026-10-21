@@ -1,4 +1,6 @@
-"""Prueba el endpoint /check-days-elapsed de punta a punta. Sin dependencias externas."""
+"""
+Prueba el endpoint /check-days-elapsed de punta a punta. Sin dependencias externas.
+"""
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo

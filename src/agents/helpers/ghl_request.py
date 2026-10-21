@@ -14,13 +14,14 @@ from agents.helpers.text import normalize_language
 
 
 class GhlAgentRequest(BaseModel):
-    """Base request shape for any agent triggered by a GHL workflow webhook.
+    """
+Base request shape for any agent triggered by a GHL workflow webhook.
 
     The GHL webhook payload is the same for every agent regardless of which
-    conversational flow consumes it, so this normalization lives here once.
-    Agent-specific request models should subclass this instead of
-    redefining the fields/validators.
-    """
+        conversational flow consumes it, so this normalization lives here once.
+        Agent-specific request models should subclass this instead of
+        redefining the fields/validators.
+"""
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
 

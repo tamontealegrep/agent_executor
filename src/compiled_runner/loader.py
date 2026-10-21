@@ -1,10 +1,12 @@
-"""Loads a compiled agent_compiler agent (graph.json + assets.json) and
-builds a real, checkpointed LangGraph graph for it via agent_runtime.
+"""
+Loads a compiled agent_compiler agent (graph.json + assets.json) and
 
-Pilot / local-testing module (2026-09-16) — proves the agent_compiler ->
-agent_runtime -> agent_executer pipeline end to end before any GHL wiring.
-Not yet wired into main.py's normal src/tools/* discovery: see
-compiled_runner/endpoint.py for the router this feeds.
+    builds a real, checkpointed LangGraph graph for it via agent_runtime.
+
+    Pilot / local-testing module (2026-09-16) — proves the agent_compiler ->
+    agent_runtime -> agent_executer pipeline end to end before any GHL wiring.
+    Not yet wired into main.py's normal src/tools/* discovery: see
+    compiled_runner/endpoint.py for the router this feeds.
 """
 
 from __future__ import annotations
@@ -51,17 +53,24 @@ _TOOLS_APP_BY_SLUG_PREFIX = {"family_aims": "family_aims", "babynova": "babynova
 
 
 def _tools_base_url(slug: str) -> str:
-    """Where a compiled agent's tool calls land.
+    """
+Where a compiled agent's tool calls land.
 
     Current deploy mounts:
-      - Family Aims tools under /family_aims/v1
-      - Babynova Surrogacy tools under /babynova/v1
+          - Family Aims tools under /family_aims/v1
+          - Babynova Surrogacy tools under /babynova/v1
 
-    Utils live under /tools/v1 but compiled agents call vertical-specific
-    tools (e.g., check-visa) that are NOT exposed by the gateway. Keep
-    routing to each vertical's prefix to avoid 404s. Tools that live
-    elsewhere (utils) are found by `tool_routing.ToolRoutingClient`.
-    """
+        Utils live under /tools/v1 but compiled agents call vertical-specific
+        tools (e.g., check-visa) that are NOT exposed by the gateway. Keep
+        routing to each vertical's prefix to avoid 404s. Tools that live
+        elsewhere (utils) are found by `tool_routing.ToolRoutingClient`.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     host = os.getenv("HOST", "127.0.0.1")
     port = os.getenv("PORT", "8010")
     probe_host = "127.0.0.1" if host == "0.0.0.0" else host
@@ -80,15 +89,23 @@ _agent_cache_lock = threading.Lock()
 
 
 def _build_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
-    """Actually build the graph for `compiled_agents/<slug>/graph.json` —
+    """
+Actually build the graph for `compiled_agents/<slug>/graph.json` —
+
     no caching. Use `load_compiled_agent`/`reload_compiled_agent` instead.
 
-    Persistence: `DATABASE_URL` set -> a shared `PostgresSaver` (survives a
-    redeploy, unlike local disk on e.g. Render's free tier). Otherwise
-    falls back to a SqliteSaver file per agent (`compiled_agents/<slug>/
-    sessions.db`) -- fine for local dev, lost on process restart in a real
-    deploy. A single shared connection for the process lifetime either way.
-    """
+        Persistence: `DATABASE_URL` set -> a shared `PostgresSaver` (survives a
+        redeploy, unlike local disk on e.g. Render's free tier). Otherwise
+        falls back to a SqliteSaver file per agent (`compiled_agents/<slug>/
+        sessions.db`) -- fine for local dev, lost on process restart in a real
+        deploy. A single shared connection for the process lifetime either way.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     agent_dir = COMPILED_AGENTS_DIR / slug
     graph_path = agent_dir / "graph.json"
     if not graph_path.exists():
@@ -117,13 +134,21 @@ def _build_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
 
 
 def load_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
-    """Build (once per slug, cached until `reload_compiled_agent` is called)
+    """
+Build (once per slug, cached until `reload_compiled_agent` is called)
+
     the graph for `compiled_agents/<slug>/graph.json`.
 
-    Returns (artifact, graph) — `artifact` carries the agent_id/session
-    timeout metadata `session_resolver.resolve_session` needs; `graph` is
-    the compiled, checkpointed LangGraph graph, ready for `.invoke()`.
-    """
+        Returns (artifact, graph) — `artifact` carries the agent_id/session
+        timeout metadata `session_resolver.resolve_session` needs; `graph` is
+        the compiled, checkpointed LangGraph graph, ready for `.invoke()`.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     with _agent_cache_lock:
         cached = _agent_cache.get(slug)
     if cached is not None:
@@ -136,17 +161,25 @@ def load_compiled_agent(slug: str) -> tuple[RuntimeArtifact, object]:
 
 
 def reload_compiled_agent(slug: str) -> RuntimeArtifact:
-    """Rebuild `slug` from the `graph.json` currently on disk and swap it
-    into the cache, without restarting the process (agent_runtime's
-    USAGE.md §9/§8.2 `/admin/reload` pattern). Only this one slug is
-    affected -- every other cached agent (and its checkpointer connection)
-    is left untouched.
-
-    Safe to call while requests for this slug are in flight: readers hold
-    the lock only long enough to read/swap the tuple, `graph.invoke()`
-    itself never touches `_agent_cache`, so an in-progress turn keeps
-    using the (artifact, graph) pair it already fetched.
     """
+Rebuild `slug` from the `graph.json` currently on disk and swap it
+
+    into the cache, without restarting the process (agent_runtime's
+        USAGE.md §9/§8.2 `/admin/reload` pattern). Only this one slug is
+        affected -- every other cached agent (and its checkpointer connection)
+        is left untouched.
+
+        Safe to call while requests for this slug are in flight: readers hold
+        the lock only long enough to read/swap the tuple, `graph.invoke()`
+        itself never touches `_agent_cache`, so an in-progress turn keeps
+        using the (artifact, graph) pair it already fetched.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     artifact, graph = _build_compiled_agent(slug)
     with _agent_cache_lock:
         _agent_cache[slug] = (artifact, graph)

@@ -1,67 +1,68 @@
-"""Builds a real `langgraph.graph.StateGraph` from a `RuntimeArtifact`.
+"""
+Builds a real `langgraph.graph.StateGraph` from a `RuntimeArtifact`.
 
-Consumes the `RuntimeArtifact` `targets.langgraph.runtime_artifact` emits
-(a plain, JSON-serializable bundle of the graph definition, global-router
-definition, tool contracts, and constants) and builds one LangGraph node
-per DSL node, real conditional edges, and `interrupt()` for the multi-turn
-"ask a question, wait for the reply" pattern. This is the reference
-runtime SPEC.md §2.4 describes as a separate, optional consumer of the
-compiled artifact — `dsl/loaders.py`, `dsl/validators.py`,
-`dsl/classifier.py`, `dsl/deduplicator.py`, `targets/text/`, `diagrams/`,
-`compiler.py`, and `cli.py` are all compiler-only and never imported here.
+    Consumes the `RuntimeArtifact` `targets.langgraph.runtime_artifact` emits
+    (a plain, JSON-serializable bundle of the graph definition, global-router
+    definition, tool contracts, and constants) and builds one LangGraph node
+    per DSL node, real conditional edges, and `interrupt()` for the multi-turn
+    "ask a question, wait for the reply" pattern. This is the reference
+    runtime SPEC.md §2.4 describes as a separate, optional consumer of the
+    compiled artifact — `dsl/loaders.py`, `dsl/validators.py`,
+    `dsl/classifier.py`, `dsl/deduplicator.py`, `targets/text/`, `diagrams/`,
+    `compiler.py`, and `cli.py` are all compiler-only and never imported here.
 
-Deliberately takes a `RuntimeArtifact`, not an `AgentSpec`: a backend that
-only *runs* compiled agents should be able to load one from a `.json` file
-on disk and never need the YAML-loading, validating, or text-rendering
-machinery at all — swapping an agent means replacing that one file, not
-redeploying this module. See `targets/langgraph/runtime_artifact.py`.
+    Deliberately takes a `RuntimeArtifact`, not an `AgentSpec`: a backend that
+    only *runs* compiled agents should be able to load one from a `.json` file
+    on disk and never need the YAML-loading, validating, or text-rendering
+    machinery at all — swapping an agent means replacing that one file, not
+    redeploying this module. See `targets/langgraph/runtime_artifact.py`.
 
-Known limitations of this reference implementation (documented, not
-silently dropped):
-  - `subflow_change` nodes are pure pass-through — `AgentSpec` has already
-    resolved every route/fallback to concrete, namespaced state ids by the
-    time it reaches this module.
+    Known limitations of this reference implementation (documented, not
+    silently dropped):
+      - `subflow_change` nodes are pure pass-through — `AgentSpec` has already
+        resolved every route/fallback to concrete, namespaced state ids by the
+        time it reaches this module.
 
-`action` node tool-argument binding (`_bind_tool_inputs`, 2026-09-16):
-real agent content almost never captures a slot under the exact same
-name as the tool contract's declared input (subflow namespacing alone
-guarantees a mismatch — `cl__nat` vs. `nationalities`) — an exact-name-only
-binder left nearly every tool call unable to run. Three passes, mechanical
-before LLM, same philosophy as `_apply_store_line`'s own STORE fallback:
-(1) exact slot-name match, (2) a `DO` line shaped `input_name = [slot]` /
-`= <CONSTANT>` / `= 'literal'` — the bare-left-hand-side counterpart to
-STORE's own `[slot] = ...` grammar, resolved without any LLM call, and
-(3) one batched LLM call (never one call per argument) deriving whatever
-required inputs are still missing from the full `DO` context and known
-slots — covers the DO lines that describe a real transform or derivation
-("uppercase", "the literal start_co field of the chosen slot") rather
-than a bare copy, which a mechanical parser can't safely resolve on its
-own.
+    `action` node tool-argument binding (`_bind_tool_inputs`, 2026-09-16):
+    real agent content almost never captures a slot under the exact same
+    name as the tool contract's declared input (subflow namespacing alone
+    guarantees a mismatch — `cl__nat` vs. `nationalities`) — an exact-name-only
+    binder left nearly every tool call unable to run. Three passes, mechanical
+    before LLM, same philosophy as `_apply_store_line`'s own STORE fallback:
+    (1) exact slot-name match, (2) a `DO` line shaped `input_name = [slot]` /
+    `= <CONSTANT>` / `= 'literal'` — the bare-left-hand-side counterpart to
+    STORE's own `[slot] = ...` grammar, resolved without any LLM call, and
+    (3) one batched LLM call (never one call per argument) deriving whatever
+    required inputs are still missing from the full `DO` context and known
+    slots — covers the DO lines that describe a real transform or derivation
+    ("uppercase", "the literal start_co field of the chosen slot") rather
+    than a bare copy, which a mechanical parser can't safely resolve on its
+    own.
 
-Conditional DO/STORE prose (`_apply_conditional_mutations`, 2026-09-16):
-a third, distinct DO/STORE convention — "If X, update [slot]" — found live
-piloting `family_aims_sam_text_2_0` (`SC_FIX`'s corrections were a total
-no-op: the whole node exists to apply a name/phone/email/date correction
-and did nothing). Unlike the other two conventions, this one gets no
-mechanical pass at all: branching on free text ("if the correction is
-about the name", inferring 'surrogacy' from "quiero alguien que lleve a mi
-bebé") is exactly the kind of real-language understanding a `question`
-node's own capture step already needs an LLM for — a regex here would
-silently fail the same way `_bind_tool_inputs`'s exact-match-only binder
-did. Any DO/STORE line that isn't a recognized literal assignment but
-still names a `[slot]` goes straight to one batched LLM call per node
-(every such line together, so the model sees the full instruction set
-against one user message, not one call per line). Excluded from `action`
-nodes' DO lines — those are entirely owned by `_bind_tool_inputs` above.
+    Conditional DO/STORE prose (`_apply_conditional_mutations`, 2026-09-16):
+    a third, distinct DO/STORE convention — "If X, update [slot]" — found live
+    piloting `family_aims_sam_text_2_0` (`SC_FIX`'s corrections were a total
+    no-op: the whole node exists to apply a name/phone/email/date correction
+    and did nothing). Unlike the other two conventions, this one gets no
+    mechanical pass at all: branching on free text ("if the correction is
+    about the name", inferring 'surrogacy' from "quiero alguien que lleve a mi
+    bebé") is exactly the kind of real-language understanding a `question`
+    node's own capture step already needs an LLM for — a regex here would
+    silently fail the same way `_bind_tool_inputs`'s exact-match-only binder
+    did. Any DO/STORE line that isn't a recognized literal assignment but
+    still names a `[slot]` goes straight to one batched LLM call per node
+    (every such line together, so the model sees the full instruction set
+    against one user message, not one call per line). Excluded from `action`
+    nodes' DO lines — those are entirely owned by `_bind_tool_inputs` above.
 
-`question` nodes are routed exclusively via a `Command(goto=...)` their
-own `node_fn` returns — never via `add_conditional_edges`. Verified
-empirically: LangGraph does not suppress a node's registered conditional
-edges just because that node's function returns a `Command`, so
-registering both causes a concurrent-write `InvalidUpdateError` on the
-`slots` channel the moment a global-router match resolves to a concrete
-jump target (the resume-in-place case never surfaced this, since it never
-produces a second write in the same step). See `_resolve_target`.
+    `question` nodes are routed exclusively via a `Command(goto=...)` their
+    own `node_fn` returns — never via `add_conditional_edges`. Verified
+    empirically: LangGraph does not suppress a node's registered conditional
+    edges just because that node's function returns a `Command`, so
+    registering both causes a concurrent-write `InvalidUpdateError` on the
+    `slots` channel the moment a global-router match resolves to a concrete
+    jump target (the resume-in-place case never surfaced this, since it never
+    produces a second write in the same step). See `_resolve_target`.
 """
 
 from __future__ import annotations
@@ -124,21 +125,30 @@ _QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
 
 
 def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None:
-    """Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
+    """
+Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
 
     Literal assignments, slot-to-slot copies, `NULL` resets, the
-    `increment [x] by 1` phrase, and the DSL's own documented
-    `[x] = [x] + 1` retry-counter arithmetic (`NUMERIC_AND_RETRY_COUNTER_
-    SEMANTICS` in the text target's system prompt template — this is the
-    form real agent content actually uses, not the `increment` phrase) are
-    all resolved mechanically. Bare, unquoted prose (e.g. "the IANA
-    identifier derived from the reported city") is a computed assignment,
-    not a literal — the model is asked to actually perform the described
-    computation instead of storing the instruction text itself. A line
-    that isn't shaped like an assignment at all (most `DO` lines — tool-
-    argument hints, "TOOL CALL ONLY: call X now") is silently a no-op:
-    this function is safe to run over `DO` as well as `STORE`.
-    """
+        `increment [x] by 1` phrase, and the DSL's own documented
+        `[x] = [x] + 1` retry-counter arithmetic (`NUMERIC_AND_RETRY_COUNTER_
+        SEMANTICS` in the text target's system prompt template — this is the
+        form real agent content actually uses, not the `increment` phrase) are
+        all resolved mechanically. Bare, unquoted prose (e.g. "the IANA
+        identifier derived from the reported city") is a computed assignment,
+        not a literal — the model is asked to actually perform the described
+        computation instead of storing the instruction text itself. A line
+        that isn't shaped like an assignment at all (most `DO` lines — tool-
+        argument hints, "TOOL CALL ONLY: call X now") is silently a no-op:
+        this function is safe to run over `DO` as well as `STORE`.
+
+    Parameters:
+        line: Description.
+        ctx: Description.
+        llm_client: Description.
+
+    Returns:
+        The result.
+"""
     slots = ctx.slots
     match = _STORE_INCREMENT_RE.match(line.strip())
     if match:
@@ -197,24 +207,41 @@ _COMPARISON_VERB_RE = re.compile(r"^(compare|validate|check|ensure|verify|confir
 
 
 def _is_recognized_mutation_line(line: str) -> bool:
-    """True for a DO/STORE line `_apply_store_line` already resolves mechanically."""
+    """
+True for a DO/STORE line `_apply_store_line` already resolves mechanically.
+
+    Parameters:
+        line: Description.
+
+    Returns:
+        The result.
+"""
     stripped = line.strip()
     return bool(_STORE_INCREMENT_RE.match(stripped) or _STORE_ASSIGN_RE.match(stripped))
 
 
 def _is_comparison_only_line(line: str) -> bool:
-    """True for a DO line that only describes a comparison/validation check —
+    """
+True for a DO line that only describes a comparison/validation check —
+
     almost always context for a sibling `eval: "llm"` ROUTE condition, not an
-    instruction to change the slot(s) it names (2026-09-17, found live: `SC_DEC_D`'s
-    `"Compare [day] only against the start_local dates in [available_slots]. Do not
-    accept approximate, inferred, or unlisted days."` was fed to `_apply_conditional_
-    mutations` as if it might be updating `[day]`/`[available_slots]` — the model
-    obliged, overwriting `available_slots` (a list of real appointment objects) with
-    an arbitrary string, corrupting state a sibling node then rendered straight into
-    a user-facing message. A mechanical exclusion on the line's leading verb is a
-    safe, narrow guard for this exact shape — a false negative here just means the
-    line falls back to being judged by the LLM call below, same as before this
-    existed; it can never cause a *new* false positive."""
+        instruction to change the slot(s) it names (2026-09-17, found live: `SC_DEC_D`'s
+        `"Compare [day] only against the start_local dates in [available_slots]. Do not
+        accept approximate, inferred, or unlisted days."` was fed to `_apply_conditional_
+        mutations` as if it might be updating `[day]`/`[available_slots]` — the model
+        obliged, overwriting `available_slots` (a list of real appointment objects) with
+        an arbitrary string, corrupting state a sibling node then rendered straight into
+        a user-facing message. A mechanical exclusion on the line's leading verb is a
+        safe, narrow guard for this exact shape — a false negative here just means the
+        line falls back to being judged by the LLM call below, same as before this
+        existed; it can never cause a *new* false positive.
+
+    Parameters:
+        line: Description.
+
+    Returns:
+        The result.
+"""
     return bool(_COMPARISON_VERB_RE.match(line.strip()))
 
 
@@ -223,39 +250,49 @@ def _apply_conditional_mutations(
     ctx: LLMContext,
     llm_client: LLMClient,
 ) -> None:
-    """Resolve DO/STORE lines shaped as conditional prose ("If X, update Y") — a
-    third convention real content uses, distinct from `[slot] = value` (STORE's own
-    grammar) and `input_name = [slot]` (action-node tool-argument binding).
-
-    A mechanical parser cannot safely branch on free-text conditions like "if the
-    correction is about the name" or infer 'surrogacy' from "quiero alguien que
-    lleve a mi bebé" — those require the same real language understanding a
-    `question` node's own capture step already relies on. So there is no
-    mechanical pass here at all: any DO/STORE line that isn't a recognized literal
-    assignment (`_is_recognized_mutation_line`) but still names a `[slot]` goes
-    straight to one batched LLM call per node (never one call per line), covering
-    every slot any of that node's conditional lines mentions together — so the
-    model sees the full picture (e.g. SC_FIX's "name vs phone vs email vs date"
-    branches) against the single latest user message, the same way a human agent
-    reading all of them at once would. A line with no `[slot]` reference at all
-    (e.g. "TOOL CALL ONLY: call check_visa now.") is narrative, not a mutation,
-    and is left untouched — same as `_apply_store_line`'s existing behavior.
-
-    The schema is keyed by *slot*, not by line, each with its own boolean
-    `applies` gate — deliberately finer-grained than gating per instruction
-    line: real content bundles independent per-slot conditions into one line
-    ("If the correction is the name, update [c_name]; the phone, [c_phone]; "
-    "the email, [c_email]." is three conditions, not one), so a per-line gate
-    still forced the model to invent a value for a slot whose own condition
-    didn't hold, just because a sibling slot's condition on the same line did.
-    A flat, ungated schema was tried even before that and asked the model to
-    echo back every untouched slot's current value to signal "no change" —
-    which silently corrupted a slot whose real value is a list (e.g.
-    `available_slots`, a list of appointment objects) into `null`, since the
-    schema's scalar-only types gave the model no way to reproduce a list.
-    Gating per slot means a slot whose condition didn't fire is simply never
-    touched in `slots`, regardless of what type its current value is.
     """
+Resolve DO/STORE lines shaped as conditional prose ("If X, update Y") — a
+
+    third convention real content uses, distinct from `[slot] = value` (STORE's own
+        grammar) and `input_name = [slot]` (action-node tool-argument binding).
+
+        A mechanical parser cannot safely branch on free-text conditions like "if the
+        correction is about the name" or infer 'surrogacy' from "quiero alguien que
+        lleve a mi bebé" — those require the same real language understanding a
+        `question` node's own capture step already relies on. So there is no
+        mechanical pass here at all: any DO/STORE line that isn't a recognized literal
+        assignment (`_is_recognized_mutation_line`) but still names a `[slot]` goes
+        straight to one batched LLM call per node (never one call per line), covering
+        every slot any of that node's conditional lines mentions together — so the
+        model sees the full picture (e.g. SC_FIX's "name vs phone vs email vs date"
+        branches) against the single latest user message, the same way a human agent
+        reading all of them at once would. A line with no `[slot]` reference at all
+        (e.g. "TOOL CALL ONLY: call check_visa now.") is narrative, not a mutation,
+        and is left untouched — same as `_apply_store_line`'s existing behavior.
+
+        The schema is keyed by *slot*, not by line, each with its own boolean
+        `applies` gate — deliberately finer-grained than gating per instruction
+        line: real content bundles independent per-slot conditions into one line
+        ("If the correction is the name, update [c_name]; the phone, [c_phone]; "
+        "the email, [c_email]." is three conditions, not one), so a per-line gate
+        still forced the model to invent a value for a slot whose own condition
+        didn't hold, just because a sibling slot's condition on the same line did.
+        A flat, ungated schema was tried even before that and asked the model to
+        echo back every untouched slot's current value to signal "no change" —
+        which silently corrupted a slot whose real value is a list (e.g.
+        `available_slots`, a list of appointment objects) into `null`, since the
+        schema's scalar-only types gave the model no way to reproduce a list.
+        Gating per slot means a slot whose condition didn't fire is simply never
+        touched in `slots`, regardless of what type its current value is.
+
+    Parameters:
+        lines: Description.
+        ctx: Description.
+        llm_client: Description.
+
+    Returns:
+        The result.
+"""
     conditional_lines = [
         line
         for line in lines
@@ -334,7 +371,15 @@ def _literal_members(type_expr: str) -> list[str] | None:
 
 
 def _json_schema_type(type_expr: str) -> dict[str, Any]:
-    """Map a `type_expr` to a nullable JSON-Schema property (OpenAI Structured Outputs)."""
+    """
+Map a `type_expr` to a nullable JSON-Schema property (OpenAI Structured Outputs).
+
+    Parameters:
+        type_expr: Description.
+
+    Returns:
+        The result.
+"""
     members = _literal_members(type_expr)
     if members:
         return {"type": ["string", "null"], "enum": [*members, None]}
@@ -359,21 +404,30 @@ def _llm_extract_capture(
     capture: list[tuple[str, str]],
     ctx: LLMContext,
 ) -> dict[str, Any]:
-    """Ask the model to extract the declared capture slots from the user's reply.
+    """
+Ask the model to extract the declared capture slots from the user's reply.
 
     Takes the shared `LLMContext` (2026-09-17) rather than its own hand-picked
-    parameter list — this call site was found live missing `slots` (a `free_text`
-    capture like `[day]` has no way to normalize "el 22" against the real dates in
-    `[available_slots]` without seeing it) the same way an earlier pass found it
-    missing `history`; bundling every decision call onto one context type is the
-    fix for that entire *class* of gap, not just this one instance of it.
+        parameter list — this call site was found live missing `slots` (a `free_text`
+        capture like `[day]` has no way to normalize "el 22" against the real dates in
+        `[available_slots]` without seeing it) the same way an earlier pass found it
+        missing `history`; bundling every decision call onto one context type is the
+        fix for that entire *class* of gap, not just this one instance of it.
 
-    `ctx.goal`/`ctx.do` carry the DSL's own normalization instructions (e.g. two
-    enum members that must stay distinct categories, not synonyms) — that guidance
-    only exists there, nowhere else. `ctx.pending_question` is the question this
-    reply is answering. `ctx.policies` (2026-09-18) is the artifact's
-    `judgment_policies` — see `LLMContext`'s own docstring.
-    """
+        `ctx.goal`/`ctx.do` carry the DSL's own normalization instructions (e.g. two
+        enum members that must stay distinct categories, not synonyms) — that guidance
+        only exists there, nowhere else. `ctx.pending_question` is the question this
+        reply is answering. `ctx.policies` (2026-09-18) is the artifact's
+        `judgment_policies` — see `LLMContext`'s own docstring.
+
+    Parameters:
+        llm_client: Description.
+        capture: Description.
+        ctx: Description.
+
+    Returns:
+        The result.
+"""
     context_lines = "\n".join(ctx.goal + ctx.do)
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
     prompt = (
@@ -390,21 +444,29 @@ def _llm_extract_capture(
 
 
 def _coerce_value(value: Any, type_expr: str) -> Any:
-    """Best-effort coercion of a value against its declared type_expr.
+    """
+Best-effort coercion of a value against its declared type_expr.
 
     Two callers (2026-09-17): a question node's capture extraction (the
-    original use — an LLM-extracted value against its `capture` schema type),
-    and `_bind_tool_inputs` (a mechanically-resolved tool argument against
-    its *contract's own* declared type) — found live: `book_appointment`'s
-    `duration` input is declared `type_expr: "int"`, bound mechanically from
-    `<APPOINTMENT_DURATION_MINUTES>` (a compile-time constant `initial_slots()`
-    coerces to a real Python `int`), but the actual backend's Pydantic schema
-    expects a JSON string (`HTTP 422: "Input should be a valid string"`) — a
-    real mismatch between the tool's declared contract type and its backend's
-    real wire shape, silently untyped because mechanical binding (unlike the
-    LLM-fallback path, which gets JSON-schema type enforcement for free) never
-    coerced its resolved value against anything at all.
-    """
+        original use — an LLM-extracted value against its `capture` schema type),
+        and `_bind_tool_inputs` (a mechanically-resolved tool argument against
+        its *contract's own* declared type) — found live: `book_appointment`'s
+        `duration` input is declared `type_expr: "int"`, bound mechanically from
+        `<APPOINTMENT_DURATION_MINUTES>` (a compile-time constant `initial_slots()`
+        coerces to a real Python `int`), but the actual backend's Pydantic schema
+        expects a JSON string (`HTTP 422: "Input should be a valid string"`) — a
+        real mismatch between the tool's declared contract type and its backend's
+        real wire shape, silently untyped because mechanical binding (unlike the
+        LLM-fallback path, which gets JSON-schema type enforcement for free) never
+        coerced its resolved value against anything at all.
+
+    Parameters:
+        value: Description.
+        type_expr: Description.
+
+    Returns:
+        The result.
+"""
     if value is None:
         return None
     parsed = classify_type_expr(type_expr)
@@ -478,20 +540,27 @@ def _format_date_human(date_parts: _DateParts, language_code: str | None) -> str
 
 
 def _captured_string_values(slots: dict[str, Any]) -> list[str]:
-    """Non-empty string values of `slots`, excluding compile-time constants.
+    """
+Non-empty string values of `slots`, excluding compile-time constants.
 
     A constant (`RuntimeArtifact.constants`, seeded into `slots` under its
-    exact `UPPER_SNAKE_CASE` name — the same naming convention `_CONST_REF_RE`
-    already relies on) never represents anything the user said, so it must
-    never be treated as a candidate "the user already picked this date"
-    signal. Found live (2026-09-17): `PROCESS_DURATION_MONTHS` (value `"24"`)
-    was picked up by the day-of-month heuristic below as if the user had
-    already chosen the 24th, before `[day]` was ever asked, silently
-    filtering `SC_DAYS`'s very first display down to one wrong day's times.
-    Excluding every all-uppercase-named slot closes the whole category, not
-    just this one constant — any future constant with a short numeric value
-    has the same latent risk.
-    """
+        exact `UPPER_SNAKE_CASE` name — the same naming convention `_CONST_REF_RE`
+        already relies on) never represents anything the user said, so it must
+        never be treated as a candidate "the user already picked this date"
+        signal. Found live (2026-09-17): `PROCESS_DURATION_MONTHS` (value `"24"`)
+        was picked up by the day-of-month heuristic below as if the user had
+        already chosen the 24th, before `[day]` was ever asked, silently
+        filtering `SC_DAYS`'s very first display down to one wrong day's times.
+        Excluding every all-uppercase-named slot closes the whole category, not
+        just this one constant — any future constant with a short numeric value
+        has the same latent risk.
+
+    Parameters:
+        slots: Description.
+
+    Returns:
+        The result.
+"""
     return [
         value
         for name, value in slots.items()
@@ -500,20 +569,28 @@ def _captured_string_values(slots: dict[str, Any]) -> list[str]:
 
 
 def _find_selected_date(slots: dict[str, Any], candidate_dates: set[_DateParts]) -> _DateParts | None:
-    """Does an already-captured slot name one of `candidate_dates`?
+    """
+Does an already-captured slot name one of `candidate_dates`?
 
     Two passes, most reliable first: (1) a slot whose value is itself an
-    ISO date string exactly matching one candidate, (2) only when that
-    finds nothing, a slot whose value contains a standalone 1-2 digit
-    number matching exactly one candidate's day-of-month — a `free_text`
-    capture like `[day]` (e.g. "el 22") is never guaranteed to be
-    ISO-normalized, so this loose fallback is what actually fires for real
-    content; it only ever acts when the day-of-month is unambiguous among
-    the dates on offer, so a coincidental number elsewhere (a retry count,
-    a phone digit run — `\\b` never matches inside one) can't misfire into
-    a wrong single-day filter. Both passes only ever look at real captured
-    slots (`_captured_string_values`), never compile-time constants.
-    """
+        ISO date string exactly matching one candidate, (2) only when that
+        finds nothing, a slot whose value contains a standalone 1-2 digit
+        number matching exactly one candidate's day-of-month — a `free_text`
+        capture like `[day]` (e.g. "el 22") is never guaranteed to be
+        ISO-normalized, so this loose fallback is what actually fires for real
+        content; it only ever acts when the day-of-month is unambiguous among
+        the dates on offer, so a coincidental number elsewhere (a retry count,
+        a phone digit run — `\b` never matches inside one) can't misfire into
+        a wrong single-day filter. Both passes only ever look at real captured
+        slots (`_captured_string_values`), never compile-time constants.
+
+    Parameters:
+        slots: Description.
+        candidate_dates: Description.
+
+    Returns:
+        The result.
+"""
     values = _captured_string_values(slots)
 
     for value in values:
@@ -534,27 +611,36 @@ def _find_selected_date(slots: dict[str, Any], candidate_dates: set[_DateParts])
 
 
 def _format_appointment_list(items: list[dict[str, Any]], slots: dict[str, Any], language_code: str | None) -> str:
-    """Format a `[slot]`-shaped list of appointment objects for display.
+    """
+Format a `[slot]`-shaped list of appointment objects for display.
 
     The root-cause fix (2026-09-17) for `SC_DAYS`/`SC_HOURS` dumping the
-    same raw `start - end; start - end` text regardless of what the DSL's
-    own `goal:` asked for ("use only the date part", "filter by [day] and
-    use only the time part") — those instructions described a real data
-    transformation that no code ever executed, since a `say_verbatim: true`
-    block (required here — real appointment data must never be
-    paraphrased) never goes through the LLM at all. Mechanical and
-    deterministic by design: this is live booking data, zero hallucination
-    risk is worth more than handling every possible shape.
+        same raw `start - end; start - end` text regardless of what the DSL's
+        own `goal:` asked for ("use only the date part", "filter by [day] and
+        use only the time part") — those instructions described a real data
+        transformation that no code ever executed, since a `say_verbatim: true`
+        block (required here — real appointment data must never be
+        paraphrased) never goes through the LLM at all. Mechanical and
+        deterministic by design: this is live booking data, zero hallucination
+        risk is worth more than handling every possible shape.
 
-    Detects which transformation to apply generically, from data already
-    on hand — no new DSL syntax, no hardcoded slot/agent names (chosen
-    directly, 2026-09-17): if some other already-captured slot names one of
-    this list's dates (`_find_selected_date`), show only that date's times;
-    otherwise show the distinct dates on offer. The same mechanism serves
-    both `SC_DAYS` (asked before `[day]` exists — no match, shows dates)
-    and `SC_HOURS` (asked after `[day]` is captured — matches, shows
-    times) without either node needing its own code path.
-    """
+        Detects which transformation to apply generically, from data already
+        on hand — no new DSL syntax, no hardcoded slot/agent names (chosen
+        directly, 2026-09-17): if some other already-captured slot names one of
+        this list's dates (`_find_selected_date`), show only that date's times;
+        otherwise show the distinct dates on offer. The same mechanism serves
+        both `SC_DAYS` (asked before `[day]` exists — no match, shows dates)
+        and `SC_HOURS` (asked after `[day]` is captured — matches, shows
+        times) without either node needing its own code path.
+
+    Parameters:
+        items: Description.
+        slots: Description.
+        language_code: Description.
+
+    Returns:
+        The result.
+"""
     dated_items: list[tuple[_DateParts, str | None]] = []
     for item in items:
         start = _appointment_datetime(item)
@@ -588,28 +674,38 @@ def _format_appointment_list(items: list[dict[str, Any]], slots: dict[str, Any],
 
 
 def _interpolate_slots(text: str, slots: dict[str, Any], language_code: str | None = None) -> str:
-    """Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
+    """
+Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
+
     their current value.
 
-    Real content authors both forms in `say:` blocks — `[slot]` for a
-    captured value, `<CONSTANT>` for a compile-time constant like
-    `<AGENT_NAME>`/`<COMPANY_NAME>`/`<PROCESS_DURATION_MONTHS>` — but this
-    function only ever substituted the first (2026-09-17: found live,
-    `<AGENT_NAME>` etc. showed up literally, unresolved, in every real
-    conversation this whole session). `initial_slots()` already seeds every
-    compile-time constant into `slots` under its exact uppercase name
-    (`RuntimeArtifact.constants`, needed for `MAX_RETRY_ATTEMPTS`-style
-    retry-limit conditions to `eval()` at all) — the constant's *value* was
-    always one dict lookup away, `_interpolate_slots` just never looked.
+        Real content authors both forms in `say:` blocks — `[slot]` for a
+        captured value, `<CONSTANT>` for a compile-time constant like
+        `<AGENT_NAME>`/`<COMPANY_NAME>`/`<PROCESS_DURATION_MONTHS>` — but this
+        function only ever substituted the first (2026-09-17: found live,
+        `<AGENT_NAME>` etc. showed up literally, unresolved, in every real
+        conversation this whole session). `initial_slots()` already seeds every
+        compile-time constant into `slots` under its exact uppercase name
+        (`RuntimeArtifact.constants`, needed for `MAX_RETRY_ATTEMPTS`-style
+        retry-limit conditions to `eval()` at all) — the constant's *value* was
+        always one dict lookup away, `_interpolate_slots` just never looked.
 
-    A name missing from `slots` is left as its original bracket token
-    (either form) rather than silently blanked, so a real gap stays visible
-    instead of disappearing.
+        A name missing from `slots` is left as its original bracket token
+        (either form) rather than silently blanked, so a real gap stays visible
+        instead of disappearing.
 
-    `language_code` (2026-09-17) only matters for a list-of-appointment-
-    objects value's human-readable date formatting (`_format_appointment_
-    list`) — every other value renders the same regardless.
-    """
+        `language_code` (2026-09-17) only matters for a list-of-appointment-
+        objects value's human-readable date formatting (`_format_appointment_
+        list`) — every other value renders the same regardless.
+
+    Parameters:
+        text: Description.
+        slots: Description.
+        language_code: Description.
+
+    Returns:
+        The result.
+"""
 
     def _format_value(value: Any) -> str:
         if isinstance(value, list) and value and isinstance(value[0], dict):
@@ -628,7 +724,15 @@ def _interpolate_slots(text: str, slots: dict[str, Any], language_code: str | No
 def _make_render_say(
     llm_client: LLMClient,
 ) -> Callable[[str, list[str], bool, str | None, dict[str, Any], list[str] | None], str]:
-    """Build a `say`-rendering function."""
+    """
+Build a `say`-rendering function.
+
+    Parameters:
+        llm_client: Description.
+
+    Returns:
+        The result.
+"""
 
     def render_say(
         node_id: str,
@@ -638,34 +742,46 @@ def _make_render_say(
         slots: dict[str, Any],
         policies: list[str] | None = None,
     ) -> str:
-        """Render a `say` block, paraphrased naturally in the caller's language via the LLM.
+            """
+Render a `say` block, paraphrased naturally in the caller's language via the LLM.
 
-        `say_verbatim: true` blocks are never touched — that flag exists
-        specifically to forbid paraphrasing legally-sensitive copy. Every
-        other block is paraphrased on every render, deliberately never
-        cached: the point (2026-09-16, requested directly — real content
-        was reading as scripted and repetitive, especially a question
-        re-asked verbatim after a failed capture) is that the same node
-        visited twice sounds like a person rephrasing, not a script
-        replaying, so a cache that returned the same rendering for the
-        same node would defeat that on exactly the retry-loop case this
-        was meant to fix. Previously this instructed the model to "return
-        it unchanged" if already in the target language, which is the
-        wording that produced the scripted-repeat feel in the first place.
+    `say_verbatim: true` blocks are never touched — that flag exists
+            specifically to forbid paraphrasing legally-sensitive copy. Every
+            other block is paraphrased on every render, deliberately never
+            cached: the point (2026-09-16, requested directly — real content
+            was reading as scripted and repetitive, especially a question
+            re-asked verbatim after a failed capture) is that the same node
+            visited twice sounds like a person rephrasing, not a script
+            replaying, so a cache that returned the same rendering for the
+            same node would defeat that on exactly the retry-loop case this
+            was meant to fix. Previously this instructed the model to "return
+            it unchanged" if already in the target language, which is the
+            wording that produced the scripted-repeat feel in the first place.
 
-        Passes `temperature=1.0` explicitly (2026-09-17) — `complete()`'s
-        own default is `0.0`, correct for every other caller's factual
-        judgment calls, but wrong here: a paraphrase call at temperature 0
-        tends toward the single most-likely rewording, which is exactly
-        the boring, repetitive sameness this function exists to avoid.
+            Passes `temperature=1.0` explicitly (2026-09-17) — `complete()`'s
+            own default is `0.0`, correct for every other caller's factual
+            judgment calls, but wrong here: a paraphrase call at temperature 0
+            tends toward the single most-likely rewording, which is exactly
+            the boring, repetitive sameness this function exists to avoid.
 
-        `policies` (2026-09-18) is the artifact's pre-filtered `say_policies`
-        list (`targets/langgraph/runtime_artifact.py` — `compliance_and_
-        scope_rules` + `data_and_variable_rules`, decided at compile time,
-        not here). Only the `message`/`terminal` call site in `_make_node_fn`
-        passes it for now; `question` phrasing and the global-router's
-        matched-handler/FAQ `say` still render without it.
-        """
+            `policies` (2026-09-18) is the artifact's pre-filtered `say_policies`
+            list (`targets/langgraph/runtime_artifact.py` — `compliance_and_
+            scope_rules` + `data_and_variable_rules`, decided at compile time,
+            not here). Only the `message`/`terminal` call site in `_make_node_fn`
+            passes it for now; `question` phrasing and the global-router's
+            matched-handler/FAQ `say` still render without it.
+
+    Parameters:
+        node_id: Description.
+        say: Description.
+        say_verbatim: Description.
+        language_code: Description.
+        slots: Description.
+        policies: Description.
+
+    Returns:
+        The result.
+    """
         raw = _interpolate_slots("\n".join(say), slots, language_code)
         if say_verbatim:
             return raw
@@ -698,19 +814,27 @@ def _make_render_say(
 
 
 def _matches(value: Any, predicate_name: str) -> bool:
-    """Implement the `MATCHES <predicate>` operator for compiled conditions.
+    """
+Implement the `MATCHES <predicate>` operator for compiled conditions.
 
     `condition_parser.classify_rule` already refuses to mark a `MATCHES`
-    condition mechanical unless `predicate_name` is a registered key in
-    `NAMED_PREDICATES` (`targets/langgraph/condition_parser.py`) — this
-    function is the runtime counterpart that was missing entirely until
-    now: `_EVAL_BUILTINS` never included `_matches`, so a condition
-    correctly classified as mechanical (e.g. real content's
-    `[document_number] MATCHES numeric_string_without_spaces_or_punctuation`)
-    raised `NameError` at eval() time, silently swallowed by
-    `resolve_edges`'s `except Exception: continue` — the edge could never
-    actually match, regardless of the captured value.
-    """
+        condition mechanical unless `predicate_name` is a registered key in
+        `NAMED_PREDICATES` (`targets/langgraph/condition_parser.py`) — this
+        function is the runtime counterpart that was missing entirely until
+        now: `_EVAL_BUILTINS` never included `_matches`, so a condition
+        correctly classified as mechanical (e.g. real content's
+        `[document_number] MATCHES numeric_string_without_spaces_or_punctuation`)
+        raised `NameError` at eval() time, silently swallowed by
+        `resolve_edges`'s `except Exception: continue` — the edge could never
+        actually match, regardless of the captured value.
+
+    Parameters:
+        value: Description.
+        predicate_name: Description.
+
+    Returns:
+        The result.
+"""
     pattern = NAMED_PREDICATES.get(predicate_name)
     if pattern is None or value is None:
         return False
@@ -753,7 +877,17 @@ def _llm_pick_condition(
     candidates: list[GraphEdge],
     ctx: LLMContext,
 ) -> GraphEdge | None:
-    """Ask the model which (if any) of the non-mechanical route conditions applies."""
+    """
+Ask the model which (if any) of the non-mechanical route conditions applies.
+
+    Parameters:
+        llm_client: Description.
+        candidates: Description.
+        ctx: Description.
+
+    Returns:
+        The result.
+"""
     numbered = "\n".join(f"{i}. {edge.condition_text}" for i, edge in enumerate(candidates))
     context_lines = "\n".join(ctx.goal + ctx.do)
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
@@ -783,34 +917,42 @@ _SEGMENT_SPLIT_RE = re.compile(r",\s*|\.(?=\s|$)")
 
 
 def _extract_mechanical_arg_bindings(do_lines: list[str], slots: dict[str, Any]) -> dict[str, Any]:
-    """Parse `DO` lines for `input_name = <value>` tool-argument hints.
+    """
+Parse `DO` lines for `input_name = <value>` tool-argument hints.
 
     The bare-left-hand-side counterpart to `_apply_store_line`'s
-    `[slot] = ...` grammar: `input_name` here is deliberately NOT
-    bracketed (it names a tool input, not a memory slot). Real content
-    often crams several of these into one line
-    (`"contact_name = [c_name], contact_email = [c_email]."`), so each
-    line is split into candidate segments; only segments whose right-hand
-    side is a pure `[slot]` reference, a `[slot].field` attribute access,
-    a `<CONSTANT>`, or a quoted literal resolve here — anything else (a
-    described transformation or derivation) is left for the LLM fallback.
+        `[slot] = ...` grammar: `input_name` here is deliberately NOT
+        bracketed (it names a tool input, not a memory slot). Real content
+        often crams several of these into one line
+        (`"contact_name = [c_name], contact_email = [c_email]."`), so each
+        line is split into candidate segments; only segments whose right-hand
+        side is a pure `[slot]` reference, a `[slot].field` attribute access,
+        a `<CONSTANT>`, or a quoted literal resolve here — anything else (a
+        described transformation or derivation) is left for the LLM fallback.
 
-    Splits only on a comma, or a period followed by whitespace/end-of-line
-    (2026-09-17, found live) — not on every period. The original
-    `[.,]`-only split broke real content shaped `"event_id = [app].
-    event_id"` (`AM_DO_CANCEL`/`AM_DO_RESCHED`, `[app]` a captured
-    appointment *object*, not a scalar): it chopped the line into
-    `"event_id = [app]"` and `"event_id"`, so the first segment
-    mechanically bound `event_id` to the *entire* `[app]` dict instead of
-    its `event_id` field — a wrong-shaped value silently reaching
-    `cancel_appointment`/`edit_appointment`, the same "mechanical pass
-    resolves confidently to the wrong thing" failure mode as the untyped
-    `duration` bug, just via the line-splitting step instead of missing
-    type coercion. A dot immediately followed by an identifier character
-    (no space) is attribute access, part of the same segment; a dot
-    followed by whitespace or the end of the line is a sentence/clause
-    boundary, same as before.
-    """
+        Splits only on a comma, or a period followed by whitespace/end-of-line
+        (2026-09-17, found live) — not on every period. The original
+        `[.,]`-only split broke real content shaped `"event_id = [app].
+        event_id"` (`AM_DO_CANCEL`/`AM_DO_RESCHED`, `[app]` a captured
+        appointment *object*, not a scalar): it chopped the line into
+        `"event_id = [app]"` and `"event_id"`, so the first segment
+        mechanically bound `event_id` to the *entire* `[app]` dict instead of
+        its `event_id` field — a wrong-shaped value silently reaching
+        `cancel_appointment`/`edit_appointment`, the same "mechanical pass
+        resolves confidently to the wrong thing" failure mode as the untyped
+        `duration` bug, just via the line-splitting step instead of missing
+        type coercion. A dot immediately followed by an identifier character
+        (no space) is attribute access, part of the same segment; a dot
+        followed by whitespace or the end of the line is a sentence/clause
+        boundary, same as before.
+
+    Parameters:
+        do_lines: Description.
+        slots: Description.
+
+    Returns:
+        The result.
+"""
     bindings: dict[str, Any] = {}
     for line in do_lines:
         for segment in _SEGMENT_SPLIT_RE.split(line.strip()):
@@ -828,19 +970,27 @@ def _extract_mechanical_arg_bindings(do_lines: list[str], slots: dict[str, Any])
 
 
 def _arg_names_mentioned(do_lines: list[str]) -> set[str]:
-    """Every argument name a `DO` line assigns to, whether or not the mechanical
+    """
+Every argument name a `DO` line assigns to, whether or not the mechanical
+
     pass could resolve its right-hand side (2026-09-21).
 
-    `_bind_tool_inputs` used to only send *required* fields to the LLM
-    fallback — but a `DO` line can name a field the tool contract marks
-    optional (`find_appointment`'s `contact_name`/`contact_email`, bound via
-    `"contact_name = [name] ?? {{contact.name}}"`, a compound RHS the
-    mechanical pass can't resolve). Optional-and-unresolved silently meant
-    "never even try the LLM fallback" — the DSL author's explicit DO
-    instruction for that field was just dropped. This only widens which
-    fields get a chance at the LLM fallback; it never changes what a field
-    the DO text never mentions does (still untouched, same as before).
-    """
+        `_bind_tool_inputs` used to only send *required* fields to the LLM
+        fallback — but a `DO` line can name a field the tool contract marks
+        optional (`find_appointment`'s `contact_name`/`contact_email`, bound via
+        `"contact_name = [name] ?? {{contact.name}}"`, a compound RHS the
+        mechanical pass can't resolve). Optional-and-unresolved silently meant
+        "never even try the LLM fallback" — the DSL author's explicit DO
+        instruction for that field was just dropped. This only widens which
+        fields get a chance at the LLM fallback; it never changes what a field
+        the DO text never mentions does (still untouched, same as before).
+
+    Parameters:
+        do_lines: Description.
+
+    Returns:
+        The result.
+"""
     names: set[str] = set()
     for line in do_lines:
         for segment in _SEGMENT_SPLIT_RE.split(line.strip()):
@@ -874,31 +1024,40 @@ def _llm_bind_tool_inputs(
     missing_fields: list[ToolContractField],
     ctx: LLMContext,
 ) -> dict[str, Any]:
-    """One batched call deriving every still-missing required input's value.
+    """
+One batched call deriving every still-missing required input's value.
 
     Never one call per argument. Reuses the same JSON-Schema-per-field
-    shape `_capture_json_schema` builds for CAPTURE extraction, keyed by
-    each field's own `type_expr` — the tool-contract typing work already
-    done for real content pays for itself here.
+        shape `_capture_json_schema` builds for CAPTURE extraction, keyed by
+        each field's own `type_expr` — the tool-contract typing work already
+        done for real content pays for itself here.
 
-    Also passes each field's own `description`/`examples` from the tool
-    contract (2026-09-17, found missing while chasing a real reliability
-    issue: `check_visa`'s `nationalities` field is documented as accepting
-    "'USA', 'China, India', ['Spain', 'AFG']" — country names or ISO
-    codes — but this function only ever fed the model the DO line's own
-    wording and a bare JSON-Schema type, discarding that authored spec
-    entirely. Without it, deriving a country form from a reported
-    nationality (e.g. "venezolana" -> "VEN") sometimes just echoed the raw
-    captured wording back — the DO line alone doesn't tell the model what
-    the target format actually looks like, only that a conversion is
-    wanted).
+        Also passes each field's own `description`/`examples` from the tool
+        contract (2026-09-17, found missing while chasing a real reliability
+        issue: `check_visa`'s `nationalities` field is documented as accepting
+        "'USA', 'China, India', ['Spain', 'AFG']" — country names or ISO
+        codes — but this function only ever fed the model the DO line's own
+        wording and a bare JSON-Schema type, discarding that authored spec
+        entirely. Without it, deriving a country form from a reported
+        nationality (e.g. "venezolana" -> "VEN") sometimes just echoed the raw
+        captured wording back — the DO line alone doesn't tell the model what
+        the target format actually looks like, only that a conversion is
+        wanted).
 
-    `ctx.policies` (2026-09-18) is the artifact's `judgment_policies`
-    (`data_and_variable_rules` — "tool results are the only source",
-    "never invent availability", "don't mix service tools") — the one
-    place this LLM call could otherwise derive a plausible-looking but
-    fabricated argument value.
-    """
+        `ctx.policies` (2026-09-18) is the artifact's `judgment_policies`
+        (`data_and_variable_rules` — "tool results are the only source",
+        "never invent availability", "don't mix service tools") — the one
+        place this LLM call could otherwise derive a plausible-looking but
+        fabricated argument value.
+
+    Parameters:
+        llm_client: Description.
+        missing_fields: Description.
+        ctx: Description.
+
+    Returns:
+        The result.
+"""
     schema = {
         "type": "object",
         "properties": {f.name: _json_schema_type(f.type_expr or "str") for f in missing_fields},
@@ -935,27 +1094,36 @@ def _bind_tool_inputs(
     ctx: LLMContext,
     llm_client: LLMClient,
 ) -> dict[str, Any]:
-    """Resolve every declared tool input's value for one tool call.
+    """
+Resolve every declared tool input's value for one tool call.
 
     Three passes, mechanical before LLM — see this module's docstring:
-    (1) a slot already exists under the input's exact name, (2) the `DO`
-    argument-binding grammar (`_extract_mechanical_arg_bindings`), and
-    (3) one batched LLM call for whatever input is still missing after
-    both mechanical passes and is either required, or optional but named
-    by a `DO` line the mechanical pass couldn't fully resolve
-    (`_arg_names_mentioned` — see its own docstring).
+        (1) a slot already exists under the input's exact name, (2) the `DO`
+        argument-binding grammar (`_extract_mechanical_arg_bindings`), and
+        (3) one batched LLM call for whatever input is still missing after
+        both mechanical passes and is either required, or optional but named
+        by a `DO` line the mechanical pass couldn't fully resolve
+        (`_arg_names_mentioned` — see its own docstring).
 
-    Every resolved value is coerced against its own contract field's
-    `type_expr` before returning (2026-09-17, found live — see
-    `_coerce_value`'s docstring: a mechanically-bound value, unlike the
-    LLM-fallback path, previously never had its type checked against
-    anything at all, so a `str`-typed input silently reached the backend
-    as whatever raw type its source slot happened to hold).
+        Every resolved value is coerced against its own contract field's
+        `type_expr` before returning (2026-09-17, found live — see
+        `_coerce_value`'s docstring: a mechanically-bound value, unlike the
+        LLM-fallback path, previously never had its type checked against
+        anything at all, so a `str`-typed input silently reached the backend
+        as whatever raw type its source slot happened to hold).
 
-    `ctx.policies` only reaches the LLM fallback pass (3) — the mechanical
-    passes (1)/(2) copy a named slot or a literal `DO` binding verbatim,
-    nothing for a policy to guard against.
-    """
+        `ctx.policies` only reaches the LLM fallback pass (3) — the mechanical
+        passes (1)/(2) copy a named slot or a literal `DO` binding verbatim,
+        nothing for a policy to guard against.
+
+    Parameters:
+        contract_inputs: Description.
+        ctx: Description.
+        llm_client: Description.
+
+    Returns:
+        The result.
+"""
     slots = ctx.slots
     input_names = {f.name for f in contract_inputs}
     bound: dict[str, Any] = {name: slots[name] for name in input_names if name in slots}
@@ -997,18 +1165,28 @@ def _resolve_target(
     node_by_id: dict[str, GraphNode],
     resolve_edges: Callable[[list[GraphEdge], LLMContext], str | None],
 ) -> str:
-    """Resolve `node`'s next node id from ROUTE/FALLBACK, defaulting to `END`.
+    """
+Resolve `node`'s next node id from ROUTE/FALLBACK, defaulting to `END`.
 
     Shared by `_make_router_fn` (for every non-question node, dispatched via
-    `add_conditional_edges`) and `question` nodes' own `node_fn` (dispatched
-    via a `Command(goto=...)` instead — see this module's docstring on why
-    a question node must never also have `add_conditional_edges`
-    registered: LangGraph does not suppress those when a node returns a
-    `Command`, so both would fire and collide on the same state channel).
+        `add_conditional_edges`) and `question` nodes' own `node_fn` (dispatched
+        via a `Command(goto=...)` instead — see this module's docstring on why
+        a question node must never also have `add_conditional_edges`
+        registered: LangGraph does not suppress those when a node returns a
+        `Command`, so both would fire and collide on the same state channel).
 
-    `ctx` must already be built from `node`'s own `goal`/`do` — callers pass
-    the same `LLMContext` they used for this node's other decisions.
-    """
+        `ctx` must already be built from `node`'s own `goal`/`do` — callers pass
+        the same `LLMContext` they used for this node's other decisions.
+
+    Parameters:
+        node: Description.
+        ctx: Description.
+        node_by_id: Description.
+        resolve_edges: Description.
+
+    Returns:
+        The result.
+"""
     target = resolve_edges(node.route, ctx)
     if target is None:
         target = resolve_edges(node.fallback, ctx)
@@ -1037,19 +1215,36 @@ def _make_node_fn(
     say_policies: list[str] | None = None,
     judgment_policies: list[str] | None = None,
 ):
-    """Build one LangGraph node function for `node`.
+    """
+Build one LangGraph node function for `node`.
 
     `say_policies`/`judgment_policies` (2026-09-18) are the artifact's two
-    pre-filtered policy line lists (`targets/langgraph/runtime_artifact.py`),
-    split by call *purpose*, not node type: `say_policies` reaches every
-    `render_say` call this node makes (it takes its own explicit `policies`
-    argument, since it has no `ctx`); `judgment_policies` is set once, as
-    `policies=` on every `LLMContext` this function builds, so it reaches
-    `_llm_extract_capture`, `_apply_conditional_mutations`,
-    `_llm_compute_store_value`, `_llm_pick_condition` (via `resolve_edges`),
-    and `_llm_bind_tool_inputs` automatically — none of those five take a
-    `policies` parameter of their own; they read `ctx.policies`.
-    """
+        pre-filtered policy line lists (`targets/langgraph/runtime_artifact.py`),
+        split by call *purpose*, not node type: `say_policies` reaches every
+        `render_say` call this node makes (it takes its own explicit `policies`
+        argument, since it has no `ctx`); `judgment_policies` is set once, as
+        `policies=` on every `LLMContext` this function builds, so it reaches
+        `_llm_extract_capture`, `_apply_conditional_mutations`,
+        `_llm_compute_store_value`, `_llm_pick_condition` (via `resolve_edges`),
+        and `_llm_bind_tool_inputs` automatically — none of those five take a
+        `policies` parameter of their own; they read `ctx.policies`.
+
+    Parameters:
+        node: Description.
+        llm_client: Description.
+        router: Description.
+        node_by_id: Description.
+        render_say: Description.
+        resolve_edges: Description.
+        tool_executors: Description.
+        tool_input_fields: Description.
+        say_callback: Description.
+        say_policies: Description.
+        judgment_policies: Description.
+
+    Returns:
+        None.
+"""
     def node_fn(state: SessionState) -> Any:
         slots = dict(state["slots"])
         last_user_message = state.get("last_user_message", "")
@@ -1305,36 +1500,48 @@ def build_graph(
     say_callback: Callable[[str], None] = print,
     checkpointer: BaseCheckpointSaver | None = None,
 ) -> Any:
-    """Build and compile a real `langgraph.graph.StateGraph` for `artifact`.
+    """
+Build and compile a real `langgraph.graph.StateGraph` for `artifact`.
 
     Parameters:
-        artifact (RuntimeArtifact): The compiled graph bundle — from
-            `targets.langgraph.runtime_artifact.render_runtime_artifact(spec)`
-            at compile time, or `runtime_artifact_from_dict(json.load(f))`
-            when loaded from a `.json` file a backend swapped in.
-        llm_client (LLMClient): Isolates every model call this graph makes.
-        tools_base_url (str): Base URL every `action` node's tool executor
-            POSTs to (`{tools_base_url}/{tool_name}`).
-        tool_http_client: Optional `httpx.Client` shared by every generated
-            tool executor — inject a client with a `httpx.MockTransport`
-            in tests to avoid real network calls.
-        say_callback: Called with the rendered text of every `message` and
-            `terminal` node's `SAY` block (and every matched global-router
-            handler/FAQ's `SAY`). Defaults to `print`; inject a list-append
-            callback in tests instead.
-        checkpointer (BaseCheckpointSaver | None): Where session state
-            (`[current_state]`, captured slots, ...) is persisted between
-            turns. Defaults to `InMemorySaver()` — state is lost on process
-            restart, fine for tests and local exploration. A real deployment
-            serving live traffic across process restarts (or multiple
-            workers) must inject a real one (e.g.
-            `langgraph.checkpoint.sqlite.SqliteSaver`,
-            `langgraph.checkpoint.postgres.PostgresSaver`) — this function
-            never decides that policy itself.
+            artifact (RuntimeArtifact): The compiled graph bundle — from
+                `targets.langgraph.runtime_artifact.render_runtime_artifact(spec)`
+                at compile time, or `runtime_artifact_from_dict(json.load(f))`
+                when loaded from a `.json` file a backend swapped in.
+            llm_client (LLMClient): Isolates every model call this graph makes.
+            tools_base_url (str): Base URL every `action` node's tool executor
+                POSTs to (`{tools_base_url}/{tool_name}`).
+            tool_http_client: Optional `httpx.Client` shared by every generated
+                tool executor — inject a client with a `httpx.MockTransport`
+                in tests to avoid real network calls.
+            say_callback: Called with the rendered text of every `message` and
+                `terminal` node's `SAY` block (and every matched global-router
+                handler/FAQ's `SAY`). Defaults to `print`; inject a list-append
+                callback in tests instead.
+            checkpointer (BaseCheckpointSaver | None): Where session state
+                (`[current_state]`, captured slots, ...) is persisted between
+                turns. Defaults to `InMemorySaver()` — state is lost on process
+                restart, fine for tests and local exploration. A real deployment
+                serving live traffic across process restarts (or multiple
+                workers) must inject a real one (e.g.
+                `langgraph.checkpoint.sqlite.SqliteSaver`,
+                `langgraph.checkpoint.postgres.PostgresSaver`) — this function
+                never decides that policy itself.
+
+        Returns:
+            A compiled LangGraph graph, checkpointed per `checkpointer` above.
+
+    Parameters:
+        artifact: Description.
+        llm_client: Description.
+        tools_base_url: Description.
+        tool_http_client: Description.
+        say_callback: Description.
+        checkpointer: Description.
 
     Returns:
-        A compiled LangGraph graph, checkpointed per `checkpointer` above.
-    """
+        The result.
+"""
     agent_graph = artifact.graph
     node_by_id = {n.node_id: n for n in agent_graph.nodes}
     router = artifact.global_router
@@ -1379,14 +1586,21 @@ def build_graph(
 
 
 def initial_slots(artifact: RuntimeArtifact) -> dict[str, Any]:
-    """Seed constants (e.g. `MAX_RETRY_ATTEMPTS`) and the [current_state] slot.
+    """
+Seed constants (e.g. `MAX_RETRY_ATTEMPTS`) and the [current_state] slot.
 
     Without this, every retry-limit check referencing a constant would
-    raise `NameError` inside `_resolve_edges`'s `eval()` and silently never
-    match. [current_state] (2026-10-20) is seeded as an empty string so
-    registration nodes can reference it (e.g. `[resume_state] = [current_state]`)
-    even before the first question is reached.
-    """
+        raise `NameError` inside `_resolve_edges`'s `eval()` and silently never
+        match. [current_state] (2026-10-20) is seeded as an empty string so
+        registration nodes can reference it (e.g. `[resume_state] = [current_state]`)
+        even before the first question is reached.
+
+    Parameters:
+        artifact: Description.
+
+    Returns:
+        The result.
+"""
     slots = {name: _coerce_constant(value) for name, value in artifact.constants.items()}
     slots["current_state"] = ""
     return slots
@@ -1398,29 +1612,39 @@ def fresh_state(
     seed_history: list[str] | None = None,
     seed_last_user_message: str | None = None,
 ) -> SessionState:
-    """Build the initial `SessionState` for a brand-new conversation.
+    """
+Build the initial `SessionState` for a brand-new conversation.
 
     `contact` (2026-09-21) is the session's known CRM contact fields (e.g.
-    `{"name": ..., "email": ..., "phone": ..., "language": ...}`), matching
-    whatever `input_variables.yaml` declares under `contact.*` for this
-    agent. Optional and defaults to `{}` — an agent whose DO/ROUTE/SAY text
-    never references `{{contact.X}}` is unaffected either way; one that
-    does simply sees every such reference as unresolved/unknown until a
-    caller supplies real values here.
+        `{"name": ..., "email": ..., "phone": ..., "language": ...}`), matching
+        whatever `input_variables.yaml` declares under `contact.*` for this
+        agent. Optional and defaults to `{}` — an agent whose DO/ROUTE/SAY text
+        never references `{{contact.X}}` is unaffected either way; one that
+        does simply sees every such reference as unresolved/unknown until a
+        caller supplies real values here.
 
-    `seed_history`/`seed_last_user_message` (2026-09-25) let a caller give
-    the very first node some context before anything has actually happened
-    in the conversation -- the gap that broke `eval: "llm"` gates shaped
-    like an outbound-call agent's "was the call answered?" decision: on a
-    genuinely fresh state `history` is `[]`, so `_llm_pick_condition` has
-    zero evidence and reliably answers `NONE`, taking the "not answered"
-    fallback before the agent ever gets to speak. Both default to the old
-    empty values, so every existing caller is unaffected. Neither is
-    interpreted here -- a caller decides what "the call connected" or "the
-    user already said X" looks like as plain history lines (e.g.
-    `f"user: {text}"`), since that phrasing is a harness/UI concern, not
-    part of the compiled agent.
-    """
+        `seed_history`/`seed_last_user_message` (2026-09-25) let a caller give
+        the very first node some context before anything has actually happened
+        in the conversation -- the gap that broke `eval: "llm"` gates shaped
+        like an outbound-call agent's "was the call answered?" decision: on a
+        genuinely fresh state `history` is `[]`, so `_llm_pick_condition` has
+        zero evidence and reliably answers `NONE`, taking the "not answered"
+        fallback before the agent ever gets to speak. Both default to the old
+        empty values, so every existing caller is unaffected. Neither is
+        interpreted here -- a caller decides what "the call connected" or "the
+        user already said X" looks like as plain history lines (e.g.
+        `f"user: {text}"`), since that phrasing is a harness/UI concern, not
+        part of the compiled agent.
+
+    Parameters:
+        artifact: Description.
+        contact: Description.
+        seed_history: Description.
+        seed_last_user_message: Description.
+
+    Returns:
+        The result.
+"""
     from agent_compiler.runtime.session_resolver import now_iso
 
     return {
