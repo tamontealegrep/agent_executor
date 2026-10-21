@@ -1,19 +1,21 @@
-"""Vendoriza el engine desde agent_runtime hacia agent_executor/src/engine
-sin ejecutar export, sin commits y sin push. Copia archivos en el working tree
-para que puedas revisar/commitear manualmente después.
+"""
+Vendoriza el engine desde agent_runtime hacia agent_executor/src/engine
 
-Origen:   ../agent_runtime/src/agent_compiler/
-Destino:  ./src/engine/
+    sin ejecutar export, sin commits y sin push. Copia archivos en el working tree
+    para que puedas revisar/commitear manualmente después.
 
-Excluye:  tests/, __pycache__/, *.pyc
+    Origen:   ../agent_runtime/src/agent_compiler/
+    Destino:  ./src/engine/
 
-Uso:
-    python scripts/vendor_engine_no_commit.py [--dry-run]
+    Excluye:  tests/, __pycache__/, *.pyc
 
-Notas:
-- No modifica ni commitea en agent_runtime.
-- No crea commits en agent_executor; solo modifica el working tree.
-- Requiere que ambos repos existan como carpetas hermanas del proyecto.
+    Uso:
+        python scripts/vendor_engine_no_commit.py [--dry-run]
+
+    Notas:
+    - No modifica ni commitea en agent_runtime.
+    - No crea commits en agent_executor; solo modifica el working tree.
+    - Requiere que ambos repos existan como carpetas hermanas del proyecto.
 """
 
 from __future__ import annotations

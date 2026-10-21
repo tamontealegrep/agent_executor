@@ -1,7 +1,9 @@
 """
-Script para interactuar programáticamente con agentes compilados,
-reusando el Harness del TUI original pero sin la interfaz interactiva de questionary.
-Permite ver logs de LLM y HTTP en tiempo real.
+Module.
+
+    Script para interactuar programáticamente con agentes compilados,
+    reusando el Harness del TUI original pero sin la interfaz interactiva de questionary.
+    Permite ver logs de LLM y HTTP en tiempo real.
 """
 
 import sys

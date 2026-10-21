@@ -1,23 +1,25 @@
-"""Sincroniza el contenido compilado (agents/compiled/) hacia
-agent_executor/compiled_agents/ -- la carpeta que compiled_runner/loader.py
-realmente lee en tiempo de ejecucion.
+"""
+Sincroniza el contenido compilado (agents/compiled/) hacia
 
-Por que existe: agents/compiled/<slug>/ es la salida cruda de `agent-compiler`
-(langgraph/graph.json, text/, diagram.html, ...), gitignoreada por completo en
-el repo `agents` -- nunca viaja con un deploy. compiled_runner/loader.py
-espera una carpeta plana `agent_executor/compiled_agents/<slug>/graph.json`.
-Este script es el paso explicito que conecta ambas cosas: se corre a mano
-(o como parte de publicar contenido nuevo) despues de compilar un agente,
-nunca automaticamente al arrancar el servidor.
+    agent_executor/compiled_agents/ -- la carpeta que compiled_runner/loader.py
+    realmente lee en tiempo de ejecucion.
 
-Nunca toca `sessions.db*` -- eso es estado real de conversaciones, no un
-artefacto de compilacion.
+    Por que existe: agents/compiled/<slug>/ es la salida cruda de `agent-compiler`
+    (langgraph/graph.json, text/, diagram.html, ...), gitignoreada por completo en
+    el repo `agents` -- nunca viaja con un deploy. compiled_runner/loader.py
+    espera una carpeta plana `agent_executor/compiled_agents/<slug>/graph.json`.
+    Este script es el paso explicito que conecta ambas cosas: se corre a mano
+    (o como parte de publicar contenido nuevo) despues de compilar un agente,
+    nunca automaticamente al arrancar el servidor.
 
-Uso:
-    python scripts/sync_compiled_agents.py [slug ...]
+    Nunca toca `sessions.db*` -- eso es estado real de conversaciones, no un
+    artefacto de compilacion.
 
-Sin argumentos, sincroniza todos los agentes que agents/compiled/ tenga
-compilados.
+    Uso:
+        python scripts/sync_compiled_agents.py [slug ...]
+
+    Sin argumentos, sincroniza todos los agentes que agents/compiled/ tenga
+    compilados.
 """
 
 from __future__ import annotations

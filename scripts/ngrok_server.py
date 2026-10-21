@@ -1,13 +1,15 @@
 """
-Levanta el servidor local Y el túnel ngrok con un solo comando.
+Module.
 
-Uso:
-    python scripts/ngrok_server.py
+    Levanta el servidor local Y el túnel ngrok con un solo comando.
 
-Lee HOST, PORT, NGROK_TOKEN y NGROK_DOMAIN desde el .env del root. Arranca
-main.py como subproceso, espera a que el puerto responda, y recién ahí abre
-el túnel. Al cerrar (CTRL+C, o si ngrok termina), también detiene el servidor
-que levantó.
+    Uso:
+        python scripts/ngrok_server.py
+
+    Lee HOST, PORT, NGROK_TOKEN y NGROK_DOMAIN desde el .env del root. Arranca
+    main.py como subproceso, espera a que el puerto responda, y recién ahí abre
+    el túnel. Al cerrar (CTRL+C, o si ngrok termina), también detiene el servidor
+    que levantó.
 """
 
 from pathlib import Path
@@ -36,10 +38,14 @@ def _wait_for_port(host: str, port: int, timeout: float = 20.0) -> bool:
 
 
 def _kill_local_ngrok_processes() -> bool:
-    """Try to terminate local ngrok processes (best-effort).
+    """
+Try to terminate local ngrok processes (best-effort).
 
     Returns True if a kill command executed without raising, False otherwise.
-    """
+
+    Returns:
+        The result.
+"""
     try:
         if os.name == "nt":
             # Windows

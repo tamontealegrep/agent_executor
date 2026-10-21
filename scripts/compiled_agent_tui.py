@@ -1,23 +1,25 @@
-"""Launcher TUI para probar cualquier agente compilado con agent_compiler y
-servido via agent_runtime (compiled_agents/<slug>/graph.json).
+"""
+Launcher TUI para probar cualquier agente compilado con agent_compiler y
 
-A diferencia de sam_tui.py (que es especifico del agente family_aims_sam,
-hecho a mano), esta herramienta descubre automaticamente que agentes hay
-compilados bajo compiled_agents/ y sirve a cualquiera de ellos con el mismo
-loop de chat: no hay nada de family_aims/Sam hardcodeado aca.
+    servido via agent_runtime (compiled_agents/<slug>/graph.json).
 
-Corre el grafo LangGraph directamente en proceso (misma forma que
-compiled_runner/endpoint.py, sin pasar por HTTP) para poder mostrar en la
-terminal, turno a turno: la respuesta hablada, el estado interno
-(current_state) y cada tool call real con sus argumentos y su respuesta.
+    A diferencia de sam_tui.py (que es especifico del agente family_aims_sam,
+    hecho a mano), esta herramienta descubre automaticamente que agentes hay
+    compilados bajo compiled_agents/ y sirve a cualquiera de ellos con el mismo
+    loop de chat: no hay nada de family_aims/Sam hardcodeado aca.
 
-El estado de la conversacion es el checkpoint real de LangGraph
-(compiled_agents/<slug>/sessions.db, SqliteSaver) -- el mismo archivo que
-usa el endpoint HTTP, asi que podes arrancar una conversacion aca y
-seguirla por HTTP (o al reves) usando el mismo thread_id. El historial que
-se ve en pantalla (para /history) es un log local aparte, en
-backups/tui_sessions/, solo para mostrarlo -- no es la fuente de verdad
-del flujo.
+    Corre el grafo LangGraph directamente en proceso (misma forma que
+    compiled_runner/endpoint.py, sin pasar por HTTP) para poder mostrar en la
+    terminal, turno a turno: la respuesta hablada, el estado interno
+    (current_state) y cada tool call real con sus argumentos y su respuesta.
+
+    El estado de la conversacion es el checkpoint real de LangGraph
+    (compiled_agents/<slug>/sessions.db, SqliteSaver) -- el mismo archivo que
+    usa el endpoint HTTP, asi que podes arrancar una conversacion aca y
+    seguirla por HTTP (o al reves) usando el mismo thread_id. El historial que
+    se ve en pantalla (para /history) es un log local aparte, en
+    backups/tui_sessions/, solo para mostrarlo -- no es la fuente de verdad
+    del flujo.
 """
 
 from __future__ import annotations
@@ -127,12 +129,19 @@ class ReturnToLauncher(Exception):
 
 
 def _tools_base_url(slug: str) -> str:
-    """Base URL de tools para este slug.
+    """
+Base URL de tools para este slug.
 
     Intentamos reutilizar la misma lógica que usa el servidor (compiled_runner/loader.py)
-    para evitar divergencias. Si no se puede importar, aplicamos un mapping local que
-    sigue la estructura actual de routers.
-    """
+        para evitar divergencias. Si no se puede importar, aplicamos un mapping local que
+        sigue la estructura actual de routers.
+
+    Parameters:
+        slug: Description.
+
+    Returns:
+        The result.
+"""
     try:
         # Usa la fuente de verdad del servidor si está disponible
         from compiled_runner.loader import _tools_base_url as _server_tools_base_url  # type: ignore
@@ -167,7 +176,9 @@ class ToolTrace:
 
 
 class TracingLLMClient:
-    """Wrapper for LLMClient that logs prompts and responses to the console."""
+    """
+Wrapper for LLMClient that logs prompts and responses to the console.
+"""
 
     def __init__(self, real_client: Any) -> None:
         self.real_client = real_client
@@ -219,10 +230,13 @@ class ChatTurnResult:
 
 
 class TracingClient(httpx.Client):
-    """httpx.Client that records every tool POST -- passed as
+    """
+httpx.Client that records every tool POST -- passed as
+
     build_graph()'s tool_http_client so make_tool_executor() uses it for
-    every tool call, with no monkeypatching involved (that parameter
-    exists exactly for this: see runtime/tool_executor.py's docstring)."""
+        every tool call, with no monkeypatching involved (that parameter
+        exists exactly for this: see runtime/tool_executor.py's docstring).
+"""
 
     def __init__(self, *args: Any, trace_sink: List[ToolTrace], **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -290,8 +304,15 @@ class TracingClient(httpx.Client):
         return self._base_prefixes or ["/family_aims/v1", "/babynova/v1", "/tools/v1"]
 
     def _rewrite_snake_to_kebab(self, url: str) -> str:
-        """Normaliza la última parte del path a kebab-case (check_visa -> check-visa)."""
-        try:
+            """
+Normaliza la última parte del path a kebab-case (check_visa -> check-visa).
+
+    Parameters:
+        url: Description.
+
+    Returns:
+        The result.
+    """        try:
             from urllib.parse import urlsplit, urlunsplit
 
             parts = urlsplit(url)
@@ -378,15 +399,20 @@ class TracingClient(httpx.Client):
 
 
 def sync_from_agent_compiler() -> None:
-    """Copia graph.json/assets.json recién compilados desde la ruta estándar
-    agents/compiled/<slug>/ hacia compiled_agents/<slug>/, si son más
-    nuevos que lo que ya está desplegado acá.
-
-    Corre siempre, antes de discover_compiled_agents(), para que un agente
-    recien compilado (o solo actualizado) aparezca sin un paso manual de
-    copia. Nunca toca sessions.db -- eso es estado de conversaciones reales,
-    no un artefacto de compilacion.
     """
+Copia graph.json/assets.json recién compilados desde la ruta estándar
+
+    agents/compiled/<slug>/ hacia compiled_agents/<slug>/, si son más
+        nuevos que lo que ya está desplegado acá.
+
+        Corre siempre, antes de discover_compiled_agents(), para que un agente
+        recien compilado (o solo actualizado) aparezca sin un paso manual de
+        copia. Nunca toca sessions.db -- eso es estado de conversaciones reales,
+        no un artefacto de compilacion.
+
+    Returns:
+        The result.
+"""
     if not AGENT_COMPILER_DIST_DIR.exists():
         return
 
@@ -416,8 +442,14 @@ def sync_from_agent_compiler() -> None:
 
 
 def discover_compiled_agents() -> List[str]:
-    """Cualquier subcarpeta de compiled_agents/ con un graph.json -- sin
-    nada especifico de un agente en particular hardcodeado."""
+    """
+Cualquier subcarpeta de compiled_agents/ con un graph.json -- sin
+
+    nada especifico de un agente en particular hardcodeado.
+
+    Returns:
+        The result.
+"""
     if not COMPILED_AGENTS_DIR.exists():
         return []
     return sorted(
@@ -428,8 +460,11 @@ def discover_compiled_agents() -> List[str]:
 
 
 class CompiledAgentHarness:
-    """Un grafo LangGraph real, construido una sola vez por sesion de TUI,
-    reusado turno a turno via el mismo thread_id."""
+    """
+Un grafo LangGraph real, construido una sola vez por sesion de TUI,
+
+    reusado turno a turno via el mismo thread_id.
+"""
 
     def __init__(
         self,
@@ -475,13 +510,17 @@ class CompiledAgentHarness:
 
     # --- Descubrimiento de posibles nombres de slots en el grafo ---
     def discover_slot_names(self) -> List[str]:
-        """Inspecciona el artifact para sugerir nombres de slots editables.
+            """
+Inspecciona el artifact para sugerir nombres de slots editables.
 
-        - Toma todos los nombres de `capture`.
-        - Extrae identificadores entre corchetes de las líneas `store`.
-        - Incluye los que ya existen en el snapshot actual y en `initial_slots`.
-        - Excluye constantes compiladas (`artifact.constants`).
-        """
+    - Toma todos los nombres de `capture`.
+            - Extrae identificadores entre corchetes de las líneas `store`.
+            - Incluye los que ya existen en el snapshot actual y en `initial_slots`.
+            - Excluye constantes compiladas (`artifact.constants`).
+
+    Returns:
+        The result.
+    """
         names: set[str] = set()
         # 1) Desde nodos del grafo principal
         for node in getattr(self.artifact.graph, "nodes", []) or []:
@@ -509,14 +548,18 @@ class CompiledAgentHarness:
         return sorted(names)
 
     def discover_contact_fields(self) -> List[str]:
-        """Intenta descubrir variables `contact.*` para este agente.
+            """
+Intenta descubrir variables `contact.*` para este agente.
 
-        Estrategia:
-          1) Leer agents/definitions/<slug>/input_variables.yaml si existe y
-             extraer los nombres que comienzan por 'contact.'.
-          2) Si no existe o falla el parseo, buscar patrones '{{contact.X}}' en
-             los textos del grafo (say/goal/do/trigger/route/fallback).
-        """
+    Estrategia:
+              1) Leer agents/definitions/<slug>/input_variables.yaml si existe y
+                 extraer los nombres que comienzan por 'contact.'.
+              2) Si no existe o falla el parseo, buscar patrones '{{contact.X}}' en
+                 los textos del grafo (say/goal/do/trigger/route/fallback).
+
+    Returns:
+        The result.
+    """
         fields: set[str] = set()
         # 1) input_variables.yaml
         try:
@@ -551,9 +594,14 @@ class CompiledAgentHarness:
         return sorted(fields)
 
     def discover_input_variables(self) -> List[Dict[str, str]]:
-        """Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
-        [{"name": str, "description": str}] de las variables de entrada declaradas.
-        """
+            """
+Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
+
+    [{"name": str, "description": str}] de las variables de entrada declaradas.
+
+    Returns:
+        The result.
+    """
         results: list[dict[str, str]] = []
         try:
             import yaml  # type: ignore
@@ -579,24 +627,34 @@ class CompiledAgentHarness:
         opening_message: Optional[str] = None,
         initial_slots: Optional[Dict[str, Any]] = None,
     ) -> ChatTurnResult:
-        """Invoke the very first turn of a brand-new thread.
+            """
+Invoke the very first turn of a brand-new thread.
 
-        `first_speaker` decides what the graph's first `eval: "llm"` gate
-        (or any other node reading `history`/`last_user_message`) gets to
-        reason from, since a plain `fresh_state()` starts with none of
-        that -- see `fresh_state`'s own docstring for why that silently
-        breaks an outbound-call agent's "was the call answered?" decision:
+    `first_speaker` decides what the graph's first `eval: "llm"` gate
+            (or any other node reading `history`/`last_user_message`) gets to
+            reason from, since a plain `fresh_state()` starts with none of
+            that -- see `fresh_state`'s own docstring for why that silently
+            breaks an outbound-call agent's "was the call answered?" decision:
 
-        - "agent" (saliente/voz): seeds a neutral note that the call
-          connected, so that kind of gate has real evidence and the agent
-          actually gets to greet, instead of the graph landing on its
-          "not answered" fallback with zero context.
-        - "user" (entrante/texto): seeds `opening_message` as the first
-          thing the contact said, so any early node that reasons over
-          `last_user_message`/`history` sees it from turn one -- the same
-          shape a real inbound webhook delivers (the platform already has
-          the user's message when it starts the conversation).
-        """
+            - "agent" (saliente/voz): seeds a neutral note that the call
+              connected, so that kind of gate has real evidence and the agent
+              actually gets to greet, instead of the graph landing on its
+              "not answered" fallback with zero context.
+            - "user" (entrante/texto): seeds `opening_message` as the first
+              thing the contact said, so any early node that reasons over
+              `last_user_message`/`history` sees it from turn one -- the same
+              shape a real inbound webhook delivers (the platform already has
+              the user's message when it starts the conversation).
+
+    Parameters:
+        thread_id: Description.
+        first_speaker: Description.
+        opening_message: Description.
+        initial_slots: Description.
+
+    Returns:
+        The result.
+    """
         config = {"configurable": {"thread_id": thread_id}}
         self._say_buffer.clear()
         self._trace_buffer.clear()
@@ -759,15 +817,19 @@ def render_state(harness: CompiledAgentHarness, state: CompiledSessionState) -> 
 
 
 def ask_first_speaker() -> str:
-    """Menu shown once per brand-new thread: who speaks first.
+    """
+Menu shown once per brand-new thread: who speaks first.
 
     "agent" mirrors an outbound voice call (family_aims_sam_*, babynova_*):
-    the graph seeds evidence that the call connected, so its `states_root`
-    "was the call answered?" gate resolves and the agent's greeting plays.
-    "user" mirrors an inbound chat: you type the opening message yourself,
-    seeded as the first thing the contact said, before the graph runs at
-    all -- the same shape a real inbound webhook delivers.
-    """
+        the graph seeds evidence that the call connected, so its `states_root`
+        "was the call answered?" gate resolves and the agent's greeting plays.
+        "user" mirrors an inbound chat: you type the opening message yourself,
+        seeded as the first thing the contact said, before the graph runs at
+        all -- the same shape a real inbound webhook delivers.
+
+    Returns:
+        The result.
+"""
     choice = questionary.select(
         "Quien habla primero en esta conversacion?",
         choices=[
@@ -825,13 +887,20 @@ def render_chat_help() -> None:
 
 
 def _parse_slot_input(raw: str) -> Any:
-    """Intenta parsear el valor ingresado como JSON; si falla, usa texto.
+    """
+Intenta parsear el valor ingresado como JSON; si falla, usa texto.
 
     Reglas:
-      - Cadena vacía -> None (null)
-      - Si `json.loads` funciona -> valor tipado
-      - Si no -> string tal como se ingresó
-    """
+          - Cadena vacía -> None (null)
+          - Si `json.loads` funciona -> valor tipado
+          - Si no -> string tal como se ingresó
+
+    Parameters:
+        raw: Description.
+
+    Returns:
+        The result.
+"""
     if raw.strip() == "":
         return None
     try:
@@ -1028,11 +1097,21 @@ def _edit_slots_interactive(
     session_file: Path,
     extra_candidates: Optional[List[str]] = None,
 ) -> None:
-    """Editor interactivo de slots iniciales.
+    """
+Editor interactivo de slots iniciales.
 
     Permite agregar/quitar/editar pares clave/valor. Los valores aceptan JSON
-    (true/false, numeros, objetos, arreglos) o texto plano. Enter vacio -> null.
-    """
+        (true/false, numeros, objetos, arreglos) o texto plano. Enter vacio -> null.
+
+    Parameters:
+        harness: Description.
+        state: Description.
+        session_file: Description.
+        extra_candidates: Description.
+
+    Returns:
+        The result.
+"""
     # Base de candidatos desde el artifact + runtime + configurados
     candidates = set(harness.discover_slot_names())
     if extra_candidates:
@@ -1187,14 +1266,23 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
 
 
 def run_first_turn(harness: CompiledAgentHarness, state: CompiledSessionState, session_file: Path) -> None:
-    """Kick off a brand-new thread: ask who speaks first, then invoke it.
+    """
+Kick off a brand-new thread: ask who speaks first, then invoke it.
 
     "agent": the graph runs with no user text, same as before, but now with
-    `OUTBOUND_ANSWERED_SEED_LINE` seeded so an outbound-call agent's "was
-    the call answered?" gate can actually resolve -- see `harness.start`.
-    "user": you type the opening message here, before the graph runs at
-    all, and it's seeded as the first thing the contact said.
-    """
+        `OUTBOUND_ANSWERED_SEED_LINE` seeded so an outbound-call agent's "was
+        the call answered?" gate can actually resolve -- see `harness.start`.
+        "user": you type the opening message here, before the graph runs at
+        all, and it's seeded as the first thing the contact said.
+
+    Parameters:
+        harness: Description.
+        state: Description.
+        session_file: Description.
+
+    Returns:
+        The result.
+"""
     state.first_speaker = ask_first_speaker()
     render_chat_header(state, session_file)
 
@@ -1376,10 +1464,19 @@ def run_launcher(args: argparse.Namespace) -> int:
 
 
 def _contact_from_args(args: argparse.Namespace) -> Dict[str, Any]:
-    """Build the session's `contact` dict (CRM fields the graph resolves any
+    """
+Build the session's `contact` dict (CRM fields the graph resolves any
+
     `{{contact.X}}` reference against) from the optional `--contact-*` flags.
-    Empty (no flags given) matches today's behavior -- every such reference
-    stays unresolved/unknown, same as before `contact` existed at all."""
+        Empty (no flags given) matches today's behavior -- every such reference
+        stays unresolved/unknown, same as before `contact` existed at all.
+
+    Parameters:
+        args: Description.
+
+    Returns:
+        The result.
+"""
     contact = {
         "name": args.contact_name,
         "email": args.contact_email,

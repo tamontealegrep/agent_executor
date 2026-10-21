@@ -1,17 +1,19 @@
 """
-Hub interactivo para probar los tools de cualquier agente en src/.
+Module.
 
-Flujo: elegir agente (subcarpeta en src/tools/) -> elegir herramienta
-(endpoint POST expuesto por ese agente) -> revisar/editar el payload por
-defecto (derivado del schema Pydantic del endpoint) -> enviar la solicitud.
+    Hub interactivo para probar los tools de cualquier agente en src/.
 
-Uso:
-    python scripts/send_request.py
-    python scripts/send_request.py --target render --agent utils --tool time-now --payload '{"timezone":"America/Bogota"}'
-    python scripts/send_request.py --target ngrok --agent utils --tool time-now --payload-file payload.json
+    Flujo: elegir agente (subcarpeta en src/tools/) -> elegir herramienta
+    (endpoint POST expuesto por ese agente) -> revisar/editar el payload por
+    defecto (derivado del schema Pydantic del endpoint) -> enviar la solicitud.
 
-Requiere que el servidor ya esté corriendo (python main.py) en el
-host/puerto declarados en el .env del root.
+    Uso:
+        python scripts/send_request.py
+        python scripts/send_request.py --target render --agent utils --tool time-now --payload '{"timezone":"America/Bogota"}'
+        python scripts/send_request.py --target ngrok --agent utils --tool time-now --payload-file payload.json
+
+    Requiere que el servidor ya esté corriendo (python main.py) en el
+    host/puerto declarados en el .env del root.
 """
 
 import argparse
@@ -63,7 +65,15 @@ EXIT = "◀ Salir"
 
 
 def _fresh_screen(breadcrumb: str = "") -> None:
-    """Limpia la terminal y deja un encabezado fijo, para no terminar con un chorrero de scroll."""
+    """
+Limpia la terminal y deja un encabezado fijo, para no terminar con un chorrero de scroll.
+
+    Parameters:
+        breadcrumb: Description.
+
+    Returns:
+        The result.
+"""
     console.clear()
     console.print("[bold cyan]GHL Tools[/bold cyan] — hub interactivo")
     if breadcrumb:
@@ -117,8 +127,15 @@ def normalize_agent_package(agent_input: str, available_agents: Dict[str, Path])
 
 
 def _find_request_model(endpoint) -> Optional[Type[BaseModel]]:
-    """Busca, entre los parámetros del handler, el primero que sea un BaseModel de Pydantic."""
-    for param in inspect.signature(endpoint).parameters.values():
+    """
+Busca, entre los parámetros del handler, el primero que sea un BaseModel de Pydantic.
+
+    Parameters:
+        endpoint: Description.
+
+    Returns:
+        The result.
+"""    for param in inspect.signature(endpoint).parameters.values():
         annotation = param.annotation
         if isinstance(annotation, type) and issubclass(annotation, BaseModel):
             return annotation
@@ -126,7 +143,15 @@ def _find_request_model(endpoint) -> Optional[Type[BaseModel]]:
 
 
 def discover_tools(app) -> List[ToolInfo]:
-    """Rutas POST del agente que reciben un body Pydantic (las herramientas invocables)."""
+    """
+Rutas POST del agente que reciben un body Pydantic (las herramientas invocables).
+
+    Parameters:
+        app: Description.
+
+    Returns:
+        The result.
+"""
     tools = []
     for route in app.routes:
         if not isinstance(route, APIRoute) or "POST" not in route.methods:
@@ -140,9 +165,18 @@ def discover_tools(app) -> List[ToolInfo]:
 
 
 def default_payload(model: Type[BaseModel]) -> Dict[str, Any]:
-    """Payload de prueba: usa el `examples` del schema si existe (valor de referencia
+    """
+Payload de prueba: usa el `examples` del schema si existe (valor de referencia
+
     para probar el tool), y si no cae al default real declarado (el que usa la API
-    cuando el campo falta en una solicitud real)."""
+        cuando el campo falta en una solicitud real).
+
+    Parameters:
+        model: Description.
+
+    Returns:
+        The result.
+"""
     payload = {}
     for field_name, field in model.model_fields.items():
         if field.examples:
@@ -220,8 +254,18 @@ def choose_tool(target: str, agent_package: str, tool_names: List[str]) -> Optio
 
 
 def edit_payload(target: str, agent_package: str, tool_name: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Muestra el payload actual como lista seleccionable y permite editar campos hasta confirmar el envío."""
-    original = dict(payload)
+    """
+Muestra el payload actual como lista seleccionable y permite editar campos hasta confirmar el envío.
+
+    Parameters:
+        target: Description.
+        agent_package: Description.
+        tool_name: Description.
+        payload: Description.
+
+    Returns:
+        The result.
+"""    original = dict(payload)
     current = dict(payload)
 
     while True:
