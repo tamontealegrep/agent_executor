@@ -25,7 +25,7 @@ from starlette.concurrency import run_in_threadpool
 
 from agent_compiler.runtime.graph_builder import fresh_state
 from agent_compiler.runtime.session_resolver import resolve_session
-from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async, search_conversation_async
+from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
 from agents.helpers.ghl_request import GhlAgentRequest
 from agents.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
@@ -220,32 +220,8 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
             if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
                 reply_channel = "WHATSAPP"
 
-            # Pre-flight: si no existe contacto/conversacion, evitar 400 y liberar el claim
-            conv_id = await search_conversation_async(
-                contact_id=row["contact_id"],
-                location_id=row["location_id"],
-                config=cfg.ghl_client_config(),
-                logger=logger,
-            )
-            if conv_id is None:
-                logger.warning(
-                    "[%s] Skipping closing message: contact not found or no conversation (location_id=%s contact_id=%s)",
-                    thread_id,
-                    row["location_id"],
-                    row["contact_id"],
-                )
-                try:
-                    await run_in_threadpool(
-                        reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
-                    )
-                except Exception:
-                    logger.warning(
-                        "[%s] Failed to reset closing message claim after missing contact (non-fatal).",
-                        thread_id,
-                        exc_info=True,
-                    )
-                continue
-
+            # Send directly; if GHL rejects (e.g., missing contact/conversation),
+            # we'll catch the error and release the claim below.
             await send_ghl_message_async(
                 contact_id=row["contact_id"],
                 message=_closing_message_text(cfg, row.get("preferred_language")),
@@ -276,6 +252,14 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
 async def _closing_sweep_loop(cfg: CompiledAgentGhlConfig) -> None:
     logger = logging.getLogger(f"compiled_runner.ghl_endpoint.{cfg.slug}")
     interval_seconds = float(os.getenv("CLOSING_MESSAGE_SWEEP_INTERVAL_SECONDS", "300"))
+    startup_delay = float(os.getenv("CLOSING_MESSAGE_SWEEP_STARTUP_DELAY_SECONDS", "10"))
+    # Give the app a brief window to handle first user messages on cold start
+    # before the sweep kicks in (avoids contention in serverless environments).
+    if startup_delay > 0:
+        try:
+            await asyncio.sleep(startup_delay)
+        except asyncio.CancelledError:
+            return
     while True:
         try:
             await run_closing_sweep_once(cfg)
@@ -366,6 +350,7 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
         combined_message = "\n".join(turn.message_parts).strip()
         combined_message, reset_requested = _strip_reset_marker(combined_message)
         execution_id = turn.execution_ids[-1]
+        logger.info("[%s] Combined inbound length=%s part_count=%s", execution_id, len(combined_message), len(turn.message_parts))
         if len(turn.execution_ids) > 1:
             logger.info(
                 "[%s] Flushing %s buffered message(s) for thread=%s after %ss of inactivity.",
@@ -454,7 +439,13 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
                 )
                 logger.info("[%s] Reply sent to GHL.", execution_id)
             else:
-                logger.info("[%s] Graph produced no text to send (empty buffer).", execution_id)
+                logger.info(
+                    "[%s] No reply text (empty buffer). resolution=%s combined_len=%s interrupts=%s",
+                    execution_id,
+                    resolution,
+                    len(combined_message),
+                    bool(interrupts),
+                )
 
         except Exception:
             logger.error("[%s] Background execution failed.", execution_id, exc_info=True)
