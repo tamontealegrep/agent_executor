@@ -27,6 +27,7 @@ from agent_compiler.runtime.graph_builder import fresh_state
 import httpx
 from agent_compiler.runtime.session_resolver import resolve_session
 from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
+from agents.helpers.text import normalize_channel
 from agents.helpers.ghl_request import GhlAgentRequest
 from agents.helpers.runner import derive_execution_id
 from compiled_runner.loader import load_compiled_agent, message_buffer
@@ -216,11 +217,13 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
     for row in candidates:
         thread_id = row["thread_id"]
         try:
-            # If conversation was widget (LIVE_CHAT) and the agent is configured
+            # If conversation was widget and the agent is configured
             # to redirect, send closing message via WhatsApp (2026-09-30)
             reply_channel = row.get("channel")
-            if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
-                reply_channel = "WHATSAPP"
+            if cfg.redirect_widget_to_whatsapp:
+                ch = normalize_channel(reply_channel)
+                if ch in {"LIVE_CHAT", "WEBCHAT", "TYPE_WEBCHAT"}:
+                    reply_channel = "WHATSAPP"
 
             # Send directly; if GHL rejects (e.g., missing contact/conversation),
             # we'll catch the error and release the claim below.
@@ -456,14 +459,18 @@ def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
 
             reply_text = "\n\n".join(buffer).strip()
             if reply_text:
-                # If message came from widget (LIVE_CHAT) and the agent is
-                # configured to redirect, respond via WhatsApp (2026-09-30)
+                # If message came from widget and the agent is configured,
+                # respond via WhatsApp (2026-09-30). Accept common synonyms.
                 reply_channel = request.channel
-                if cfg.redirect_widget_to_whatsapp and reply_channel == "LIVE_CHAT":
-                    logger.info(
-                        "[%s] Inbound channel was widget (LIVE_CHAT), redirecting reply to WHATSAPP.", execution_id
-                    )
-                    reply_channel = "WHATSAPP"
+                if cfg.redirect_widget_to_whatsapp:
+                    ch = normalize_channel(reply_channel)
+                    if ch in {"LIVE_CHAT", "WEBCHAT", "TYPE_WEBCHAT"}:
+                        logger.info(
+                            "[%s] Inbound channel was widget (%s), redirecting reply to WHATSAPP.",
+                            execution_id,
+                            ch,
+                        )
+                        reply_channel = "WHATSAPP"
 
                 await send_ghl_message_async(
                     contact_id=request.contact_id,
