@@ -33,6 +33,7 @@ from compiled_runner.loader import load_compiled_agent, message_buffer
 from compiled_runner.postgres import (
     claim_conversations_needing_closing_message,
     reset_closing_message_claim,
+    mark_closing_message_sent,
     postgres_enabled,
     upsert_conversation,
 )
@@ -247,19 +248,30 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
                     thread_id,
                     canonical,
                 )
+                # Do not retry this window: mark as sent to suppress future picks
+                try:
+                    await run_in_threadpool(
+                        mark_closing_message_sent, cfg.slug, row["location_id"], row["contact_id"]
+                    )
+                except Exception:
+                    logger.warning(
+                        "[%s] Failed to mark closing message sent after contact-missing (non-fatal).",
+                        thread_id,
+                        exc_info=True,
+                    )
             else:
                 logger.error("[%s] Failed to send closing message.", thread_id, exc_info=True)
-            # Allow a future sweep to retry or permanently skip depending on caller policy
-            try:
-                await run_in_threadpool(
-                    reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
-                )
-            except Exception:
-                logger.warning(
-                    "[%s] Failed to reset closing message claim after send error (non-fatal).",
-                    thread_id,
-                    exc_info=True,
-                )
+                # Allow a future sweep to retry: clear claim
+                try:
+                    await run_in_threadpool(
+                        reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
+                    )
+                except Exception:
+                    logger.warning(
+                        "[%s] Failed to reset closing message claim after send error (non-fatal).",
+                        thread_id,
+                        exc_info=True,
+                    )
         except Exception:
             logger.error("[%s] Failed to send closing message.", thread_id, exc_info=True)
             try:

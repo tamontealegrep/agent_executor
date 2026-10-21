@@ -42,6 +42,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+# Ensure noisy network libraries log only WARNING+ even if new handlers are added later
+for _name in ("httpx", "httpx2", "httpcore"):
+    logging.getLogger(_name).setLevel(logging.WARNING)
 for _handler in logging.getLogger().handlers:
     _handler.addFilter(SelectiveLogFilter())
 logger = logging.getLogger("ghl_hub")
