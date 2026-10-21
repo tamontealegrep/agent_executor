@@ -9,8 +9,10 @@ from tools.utils.api.v1.endpoints import (
     pause as pause_endpoint,
     update_custom_field as ucf_endpoint,
     echo as echo_endpoint,
+    input_payload as input_payload_endpoint,
 )
 from tools.utils.schemas.ghl import GhlCustomUpdateResponse
+from tools.utils.schemas.input_payload import InputPayloadResponse
 
 api_router = APIRouter()
 
@@ -42,5 +44,10 @@ api_router.add_api_route(
 api_router.add_api_route(
     "/pause", pause_endpoint.pause,
     methods=["POST"], response_model=pause_endpoint.PauseResponse, tags=["utils.pause"],
+)
+
+api_router.add_api_route(
+    "/input-payload", input_payload_endpoint.receive_payload,
+    methods=["POST"], response_model=InputPayloadResponse, tags=["utils.input_payload"],
 )
 

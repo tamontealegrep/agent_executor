@@ -1,6 +1,8 @@
 """
-Descubre y carga los agentes (subproyectos en src/tools/) y expone la
-configuración compartida leída del .env del root del proyecto.
+Module.
+
+    Descubre y carga los agentes (subproyectos en src/tools/) y expone la
+    configuración compartida leída del .env del root del proyecto.
 """
 
 import importlib
@@ -36,7 +38,12 @@ def get_hub_settings() -> HubSettings:
 
 
 def discover_agents() -> Dict[str, Path]:
-    """Subcarpetas en src/tools/ que tienen un main.py."""
+    """
+Subcarpetas en src/tools/ que tienen un main.py.
+
+    Returns:
+        The result.
+"""
     tools = {}
     if not TOOLS_DIR.exists():
         return tools
