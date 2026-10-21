@@ -24,6 +24,7 @@ from langgraph.types import Command
 from starlette.concurrency import run_in_threadpool
 
 from agent_compiler.runtime.graph_builder import fresh_state
+import httpx
 from agent_compiler.runtime.session_resolver import resolve_session
 from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
 from agents.helpers.ghl_request import GhlAgentRequest
@@ -233,9 +234,34 @@ async def run_closing_sweep_once(cfg: CompiledAgentGhlConfig) -> int:
             )
             logger.info("[%s] Closing message sent after ~24h of inactivity.", thread_id)
             sent += 1
+        except httpx.HTTPStatusError as exc:
+            code = exc.response.status_code if exc.response is not None else None
+            canonical = None
+            try:
+                canonical = (exc.response.json() if exc.response is not None else {}).get("canonicalCode")
+            except Exception:
+                canonical = None
+            if code == 400 and canonical == "CONVERSATIONS_CONTACT_NOT_FOUND":
+                logger.warning(
+                    "[%s] Skipping closing message: contact not found (400, canonical=%s).",
+                    thread_id,
+                    canonical,
+                )
+            else:
+                logger.error("[%s] Failed to send closing message.", thread_id, exc_info=True)
+            # Allow a future sweep to retry or permanently skip depending on caller policy
+            try:
+                await run_in_threadpool(
+                    reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
+                )
+            except Exception:
+                logger.warning(
+                    "[%s] Failed to reset closing message claim after send error (non-fatal).",
+                    thread_id,
+                    exc_info=True,
+                )
         except Exception:
             logger.error("[%s] Failed to send closing message.", thread_id, exc_info=True)
-            # Allow a future sweep to retry this contact
             try:
                 await run_in_threadpool(
                     reset_closing_message_claim, cfg.slug, row["location_id"], row["contact_id"]
