@@ -27,8 +27,9 @@ class SelectiveLogFilter(logging.Filter):
 
         if logger_name.startswith("uvicorn.access"):
             return True
-        if logger_name.startswith("httpx") and "HTTP Request:" in message:
-            return True
+        # Allow httpx/httpcore only at WARNING or higher to reduce noise
+        if logger_name.startswith("httpx") or logger_name.startswith("httpcore"):
+            return record.levelno >= logging.WARNING
         if logger_name.startswith("compiled_runner.ghl_endpoint."):
             return True
         if logger_name == "compiled_runner.postgres":

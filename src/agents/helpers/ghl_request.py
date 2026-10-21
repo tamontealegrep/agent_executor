@@ -1,6 +1,13 @@
 from typing import Any, Dict, List, Optional, Union
+import warnings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+try:
+    # Silence Pydantic alias warnings for our validated payload model
+    from pydantic._internal._generate_schema import UnsupportedFieldAttributeWarning
+    warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
+except Exception:
+    pass
 
 from agents.helpers.ghl import GHL_INBOUND_TYPE_MAP
 from agents.helpers.text import normalize_language

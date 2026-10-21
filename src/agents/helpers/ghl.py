@@ -194,15 +194,23 @@ async def send_ghl_message_async(
             return body
         except httpx.HTTPStatusError as exc:
             # Log detalle del error para diagnosticar 4xx/5xx (sin incluir el token)
+            status = exc.response.status_code if exc.response is not None else None
             text = exc.response.text if exc.response is not None else ""
-            active_logger.error(
-                "[%s] GHL send failed: %s %s -> %s | payload.type=%s len=%s | body=%s",
-                exec_id,
-                exc.response.status_code if exc.response is not None else "?",
-                exc.request.url if exc.request is not None else url,
-                "HTTPStatusError",
-                payload.get("type"),
-                len(payload.get("message") or ""),
-                text[:2000],  # recorta para no inundar logs
+            canonical = None
+            try:
+                canonical = (exc.response.json() if exc.response is not None else {}).get("canonicalCode")
+            except Exception:
+                canonical = None
+
+            msg = (
+                f"[{exec_id}] GHL send {'failed' if status and status >= 500 else 'rejected'}: "
+                f"{status} {exc.request.url if exc.request is not None else url} | "
+                f"type={payload.get('type')} len={len(payload.get('message') or '')} canonical={canonical} | body={text[:1000]}"
             )
+
+            if status == 400 and canonical == "CONVERSATIONS_CONTACT_NOT_FOUND":
+                # Downgrade noisy, expected case in closing sweep
+                active_logger.warning(msg)
+            else:
+                active_logger.error(msg)
             raise
