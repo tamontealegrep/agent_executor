@@ -1382,7 +1382,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Hello. I am <AGENT_NAME>, the virtual assistant for <COMPANY_NAME>.\nWe received your information and your interest in our fertility treatments."
+          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nWe've got your details and noticed your interest in our fertility treatments."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7747,6 +7747,23 @@
         "fallback": []
       },
       {
+        "node_id": "MESSAGE_END_WRONG_NUMBER",
+        "node_type": "terminal",
+        "goal": [
+          "Close the conversation when the user indicates the WhatsApp number is not theirs."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [],
+        "fallback": []
+      },
+      {
         "node_id": "C__CB_END",
         "node_type": "terminal",
         "goal": [
@@ -7835,6 +7852,92 @@
   },
   "global_router": {
     "handlers": [
+      {
+        "node_id": "H_WHATSAPP_CONFIRM_START",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "confirm number",
+          "confirmar numero",
+          "confirmar número",
+          "confirma numero",
+          "confirma número",
+          "yes that's my number",
+          "thats my number",
+          "that's my number",
+          "this is my number",
+          "its my number",
+          "it's my number",
+          "confirm this is my number",
+          "yes confirm",
+          "yes confirm number",
+          "si es mi numero",
+          "sí es mi número",
+          "es mi numero",
+          "es mi número",
+          "este es mi numero",
+          "este es mi número",
+          "confirmo mi numero",
+          "confirmo mi número",
+          "si confirmo",
+          "sim é o meu número",
+          "sim e o meu numero",
+          "é o meu número",
+          "e o meu numero",
+          "este é o meu número",
+          "este e o meu numero",
+          "confirmo meu número",
+          "confirmo meu numero",
+          "sim confirmo"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_WHATSAPP_NOT_ME",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "it wasn't me",
+          "it wasnt me",
+          "no fui yo",
+          "no era yo",
+          "não fui eu",
+          "nao fui eu"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_WRONG_NUMBER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
       {
         "node_id": "H_SAFETY",
         "node_type": "decision",
@@ -8244,6 +8347,63 @@
         "route": [
           {
             "target": "[current_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_TALK_TO_HUMAN",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "talk to a human",
+          "talk to an agent",
+          "talk to a person",
+          "human agent",
+          "human please",
+          "can i speak to a human",
+          "can i talk to a human",
+          "real person",
+          "human representative",
+          "transfer me to a human",
+          "hablar con un asesor",
+          "hablar con asesor",
+          "quiero hablar con una persona",
+          "quiero hablar con un humano",
+          "asesor humano",
+          "necesito un asesor",
+          "asesor por favor",
+          "humano por favor",
+          "atencion humana",
+          "atención humana",
+          "me atienda una persona",
+          "hablar con agente",
+          "quiero con un agente",
+          "falar com um atendente",
+          "falar com um humano",
+          "quero falar com uma pessoa",
+          "atendente humano",
+          "humano por favor",
+          "posso falar com um humano",
+          "atendimento humano",
+          "falar com agente"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
