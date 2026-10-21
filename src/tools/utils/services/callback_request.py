@@ -133,7 +133,8 @@ Validate and normalize a callback request. No side effects.
 
     Returns:
         The result.
-"""    contact_name = raw_contact_name.strip() if _is_present(raw_contact_name) else None
+    """
+    contact_name = raw_contact_name.strip() if _is_present(raw_contact_name) else None
     contact_phone = raw_contact_phone.strip() if _is_present(raw_contact_phone) else None
     contact_email = raw_contact_email.strip() if _is_present(raw_contact_email) else None
 

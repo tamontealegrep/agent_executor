@@ -432,7 +432,8 @@ Yield every state — both main and terminal — without category labels.
 
     Returns:
         The result.
-"""    for state in spec.states:
+    """
+    for state in spec.states:
         yield state
     for state in spec.terminal_states:
         yield state

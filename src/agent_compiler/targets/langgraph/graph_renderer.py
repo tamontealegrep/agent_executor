@@ -73,12 +73,13 @@ The full emitted artifact for one subflow (or one whole agent).
     nodes: list[GraphNode]
 
     def to_dict(self) -> dict[str, Any]:
-            """
-Serializable representation — no `langgraph` types involved.
+        """
+        Serializable representation — no `langgraph` types involved.
 
-    Returns:
-        The result.
-    """        return asdict(self)
+        Returns:
+            The result.
+        """
+        return asdict(self)
 
 
 def render_subflow_graph(template: SubflowTemplate) -> GraphDefinition:

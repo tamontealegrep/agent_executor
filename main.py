@@ -80,23 +80,61 @@ for _agent_package in discover_agents():
 # Pilot: compiled agent_compiler agents, served via agent_runtime — separate
 # from the src/tools/* discovery above, since a compiled agent is not a
 # tools backend. See compiled_runner/README (or SPEC notes) for scope.
-from compiled_runner.endpoint import router as compiled_agent_router  # noqa: E402
-from agents.family_aims.v1.router import family_agents_router  # noqa: E402
-from agents.babynova.v1.router import babynova_agents_router  # noqa: E402
-from tools.gateway.api.v1.router import api_router as tools_utils_router  # noqa: E402
-from tools.family_aims.api.v1.router import api_router as family_tools_router  # noqa: E402
-from tools.babynova_surrogacy.api.v1.router import api_router as babynova_tools_router  # noqa: E402
+compiled_agent_router = None
+family_agents_router = None
+babynova_agents_router = None
+tools_utils_router = None
+family_tools_router = None
+babynova_tools_router = None
 
-app.include_router(compiled_agent_router, prefix="/agents/compiled", tags=["compiled_agents"])
+try:
+    from compiled_runner.endpoint import router as compiled_agent_router  # type: ignore  # noqa: E402
+except Exception as exc:  # pragma: no cover
+    logger.warning("Compiled agents disabled: %s", exc)
+
+try:
+    from agents.family_aims.v1.router import family_agents_router as _family_agents_router  # type: ignore  # noqa: E402
+    family_agents_router = _family_agents_router
+except Exception as exc:  # pragma: no cover
+    logger.warning("Family Aims agent endpoints disabled: %s", exc)
+
+try:
+    from agents.babynova.v1.router import babynova_agents_router as _babynova_agents_router  # type: ignore  # noqa: E402
+    babynova_agents_router = _babynova_agents_router
+except Exception as exc:  # pragma: no cover
+    logger.warning("Babynova agent endpoints disabled: %s", exc)
+
+try:
+    from tools.gateway.api.v1.router import api_router as tools_utils_router  # type: ignore  # noqa: E402
+except Exception as exc:  # pragma: no cover
+    logger.error("Utils tools router failed to import: %s", exc)
+
+try:
+    from tools.family_aims.api.v1.router import api_router as family_tools_router  # type: ignore  # noqa: E402
+except Exception as exc:  # pragma: no cover
+    logger.warning("Family Aims tools disabled: %s", exc)
+
+try:
+    from tools.babynova_surrogacy.api.v1.router import api_router as babynova_tools_router  # type: ignore  # noqa: E402
+except Exception as exc:  # pragma: no cover
+    logger.warning("Babynova Surrogacy tools disabled: %s", exc)
+
+if compiled_agent_router is not None:
+    app.include_router(compiled_agent_router, prefix="/agents/compiled", tags=["compiled_agents"])
 
 # Agents (Chat/Webhooks)
-app.include_router(family_agents_router, prefix="/agents/family_aims/v1")
-app.include_router(babynova_agents_router, prefix="/agents/babynova/v1")
+if family_agents_router is not None:
+    app.include_router(family_agents_router, prefix="/agents/family_aims/v1")
+if babynova_agents_router is not None:
+    app.include_router(babynova_agents_router, prefix="/agents/babynova/v1")
 
 # Tools (Functions)
-app.include_router(tools_utils_router, prefix="/tools/utils/v1", tags=["tools.utils"])
-app.include_router(family_tools_router, prefix="/tools/family_aims/v1", tags=["tools.family_aims"])
-app.include_router(babynova_tools_router, prefix="/tools/babynova/v1", tags=["tools.babynova"])
+if tools_utils_router is not None:
+    app.include_router(tools_utils_router, prefix="/tools/utils/v1", tags=["tools.utils"])
+if family_tools_router is not None:
+    app.include_router(family_tools_router, prefix="/tools/family_aims/v1", tags=["tools.family_aims"])
+if babynova_tools_router is not None:
+    app.include_router(babynova_tools_router, prefix="/tools/babynova/v1", tags=["tools.babynova"])
 
 
 @app.get("/api-contracts", include_in_schema=False)

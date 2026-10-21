@@ -107,7 +107,8 @@ Helper interno para mapear nombre de campo -> ID en una ubicación.
 
     Returns:
         The result.
-"""    url = f"{config.base_url}/locations/{location_id}/customFields"
+    """
+    url = f"{config.base_url}/locations/{location_id}/customFields"
     try:
         async with httpx.AsyncClient(timeout=config.history_timeout_seconds) as client:
             resp = await client.get(url, headers=headers)

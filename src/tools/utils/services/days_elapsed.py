@@ -24,7 +24,7 @@ Parsea una fecha en formato YYYY/MM/DD o YYYY-MM-DD.
 
     Returns:
         The result.
-"""
+    """
     parts = re.split(r"[/\-]", raw)
     if len(parts) != 3 or len(parts[0]) != 4:
         raise ValueError("Formato invalido, se esperaba YYYY-MM-DD o YYYY/MM/DD")
@@ -41,7 +41,8 @@ Convierte el umbral de días a un entero positivo, o None si no es válido.
 
     Returns:
         The result.
-"""    if raw is None:
+    """
+    if raw is None:
         return None
     try:
         value = int(float(raw))
@@ -61,5 +62,6 @@ Devuelve (elapsed, days_elapsed): si transcurrieron >= days_threshold días entr
 
     Returns:
         The result.
-"""    days_elapsed = (today - input_date).days
+    """
+    days_elapsed = (today - input_date).days
     return days_elapsed >= days_threshold, days_elapsed

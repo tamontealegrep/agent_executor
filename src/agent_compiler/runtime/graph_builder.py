@@ -742,46 +742,38 @@ Build a `say`-rendering function.
         slots: dict[str, Any],
         policies: list[str] | None = None,
     ) -> str:
-            """
-Render a `say` block, paraphrased naturally in the caller's language via the LLM.
+        """
+        Render a `say` block, paraphrased naturally in the caller's language via the LLM.
 
-    `say_verbatim: true` blocks are never touched — that flag exists
-            specifically to forbid paraphrasing legally-sensitive copy. Every
-            other block is paraphrased on every render, deliberately never
-            cached: the point (2026-09-16, requested directly — real content
-            was reading as scripted and repetitive, especially a question
-            re-asked verbatim after a failed capture) is that the same node
-            visited twice sounds like a person rephrasing, not a script
-            replaying, so a cache that returned the same rendering for the
-            same node would defeat that on exactly the retry-loop case this
-            was meant to fix. Previously this instructed the model to "return
-            it unchanged" if already in the target language, which is the
-            wording that produced the scripted-repeat feel in the first place.
+        `say_verbatim: true` blocks are never touched — that flag exists specifically to forbid
+        paraphrasing legally-sensitive copy. Every other block is paraphrased on every render,
+        deliberately never cached: the point (2026-09-16, requested directly) is that the same node
+        visited twice sounds like a person rephrasing, not a script replaying. Previously this
+        instructed the model to "return it unchanged" if already in the target language, which
+        produced the scripted-repeat feel in the first place.
 
-            Passes `temperature=1.0` explicitly (2026-09-17) — `complete()`'s
-            own default is `0.0`, correct for every other caller's factual
-            judgment calls, but wrong here: a paraphrase call at temperature 0
-            tends toward the single most-likely rewording, which is exactly
-            the boring, repetitive sameness this function exists to avoid.
+        Passes `temperature=1.0` explicitly (2026-09-17) — `complete()`'s own default is `0.0`,
+        correct for every other caller's factual judgment calls, but wrong here: a paraphrase call
+        at temperature 0 tends toward the single most-likely rewording, which is exactly the boring,
+        repetitive sameness this function exists to avoid.
 
-            `policies` (2026-09-18) is the artifact's pre-filtered `say_policies`
-            list (`targets/langgraph/runtime_artifact.py` — `compliance_and_
-            scope_rules` + `data_and_variable_rules`, decided at compile time,
-            not here). Only the `message`/`terminal` call site in `_make_node_fn`
-            passes it for now; `question` phrasing and the global-router's
-            matched-handler/FAQ `say` still render without it.
+        `policies` (2026-09-18) is the artifact's pre-filtered `say_policies` list
+        (`targets/langgraph/runtime_artifact.py` — `compliance_and_scope_rules` +
+        `data_and_variable_rules`, decided at compile time, not here). Only the `message`/`terminal`
+        call site in `_make_node_fn` passes it for now; `question` phrasing and the global-router's
+        matched-handler/FAQ `say` still render without it.
 
-    Parameters:
-        node_id: Description.
-        say: Description.
-        say_verbatim: Description.
-        language_code: Description.
-        slots: Description.
-        policies: Description.
+        Parameters:
+            node_id: Node identifier.
+            say: List of message lines.
+            say_verbatim: If true, returns the message verbatim without paraphrasing.
+            language_code: Optional BCP-47 code for target language.
+            slots: Slot values for interpolation.
+            policies: Optional policy strings applied to the message.
 
-    Returns:
-        The result.
-    """
+        Returns:
+            The rendered message (possibly paraphrased).
+        """
         raw = _interpolate_slots("\n".join(say), slots, language_code)
         if say_verbatim:
             return raw
