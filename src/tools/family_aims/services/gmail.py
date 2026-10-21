@@ -22,7 +22,8 @@ Envía un correo HTML vía Gmail API (users.messages.send), autenticado
 
     Returns:
         The result.
-"""    message = EmailMessage()
+"""
+    message = EmailMessage()
     message["To"] = to
     message["From"] = sender
     message["Subject"] = subject

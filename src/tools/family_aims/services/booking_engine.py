@@ -134,5 +134,6 @@ ES o PT si vienen explícitos; cualquier otra cosa cae a inglés (igual
 
     Returns:
         The result.
-"""    lang = (raw_language or "").strip().upper()
+"""
+    lang = (raw_language or "").strip().upper()
     return lang if lang in ("ES", "PT") else "EN"

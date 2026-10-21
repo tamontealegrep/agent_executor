@@ -78,7 +78,8 @@ Construye un datetime aware a partir de año/mes/día/hora/minuto en la zona hor
 
     Returns:
         The result.
-"""    return datetime(year, month, day, hour, minute, tzinfo=ZoneInfo(tz_name))
+"""
+    return datetime(year, month, day, hour, minute, tzinfo=ZoneInfo(tz_name))
 
 
 def parse_iso(value: str) -> datetime:

@@ -43,9 +43,10 @@ Ordered URLs to try for a `{base}/{tool_name}` request, most likely first.
     parts = urlsplit(url)
     head, _, tail = parts.path.rpartition("/")
     kebab = tail.replace("_", "-")
-    # head is /tools/{app}/v1 -> segments[1] is {app}
-    path_segments = head.strip("/").split("/")
-    app_name = path_segments[1] if len(path_segments) > 1 else ""
+    # head looks like "/{app}/v1" (tests) or "/tools/{app}/v1" (runtime);
+    # in both cases, the first segment is the app name when present.
+    path_segments = [seg for seg in head.strip("/").split("/") if seg]
+    app_name = path_segments[0] if len(path_segments) >= 1 else ""
     suffix = _ROUTE_SUFFIX_BY_APP.get(app_name)
 
     paths = [f"{head}/{kebab}"]

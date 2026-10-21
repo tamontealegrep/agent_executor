@@ -15,7 +15,7 @@ BASE = "http://127.0.0.1:8010"
 def test_candidate_urls_kebab_cases_the_tool_name_then_falls_back_to_utils():
     assert candidate_urls(f"{BASE}/family_aims/v1/check_visa") == [
         f"{BASE}/family_aims/v1/check-visa",
-        f"{BASE}/tools/v1/check-visa",
+        f"{BASE}/tools/utils/v1/check-visa",
     ]
 
 
@@ -23,12 +23,12 @@ def test_candidate_urls_tries_the_babynova_suffix_first():
     assert candidate_urls(f"{BASE}/babynova/v1/book_appointment") == [
         f"{BASE}/babynova/v1/book-appointment-sur",
         f"{BASE}/babynova/v1/book-appointment",
-        f"{BASE}/tools/v1/book-appointment",
+        f"{BASE}/tools/utils/v1/book-appointment",
     ]
 
 
 def test_candidate_urls_tries_utils_first_for_a_shared_tool():
-    assert candidate_urls(f"{BASE}/family_aims/v1/update_custom_field")[0] == f"{BASE}/tools/v1/update-custom-field"
+    assert candidate_urls(f"{BASE}/family_aims/v1/update_custom_field")[0] == f"{BASE}/tools/utils/v1/update-custom-field"
 
 
 def _client(routes: set[str], seen: list[str]) -> ToolRoutingClient:
@@ -43,9 +43,9 @@ def _client(routes: set[str], seen: list[str]) -> ToolRoutingClient:
 
 def test_client_resolves_a_utils_tool_without_a_wasted_request():
     seen: list[str] = []
-    response = _client({"/tools/v1/time-now"}, seen).post(f"{BASE}/family_aims/v1/time_now", json={})
+    response = _client({"/tools/utils/v1/time-now"}, seen).post(f"{BASE}/family_aims/v1/time_now", json={})
     assert response.status_code == 200
-    assert seen == ["/tools/v1/time-now"]
+    assert seen == ["/tools/utils/v1/time-now"]
 
 
 def test_client_remembers_the_resolved_url_so_later_calls_skip_the_misses():

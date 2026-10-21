@@ -19,7 +19,8 @@ Configuración de ventanas horarias desde YAML.
 
     Returns:
         The result.
-"""    config = load_slots_config().get("policies", {}).get("sur", {})
+"""
+    config = load_slots_config().get("policies", {}).get("sur", {})
     window = config.get("windows", {}).get(weekday)
     if window:
         return tuple(window)
@@ -52,7 +53,8 @@ El rango de búsqueda cierra a la hora de fin de la ventana configurada.
 
     Returns:
         The result.
-"""    window = day_window(weekday)
+"""
+    window = day_window(weekday)
     if window:
         return (window[2], window[3])
     # Fallback original

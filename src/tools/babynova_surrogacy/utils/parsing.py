@@ -17,7 +17,8 @@ Quita acentos, pasa a mayúsculas y recorta espacios.
 
     Returns:
         The result.
-"""    if val is None:
+"""
+    if val is None:
         return ""
     s = unicodedata.normalize("NFD", str(val))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
@@ -33,7 +34,8 @@ Indica si el valor no es None y no es una cadena vacía tras recortar espacios.
 
     Returns:
         The result.
-"""    return val is not None and str(val).strip() != ""
+"""
+    return val is not None and str(val).strip() != ""
 
 
 def parse_boolean(val: Any) -> Optional[bool]:
@@ -45,7 +47,8 @@ Conversión flexible a booleano. Devuelve None si no se reconoce el valor.
 
     Returns:
         The result.
-"""    if isinstance(val, bool):
+"""
+    if isinstance(val, bool):
         return val
     s = normalize(val)
     if s in ("TRUE", "1", "SI", "YES"):
@@ -64,7 +67,8 @@ Conversión flexible a float. Devuelve None si el valor no se puede convertir.
 
     Returns:
         The result.
-"""    if val is None:
+"""
+    if val is None:
         return None
     try:
         return float(str(val).strip())

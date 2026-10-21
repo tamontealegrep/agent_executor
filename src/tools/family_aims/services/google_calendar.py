@@ -143,7 +143,8 @@ Lista eventos en el calendario dado dentro del rango de tiempo, manejando pagina
 
     Returns:
         The result.
-"""    events = []
+"""
+    events = []
     page_token = None
     
     async with httpx.AsyncClient(timeout=20) as client:

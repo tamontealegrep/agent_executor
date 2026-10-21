@@ -44,7 +44,8 @@ Igual que el mapeo JS original: Domingo=0, Lunes=1, ..., Sábado=6.
 
     Returns:
         The result.
-"""    local = dt_utc.astimezone(ZoneInfo(tz_name))
+"""
+    local = dt_utc.astimezone(ZoneInfo(tz_name))
     iso = local.isoweekday()  # Lunes=1 ... Domingo=7
     return 0 if iso == 7 else iso
 
@@ -63,7 +64,8 @@ Construye un datetime aware a partir de año/mes/día/hora/minuto en la zona hor
 
     Returns:
         The result.
-"""    return datetime(year, month, day, hour, minute, tzinfo=ZoneInfo(tz_name))
+"""
+    return datetime(year, month, day, hour, minute, tzinfo=ZoneInfo(tz_name))
 
 
 def add_days(dt: datetime, days: int) -> datetime:
@@ -76,7 +78,8 @@ Suma (o resta, si days es negativo) días a un datetime, preservando su zona hor
 
     Returns:
         The result.
-"""    return dt + timedelta(days=days)
+"""
+    return dt + timedelta(days=days)
 
 
 def parse_iso(value: str) -> datetime:

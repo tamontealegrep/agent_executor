@@ -53,7 +53,8 @@ El rango de búsqueda cierra a la hora de fin de la ventana configurada.
 
     Returns:
         The result.
-"""    window = day_window(weekday)
+"""
+    window = day_window(weekday)
     if window:
         return (window[2], window[3])
     return (17, 0)  # Default fallback
