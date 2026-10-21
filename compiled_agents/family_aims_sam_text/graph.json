@@ -1420,7 +1420,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, surrogacy, none]"
+            "Literal[ivf, ropa, surrogacy, none]"
           ]
         ],
         "eval": "code",
@@ -1443,7 +1443,8 @@
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
-          "If [svc] is still NULL, infer it from the user's latest message using the approved service labels."
+          "If [svc] is still NULL, infer it from the user's latest message using the approved service labels.",
+          "If [svc] == 'ropa', set [svc] = 'ivf'."
         ],
         "trigger": [],
         "say": [],

@@ -94,7 +94,6 @@
           "[o__prog_try] = 0",
           "[o__consent_try] = 0",
           "[o__stop_try] = 0",
-          "Infer [preferred_language] from {{contact.language}} or user message.",
           "Set [user_timezone] to 'America/Bogota' (default for this agent)."
         ],
         "trigger": [],
@@ -108,7 +107,6 @@
           "[o__prog_try] = 0",
           "[o__consent_try] = 0",
           "[o__stop_try] = 0",
-          "[preferred_language] = 'es' | 'en' | 'pt' derived from {{contact.language}} or user message",
           "[user_timezone] = 'America/Bogota'"
         ],
         "capture": [],
@@ -2515,10 +2513,12 @@
         "say": [],
         "say_verbatim": false,
         "execute": "check_documentation",
-        "store": [],
+        "store": [
+          "[q__documentation] = [q__doc_approved]"
+        ],
         "capture": [
           [
-            "q__documentation",
+            "q__doc_approved",
             "bool"
           ],
           [
@@ -2527,7 +2527,7 @@
           ],
           [
             "q__normalized_documents",
-            "str"
+            "list[Literal[cedula_ciudadania, ppt, cedula_extranjeria, pasaporte, otro, desconocido]]"
           ]
         ],
         "eval": "code",
@@ -2674,7 +2674,18 @@
           "Execute final surrogate classification."
         ],
         "do": [
-          "TOOL CALL: call surrogate_classification with all collected slots."
+          "TOOL CALL: call surrogate_classification with all collected slots.",
+          "age = [q__surrogate_age]",
+          "city = [q__city_residence]",
+          "eps = [q__eps_status]",
+          "number_of_children = [q__children_count]",
+          "last_birth_date = [q__last_birth_date]",
+          "number_of_c_sections = [q__csections_count]",
+          "abortions = [q__abortos]",
+          "preeclampsia = [q__pree]",
+          "bmi = [q__imc]",
+          "documentation = [q__documentation]",
+          "drug_use = [q__uses_drugs]"
         ],
         "trigger": [],
         "say": [],
@@ -2731,14 +2742,7 @@
           },
           {
             "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__result] == 'Inconclusive' AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_RESOLVE_MISSING",
-            "condition_text": "IF [q__result] == 'Inconclusive' -> GO_TO: Q__SQ_RESOLVE_MISSING",
+            "condition_text": "IF [q__result] == 'Inconclusive' -> GO_TO: Q__SQ_BYE_NOFIT",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
@@ -2761,130 +2765,6 @@
         "fallback": [
           {
             "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": null,
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          }
-        ]
-      },
-      {
-        "node_id": "Q__SQ_RESOLVE_MISSING",
-        "node_type": "decision",
-        "goal": [
-          "Determine which required data is missing and route back to capture it."
-        ],
-        "do": [],
-        "trigger": [],
-        "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "llm",
-        "route": [
-          {
-            "target": "Q__SQ_ASK_AGE",
-            "condition_text": "IF [q__surrogate_age] IS NULL -> GO_TO: Q__SQ_ASK_AGE",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_CITY",
-            "condition_text": "IF [q__city_residence] IS NULL -> GO_TO: Q__SQ_ASK_CITY",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_EPS",
-            "condition_text": "IF [q__eps_status] IS NULL -> GO_TO: Q__SQ_ASK_EPS",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_CHILDREN",
-            "condition_text": "IF [q__children_count] IS NULL -> GO_TO: Q__SQ_ASK_CHILDREN",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_LB",
-            "condition_text": "IF [q__last_birth_date] IS NULL -> GO_TO: Q__SQ_ASK_LB",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_CSEC",
-            "condition_text": "IF [q__csections_count] IS NULL -> GO_TO: Q__SQ_ASK_CSEC",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_ABORTIONS",
-            "condition_text": "IF [q__abortos] IS NULL -> GO_TO: Q__SQ_ASK_ABORTIONS",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_PREE",
-            "condition_text": "IF [q__pree] IS NULL -> GO_TO: Q__SQ_ASK_PREE",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_WEIGHT",
-            "condition_text": "IF [q__weight] IS NULL -> GO_TO: Q__SQ_ASK_WEIGHT",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_HEIGHT",
-            "condition_text": "IF [q__height] IS NULL -> GO_TO: Q__SQ_ASK_HEIGHT",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_NATIONALITY",
-            "condition_text": "IF [q__nationality] IS NULL -> GO_TO: Q__SQ_ASK_NATIONALITY",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_CC",
-            "condition_text": "IF [q__has_cc] IS NULL AND [q__nationality] != 'COL' -> GO_TO: Q__SQ_ASK_CC",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_ASK_DRUGS",
-            "condition_text": "IF [q__uses_drugs] IS NULL -> GO_TO: Q__SQ_ASK_DRUGS",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          },
-          {
-            "target": "Q__SQ_CHECK_DOCUMENTATION",
-            "condition_text": "IF [q__documentation] IS NULL -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
-          }
-        ],
-        "fallback": [
-          {
-            "target": "Q__SQ_FORCE_CLS",
             "condition_text": null,
             "is_mechanical": false,
             "python_expression": null,
@@ -5043,7 +4923,7 @@
           "[repeat_count] = 0"
         ],
         "trigger": [
-          "__ANY_INPUT__"
+          "__NO_MATCH__"
         ],
         "say": [
           "."
@@ -6169,6 +6049,7 @@
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
+    "Always respond in natural Colombian Spanish.",
     "Handles appointment assignment in two steps: first presents available days for the user to choose one and, only after a date has been chosen, offers the hours for that day.",
     "When listing appointment options, mention only the start time, without duration or location.",
     "When presenting time availability, do not read the list literally if it sounds mechanical: group consecutive hours and express them in the most natural way.",
