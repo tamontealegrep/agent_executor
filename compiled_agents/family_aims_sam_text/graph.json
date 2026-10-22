@@ -1364,11 +1364,63 @@
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_GREET",
+            "target": "O__OP_LANG_GATE",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_LANG_GATE",
+        "node_type": "decision",
+        "goal": [
+          "If the very first inbound message is clearly in Spanish, Portuguese, or English, ensure [preferred_language] matches it BEFORE greeting.",
+          "Avoid loops: only jump to language management when the message language is clear AND different from [preferred_language]."
+        ],
+        "do": [
+          "Look at the latest user message (if any). If it is clearly written in Spanish and [preferred_language] != 'Spanish', route to LM__LM_S.",
+          "If it is clearly written in Portuguese and [preferred_language] != 'Portuguese', route to LM__LM_S.",
+          "If it is clearly written in English and [preferred_language] != 'English', route to LM__LM_S.",
+          "If there is no user message yet (outbound flow) or the language is unclear, continue to the greeting as-is."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF latest user message is clearly Spanish AND [preferred_language] != 'Spanish' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF latest user message is clearly Portuguese AND [preferred_language] != 'Portuguese' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF latest user message is clearly English AND [preferred_language] != 'English' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "O__OP_GREET",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
           }
         ],
         "fallback": []
@@ -5530,7 +5582,7 @@
         "node_id": "LM__LM_INIT",
         "node_type": "registration",
         "goal": [
-          "Reset language selection counters and infer current preference."
+          "Reset language selection counters and set resume target."
         ],
         "do": [
           "[lm__lang_try] = 0"
@@ -5546,7 +5598,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "LM__LM_ASK_LANG",
+            "target": "LM__LM_DETECT_REQUEST",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -5556,57 +5608,62 @@
         "fallback": []
       },
       {
-        "node_id": "LM__LM_ASK_LANG",
-        "node_type": "question",
+        "node_id": "LM__LM_DETECT_REQUEST",
+        "node_type": "decision",
         "goal": [
-          "Ask the user which language they prefer to continue in."
+          "Resolve a clear language request from the user's latest message before consulting the stored preference."
         ],
-        "do": [],
+        "do": [
+          "If the user explicitly requests Spanish, or writes in Spanish that they do not speak English (e.g. 'no hablo ingles'), route to Spanish.",
+          "If the user explicitly requests Portuguese, or writes in Brazilian Portuguese that they do not speak English (e.g. 'não falo inglês'), route to Portuguese.",
+          "If the user explicitly requests English, route to English. If the user says in English that they do not speak English and does not identify another language, treat the target as unknown and ask the trilingual question.",
+          "If the latest message is a clear Spanish, English, or Brazilian Portuguese message and does not merely mention that language while asking for a different one, route to the language used in the message.",
+          "Do not infer a preference from a one-word answer, a service name, or an isolated borrowed word."
+        ],
         "trigger": [],
-        "say": [
-          "I'm sorry, what language would you prefer to speak in? I can help you in English, Spanish, or Portuguese."
-        ],
+        "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "preferred_language",
-            "Literal[English, Spanish, Portuguese]"
-          ]
-        ],
-        "eval": "code",
+        "capture": [],
+        "eval": "llm",
         "route": [
           {
-            "target": "LM__LM_DEC_LANG",
-            "condition_text": "IF [preferred_language] IS NOT NULL -> GO_TO: LM__LM_DEC_LANG",
-            "is_mechanical": true,
-            "python_expression": "preferred_language is not None",
-            "reason": null
+            "target": "LM__LM_SET_ES",
+            "condition_text": "IF the latest user message clearly requests Spanish, says in Spanish that they do not speak English, or is clearly written in Spanish -> GO_TO: LM__LM_SET_ES",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
           },
           {
-            "target": "LM__LM_RESUME",
-            "condition_text": "IF [lm__lang_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: LM__LM_RESUME",
-            "is_mechanical": true,
-            "python_expression": "lm__lang_try >= MAX_RETRY_ATTEMPTS",
-            "reason": null
-          }
-        ],
-        "fallback": [
+            "target": "LM__LM_SET_PT",
+            "condition_text": "IF the latest user message clearly requests Portuguese, says in Portuguese that they do not speak English, or is clearly written in Brazilian Portuguese -> GO_TO: LM__LM_SET_PT",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "LM__LM_SET_EN",
+            "condition_text": "IF the latest user message clearly requests English or is clearly written in English without saying they do not speak English -> GO_TO: LM__LM_SET_EN",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
           {
             "target": "LM__LM_ASK_LANG",
             "condition_text": null,
-            "is_mechanical": true,
+            "is_mechanical": false,
             "python_expression": null,
-            "reason": null
+            "reason": "eval='llm' forces an LLM-evaluated edge"
           }
-        ]
+        ],
+        "fallback": []
       },
       {
-        "node_id": "LM__LM_DEC_LANG",
+        "node_id": "LM__LM_CHECK_KNOWN",
         "node_type": "decision",
         "goal": [
-          "Map the internal language code to a display label for GHL."
+          "Check if preferred_language is already set to a supported language."
         ],
         "do": [
           "[lm__lang_try] = [lm__lang_try] + 1"
@@ -5639,6 +5696,46 @@
             "is_mechanical": true,
             "python_expression": "preferred_language == 'Portuguese'",
             "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "LM__LM_ASK_LANG",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "LM__LM_ASK_LANG",
+        "node_type": "question",
+        "goal": [
+          "Ask the user which language they prefer to continue in using a trilingual message."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Te puedo atender en español. I can assist you in English. Posso atender em português. ¿En qué idioma prefieres continuar? / Which language do you prefer? / Em qual idioma você prefere conversar?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "preferred_language",
+            "Literal[English, Spanish, Portuguese]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_CHECK_KNOWN",
+            "condition_text": "IF [preferred_language] IS NOT NULL -> GO_TO: LM__LM_CHECK_KNOWN",
+            "is_mechanical": true,
+            "python_expression": "preferred_language is not None",
+            "reason": null
           },
           {
             "target": "LM__LM_RESUME",
@@ -5670,6 +5767,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
+          "[preferred_language] = 'Spanish'",
           "[lm__language_value] = 'Spanish'"
         ],
         "capture": [],
@@ -5697,6 +5795,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
+          "[preferred_language] = 'English'",
           "[lm__language_value] = 'English'"
         ],
         "capture": [],
@@ -5724,6 +5823,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
+          "[preferred_language] = 'Portuguese'",
           "[lm__language_value] = 'Portuguese'"
         ],
         "capture": [],
@@ -5779,15 +5879,13 @@
       },
       {
         "node_id": "LM__LM_RESUME",
-        "node_type": "message",
+        "node_type": "decision",
         "goal": [
-          "Acknowledge the change and return to the previous state."
+          "Return immediately to the active question state in the new language without adding filler messages."
         ],
         "do": [],
         "trigger": [],
-        "say": [
-          "Perfect, let's continue with our conversation."
-        ],
+        "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [],
@@ -5796,6 +5894,196 @@
         "route": [
           {
             "target": "[lm__resume_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_S",
+        "node_type": "start",
+        "goal": [
+          "Enter the advisor handoff."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_INIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_INIT",
+        "node_type": "registration",
+        "goal": [
+          "Remember where to return and reset the offer counter."
+        ],
+        "do": [
+          "[ah__wants_try] = 0"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[ah__resume_state] = [current_state]",
+          "[ah__wants_advisor] = NULL",
+          "[ah__wants_try] = 0"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_ASK",
+        "node_type": "question",
+        "goal": [
+          "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one.",
+          "Capture 'yes' if the lead accepts scheduling; 'no' if they decline or prefer to keep going with the current conversation."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "That's a great question, and the best person to answer it in detail is one of our human advisors. Would you like to schedule a conversation with an advisor?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "ah__wants_advisor",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Send the lead to scheduling if they accepted, or back to the interrupted question if not."
+        ],
+        "do": [
+          "[ah__wants_try] = [ah__wants_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_TO_SCHEDULING",
+            "condition_text": "IF [ah__wants_advisor] == 'yes' -> GO_TO: AH__AH_TO_SCHEDULING",
+            "is_mechanical": true,
+            "python_expression": "ah__wants_advisor == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "AH__AH_RESUME",
+            "condition_text": "IF [ah__wants_advisor] == 'no' -> GO_TO: AH__AH_RESUME",
+            "is_mechanical": true,
+            "python_expression": "ah__wants_advisor == 'no'",
+            "reason": null
+          },
+          {
+            "target": "AH__AH_RESUME",
+            "condition_text": "IF [ah__wants_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: AH__AH_RESUME",
+            "is_mechanical": true,
+            "python_expression": "ah__wants_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "AH__AH_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "AH__AH_TO_SCHEDULING",
+        "node_type": "registration",
+        "goal": [
+          "Carry the service the lead is interested in and start the scheduling flow from its beginning."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_RESUME",
+        "node_type": "decision",
+        "goal": [
+          "Return to the question the lead was answering, without filler messages."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "[ah__resume_state]",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7854,6 +8142,50 @@
   "global_router": {
     "handlers": [
       {
+        "node_id": "H_LANG_AUTO",
+        "node_type": "decision",
+        "goal": [
+          "Auto-detect the language of the latest user message and, if it differs from [preferred_language], switch languages before continuing."
+        ],
+        "do": [
+          "If the latest user message is clearly written in Spanish and [preferred_language] != 'Spanish', route to language management now.",
+          "If the latest user message is clearly written in Portuguese and [preferred_language] != 'Portuguese', route to language management now.",
+          "If the latest user message is clearly written in English and [preferred_language] != 'English', route to language management now.",
+          "Otherwise, do nothing and let other handlers proceed."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF the latest user message is clearly Spanish AND [preferred_language] != 'Spanish' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF the latest user message is clearly Portuguese AND [preferred_language] != 'Portuguese' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "LM__LM_S",
+            "condition_text": "IF the latest user message is clearly English AND [preferred_language] != 'English' -> GO_TO: LM__LM_S",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "H_WHATSAPP_CONFIRM_START",
         "node_type": "decision",
         "goal": [],
@@ -8184,7 +8516,7 @@
       },
       {
         "node_id": "H_LANG_CHANGE",
-        "node_type": "message",
+        "node_type": "decision",
         "goal": [],
         "do": [
           "If the latest user message clearly requests to speak Spanish (e.g., contains 'no hablo ingles', 'habla en español', 'en español por favor', 'cambiar a español'), set [preferred_language] = 'Spanish' now before speaking.",
@@ -8192,6 +8524,25 @@
           "If the latest user message clearly requests to speak English or says they do not speak Spanish/Portuguese (e.g., 'I don't speak Spanish', 'speak in English', 'in English please'), set [preferred_language] = 'English' now before speaking."
         ],
         "trigger": [
+          "prefiero que me hables en español",
+          "prefiero que me hables en ingles",
+          "prefiero que me hables en portugués",
+          "prefiero que me hables en portugues",
+          "háblame en español",
+          "háblame en inglés",
+          "háblame en portugues",
+          "hablame en español",
+          "hablame en ingles",
+          "hablame en portugues",
+          "responde en español",
+          "responde en inglés",
+          "responde en ingles",
+          "responde en portugués",
+          "responde en portugues",
+          "en español porfa",
+          "en ingles porfa",
+          "en portugués porfa",
+          "en portugues porfa",
           "I don't speak Spanish",
           "I don't speak English",
           "I don't speak Portuguese",
@@ -8239,9 +8590,7 @@
           "no entiendo",
           "não entendo"
         ],
-        "say": [
-          "Let me adjust the language so we can continue more comfortably."
-        ],
+        "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [],
@@ -8348,6 +8697,31 @@
         "route": [
           {
             "target": "[current_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_ADVISOR_Q",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "a question about the treatment process, legal aspects, medical details or program specifics that no FAQ or other handler covers and that a human advisor should answer"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -9687,9 +10061,9 @@
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
-    "The conversation operating language is [preferred_language], set from {{contact.language}} when available; if missing, inferred from the user's latest message. Follow that slot and do not re-decide the language in parallel.",
-    "If [preferred_language] == 'English', respond in warm professional English; if 'Spanish', respond in natural Colombian Spanish ; if 'Portuguese', respond in natural Brazilian Portuguese. If it is still empty, use default to English",
-    "For ambiguous replies such as yes, no, ok, numbers, dates, or times, keep [preferred_language]. Change it only if the user explicitly asks for another language or sends a new clear message in another supported language.",
+    "The conversation operating language is [preferred_language], initialized from {{contact.language}} when available or defaulting to English. When the global language-change handler routes to language_management, let that subflow update [preferred_language] and sync GHL before continuing; do not make a parallel language decision or tool call.",
+    "If [preferred_language] == 'English', respond in warm professional English; if 'Spanish', respond in natural Colombian Spanish; if 'Portuguese', respond in natural Brazilian Portuguese. If it is empty, default to English.",
+    "For ambiguous replies such as yes, no, ok, numbers, dates, or times, keep the current [preferred_language]. Change it only if the user explicitly asks for another language or sends a clear message in another supported language.",
     "If an approved SAY, FAQ, or handler message is written in another supported language, translate it faithfully into [preferred_language] without adding or removing facts.",
     "Write in a warm, brief, useful style and keep each turn focused on one clear next step.",
     "When a question must be asked again because the previous reply did not resolve it, do not restate it almost verbatim: briefly acknowledge what the lead just said and re-ask the same question with different, more natural wording, so the retry does not sound scripted or robotic.",
