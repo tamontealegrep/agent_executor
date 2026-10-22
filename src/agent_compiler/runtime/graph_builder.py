@@ -745,18 +745,22 @@ def _sync_language_change(
     contact: dict[str, Any],
     tool_executors: dict[str, Callable[..., dict[str, Any]]],
 ) -> None:
-    """Push `preferred_language` to the CRM `language` field when the global router changed it."""
+    """Push `preferred_language` to the CRM `language` field when the global router changed it.
+
+    Fired even when the contact lacks `contact_id`/`location_id`; the tool call may then fail, which is logged only.
+    """
     new_language = _language_name_from_slots(slots)
     executor = tool_executors.get("update_custom_field")
     if new_language is None or new_language == previous_language or executor is None:
         return
-    contact_id = contact.get("contact_id")
-    if not contact_id:
-        return
+    inputs = {"name": "language", "value": new_language}
+    for key in ("contact_id", "location_id"):
+        if contact.get(key):
+            inputs[key] = contact[key]
     try:
-        executor(name="language", value=new_language, contact_id=contact_id, location_id=contact.get("location_id"))
+        executor(**inputs)
     except Exception:
-        logger.warning("language sync to CRM failed for contact %r; continuing", contact_id, exc_info=True)
+        logger.warning("language sync to CRM failed; continuing", exc_info=True)
 
 
 def _make_render_say(
