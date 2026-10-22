@@ -7,6 +7,7 @@ Global router for FAQs and handlers during question interrupts.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
@@ -413,6 +414,25 @@ UNANSWERED_QUESTION_ACK: list[str] = [
 # Fixed, non-specific deflection used when a side question is detected.
 
 
+_QUESTION_CUE_RE = re.compile(
+    r"\b(cu[aá]nto|cu[aá]nta|cu[aá]nt[oa]s|cu[aá]l(es)?|c[oó]mo|qu[eé]|por ?qu[eé]|d[oó]nde|cu[aá]ndo|qui[eé]n(es)?"
+    r"|puedo|puede|pueden|h[aá]blame|hablame|cu[eé]ntame|expl[ií]came|dime|d[ií]game|quiero saber|necesito saber"
+    r"|how|what|why|when|where|which|who|can i|could you|can you|tell me|explain|is it|are there|do you|does it"
+    r"|quanto|quanta|qual|quais|onde|quando|quem|por que|me conte|me explique|pode)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_question(message: str) -> bool:
+    """Cheap mechanical gate: does `message` contain a question mark or an interrogative/request cue?"""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if "?" in text or "¿" in text:
+        return True
+    return bool(_QUESTION_CUE_RE.search(text))
+
+
 def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool:
     """
 Detect whether the latest reply includes an unanswered side question.
@@ -431,20 +451,30 @@ Detect whether the latest reply includes an unanswered side question.
     Returns:
         The result.
 """
+    if not _looks_like_question(ctx.last_user_message):
+        return False
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
+    pending_block = f"The question the agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
         "A conversational agent just received the user's latest reply below. It has "
         "already been checked against every specific FAQ and handler this agent has, "
         "and none matched — it will be captured normally as an answer to the pending "
         "question.\n\n"
         f"{ctx.block()}"
+        f"{pending_block}"
         f"{policy_block}"
-        "Does this reply ALSO contain a genuine question or request for specific "
-        "information (a fact, a number, a procedure detail, a personal-situation "
-        "judgment) that is not already covered by the conversation so far, and that "
-        "this agent has no specific approved content to answer? A bare answer to the "
-        "pending question, a greeting, or a short acknowledgement (\"ok\", \"sí\", "
-        "\"gracias\") is NOT this case.\n\n"
-        "Reply with just YES or NO."
+        "Does this reply ALSO contain a genuine, separate question or request for "
+        "specific information (a fact, a number, a procedure detail, a price, a "
+        "personal-situation judgment) that the user wants the agent to answer, and "
+        "that is not already covered by the conversation so far? It is NOT this case "
+        "when the reply is:\n"
+        "- a plain answer to the pending question, even if phrased as a question "
+        "(\"¿yo? soy de Colombia\", \"en pareja, ¿no?\");\n"
+        "- a request to repeat, clarify or rephrase the pending question itself;\n"
+        "- a greeting, small talk, a rhetorical remark, or an acknowledgement "
+        "(\"ok\", \"sí\", \"gracias\", \"¿listo?\");\n"
+        "- a statement about the user's own situation with no information requested.\n\n"
+        "Reply YES only if you can quote the exact separate question or request from "
+        "the reply; otherwise reply NO. Reply with just YES or NO."
     )
     return llm_client.complete(prompt).strip().upper().startswith("Y")
