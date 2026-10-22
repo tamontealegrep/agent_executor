@@ -299,19 +299,22 @@ def match_global_router(
     det_lang, det_intent = _detect_language_and_intent(ctx.last_user_message, current_lang)
 
     # 1. First check rule-based detection
+    language_resolved = False
     if language_handler is not None and det_intent != "none":
         if det_intent == "content_answer" and det_lang:
+            # The reply is content in another language: switch language, then still
+            # check it against the handlers/FAQs below instead of skipping them.
             if ctx.slots is not None:
                 ctx.slots["preferred_language"] = det_lang
-            return None  # Flow continuation!
+            language_resolved = True
 
-        if det_intent in ("explicit", "inability_clear") and det_lang:
+        elif det_intent in ("explicit", "inability_clear") and det_lang:
             if ctx.slots is not None:
                 ctx.slots["preferred_language"] = det_lang
             synthetic = GraphNode(node_id="H_LANG_REASK", node_type="message", say=[], route=[], fallback=[])
             return ("handler", synthetic)
 
-        if det_intent == "inability_unclear":
+        elif det_intent == "inability_unclear":
             ask = GraphNode(
                 node_id="H_LANG_ASK",
                 node_type="message",
@@ -327,7 +330,7 @@ def match_global_router(
             return ("handler", ask)
 
     # 2. Fall back to LLM classification
-    decision = _classify_reply(llm_client, ctx, lines, language_handler)
+    decision = _classify_reply(llm_client, ctx, lines, None if language_resolved else language_handler)
     if decision.startswith("LANGUAGE_CHANGE") and language_handler is not None:
         upper_dec = decision.upper()
         new_lang = None

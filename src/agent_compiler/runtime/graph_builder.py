@@ -736,6 +736,8 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
 
 logger = logging.getLogger(__name__)
 
+_ADVISOR_HANDLER_ID = "H_ADVISOR_Q"
+
 
 def _sync_language_change(
     previous_language: str | None,
@@ -1409,9 +1411,16 @@ Build one LangGraph node function for `node`.
                 previous_language = _language_name_from_slots(slots)
                 match = match_global_router(llm_client, router, router_ctx)
                 _sync_language_change(previous_language, slots, contact, tool_executors)
+                side_question = match is None and has_unanswered_side_question(llm_client, router_ctx)
+                if side_question:
+                    advisor_handler = next(
+                        (h for h in router.handlers if h.node_id == _ADVISOR_HANDLER_ID), None
+                    )
+                    if advisor_handler is not None:
+                        match = ("handler", advisor_handler)
                 if match is None:
                     last_user_message = reply
-                    if has_unanswered_side_question(llm_client, router_ctx):
+                    if side_question:
                         ack = render_say(
                             f"{node.node_id}__side_question_ack",
                             UNANSWERED_QUESTION_ACK,
@@ -1423,7 +1432,7 @@ Build one LangGraph node function for `node`.
                         say_callback(ack)
                         history = _append_history(history, f"agent: {ack}")
                     break
-                if match[1].node_id == "H_LANG_ASK":
+                if match[0] == "handler" and match[1].node_id == "H_LANG_ASK":
                     # Ambiguous "I don't speak X": ask once in all three languages and wait
                     # for the answer instead of re-asking the pending question.
                     rendered_say = "\n".join(match[1].say)
