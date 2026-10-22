@@ -76,16 +76,6 @@ The context every runtime LLM decision call is given, normalized (2026-09-17).
     def block(self) -> str:
         """
         Render the context pieces every decision prompt includes the same way.
-
-        Deliberately excludes `goal`/`do`/`pending_question` — unlike `history`/
-        `slots`/`last_user_message`, which every call site wants presented identically, those three
-        are used differently enough by different callers (merged with other instructions, shown as
-        the specific lines being resolved, framed as "the agent just asked") that forcing one
-        shared rendering would either duplicate content a caller already shows itself or change
-        wording tuned against a live regression. Callers render those themselves.
-
-        Returns:
-            The rendered context block.
         """
         history_block = f"Recent conversation:\n{chr(10).join(self.history)}\n\n" if self.history else ""
         contact_block = (
@@ -117,36 +107,15 @@ The only two LLM operations the runtime needs.
 
     def complete(self, prompt: str, *, temperature: float = 0.0) -> str:
         """
-        Return the model's raw text completion for `prompt`.
-
-        `temperature` defaults to `0.0` because most callers (`match_global_router`,
-        `_llm_pick_condition`, `_llm_compute_store_value`) are making a factual judgment call —
-        "does this match", "which condition is true", "what is this value" — where consistency
-        across otherwise-identical calls matters, not variety. The one caller that wants the
-        opposite (`render_say`'s SAY paraphrasing, 2026-09-16) passes a higher `temperature`
-        explicitly.
-
-        Parameters:
-            prompt: The prompt to complete.
-            temperature: Sampling temperature.
-
-        Returns:
-            The model's text output.
+        Return the model's raw text completion for prompt.
         """
         ...
 
     def extract_structured(self, prompt: str, json_schema: dict[str, Any]) -> dict[str, Any]:
-            """
-            Return a dict conforming to `json_schema`, extracted from `prompt`.
-
-            Parameters:
-                prompt: The prompt to extract from.
-                json_schema: The JSON schema describing the expected structure.
-
-            Returns:
-                Parsed JSON object matching the schema.
-            """
-            ...
+        """
+        Return a dict conforming to json_schema, extracted from prompt.
+        """
+        ...
 
 
 class OpenAILLMClient:
@@ -167,7 +136,9 @@ Default `LLMClient` backed by the OpenAI Chat Completions API.
         return (response.choices[0].message.content or "").strip()
 
     def extract_structured(self, prompt: str, json_schema: dict[str, Any]) -> dict[str, Any]:
-        
+        """
+        Extract a structured object according to a JSON Schema.
+        """
         response = self._client.chat.completions.create(
             model=self._model,
             messages=[{"role": "user", "content": prompt}],

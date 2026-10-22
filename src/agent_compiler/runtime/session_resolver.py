@@ -24,7 +24,7 @@ Current UTC timestamp, ISO-8601 — the format stored in `last_message_at`.
 
     Returns:
         The result.
-    """
+"""
     return datetime.now(UTC).isoformat()
 
 

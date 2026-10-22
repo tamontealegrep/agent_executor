@@ -757,13 +757,7 @@ Schema for a policies YAML fragment.
 
     def get_section(self, name: str) -> list[str]:
         """
-        Return the lines of ``name`` section, or an empty list if absent.
-
-        Parameters:
-            name: Section name.
-
-        Returns:
-            Lines under the requested section.
+        Return the lines of a section, or an empty list if absent.
         """
         value = getattr(self, name, None)
         return list(value) if value else []
@@ -771,9 +765,6 @@ Schema for a policies YAML fragment.
     def all_sections(self) -> dict[str, list[str]]:
         """
         Return all sections as a dict, including dynamically declared ones.
-
-        Returns:
-            Mapping of section names to lines.
         """
         return self.model_dump()
 

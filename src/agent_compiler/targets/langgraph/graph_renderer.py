@@ -74,11 +74,11 @@ The full emitted artifact for one subflow (or one whole agent).
 
     def to_dict(self) -> dict[str, Any]:
         """
-        Serializable representation — no `langgraph` types involved.
+Serializable representation — no `langgraph` types involved.
 
-        Returns:
-            The result.
-        """
+    Returns:
+        The result.
+    """
         return asdict(self)
 
 

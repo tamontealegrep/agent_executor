@@ -163,11 +163,11 @@ Everything `runtime.graph_builder.build_graph()` needs, and nothing else.
 
     def to_dict(self) -> dict[str, Any]:
         """
-        Plain-dict, JSON-serializable form — write this with `json.dump`.
+Plain-dict, JSON-serializable form — write this with `json.dump`.
 
-        Returns:
-            The result.
-        """
+    Returns:
+        The result.
+    """
         return {
             "agent_id": self.agent_id,
             "graph": asdict(self.graph),
