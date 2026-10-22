@@ -34,21 +34,35 @@ COMPILED_AGENTS_DIR = PROJECT_ROOT / "compiled_agents"
 
 
 def _sync_one(slug: str) -> bool:
-    src_dir = AGENTS_COMPILED_DIR / slug
+    """
+    Copia los artefactos compilados (layout empaquetado) de `slug` hacia
+    `agent_executor/compiled_agents`.
+
+    ÚNICAMENTE acepta el layout empaquetado:
+      agents/compiled/<slug>/<slug>/{langgraph/graph.json, assets.json}
+
+    Si no existe, pide recompilar el agente para generar ese layout.
+    """
+
+    src_dir = AGENTS_COMPILED_DIR / slug / slug
     graph_src = src_dir / "langgraph" / "graph.json"
+    assets_src = src_dir / "assets.json"
+
     if not graph_src.exists():
-        print(f"SKIP {slug}: no existe {graph_src}")
+        print(
+            f"SKIP {slug}: no existe {graph_src}. Recompila para generar el layout empaquetado: "
+            f"agents/compiled/{slug}/{slug}/langgraph/graph.json"
+        )
         return False
 
     dest_dir = COMPILED_AGENTS_DIR / slug
     dest_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(graph_src, dest_dir / "graph.json")
 
-    assets_src = src_dir / "assets.json"
     if assets_src.exists():
         shutil.copy2(assets_src, dest_dir / "assets.json")
 
-    print(f"OK   {slug}")
+    print(f"OK   {slug} -> {dest_dir}")
     return True
 
 

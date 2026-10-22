@@ -304,15 +304,16 @@ httpx.Client that records every tool POST -- passed as
         return self._base_prefixes or ["/family_aims/v1", "/babynova/v1", "/tools/v1"]
 
     def _rewrite_snake_to_kebab(self, url: str) -> str:
-            """
-Normaliza la última parte del path a kebab-case (check_visa -> check-visa).
+        """
+        Normaliza la última parte del path a kebab-case (check_visa -> check-visa).
 
-    Parameters:
-        url: Description.
+        Parameters:
+            url: URL a normalizar.
 
-    Returns:
-        The result.
-    """        try:
+        Returns:
+            La URL con el último segmento en kebab-case si aplicó; si no, la original.
+        """
+        try:
             from urllib.parse import urlsplit, urlunsplit
 
             parts = urlsplit(url)
@@ -417,14 +418,20 @@ Copia graph.json/assets.json recién compilados desde la ruta estándar
         return
 
     for dist_agent_dir in sorted(AGENT_COMPILER_DIST_DIR.iterdir()):
-        graph_src = dist_agent_dir / "langgraph" / "graph.json"
-        if not dist_agent_dir.is_dir() or not graph_src.exists():
+        if not dist_agent_dir.is_dir():
             continue
 
         slug = dist_agent_dir.name
+        # Solo layout empaquetado: agents/compiled/<slug>/<slug>/langgraph/graph.json
+        packaged_root = dist_agent_dir / slug
+        graph_src = packaged_root / "langgraph" / "graph.json"
+        assets_src = packaged_root / "assets.json"
+        if not graph_src.exists():
+            # No tocar nada si no existe el empaquetado — evita pisar con clásico antiguo
+            continue
+
         dest_dir = COMPILED_AGENTS_DIR / slug
         graph_dst = dest_dir / "graph.json"
-        assets_src = dist_agent_dir / "assets.json"
         assets_dst = dest_dir / "assets.json"
 
         if graph_dst.exists() and graph_src.stat().st_mtime <= graph_dst.stat().st_mtime:
@@ -438,7 +445,7 @@ Copia graph.json/assets.json recién compilados desde la ruta estándar
             except PermissionError as e:
                 console.print(f"[yellow]Advertencia: No se pudo copiar {assets_src} → {assets_dst}: {e}. El archivo está siendo usado por otro proceso.[/yellow]")
                 # Continúa sin interrumpir el TUI
-        console.print(f"[dim]Sincronizado {slug} desde agents/compiled/[/dim]")
+        console.print(f"[dim]Sincronizado {slug} (packaged) desde agents/compiled/[/dim]")
 
 
 def discover_compiled_agents() -> List[str]:
@@ -510,17 +517,17 @@ Un grafo LangGraph real, construido una sola vez por sesion de TUI,
 
     # --- Descubrimiento de posibles nombres de slots en el grafo ---
     def discover_slot_names(self) -> List[str]:
-            """
-Inspecciona el artifact para sugerir nombres de slots editables.
+        """
+        Inspecciona el artifact para sugerir nombres de slots editables.
 
-    - Toma todos los nombres de `capture`.
-            - Extrae identificadores entre corchetes de las líneas `store`.
-            - Incluye los que ya existen en el snapshot actual y en `initial_slots`.
-            - Excluye constantes compiladas (`artifact.constants`).
+        - Toma todos los nombres de `capture`.
+        - Extrae identificadores entre corchetes de las líneas `store`.
+        - Incluye los que ya existen en el snapshot actual y en `initial_slots`.
+        - Excluye constantes compiladas (`artifact.constants`).
 
-    Returns:
-        The result.
-    """
+        Returns:
+            Lista ordenada de nombres de slot.
+        """
         names: set[str] = set()
         # 1) Desde nodos del grafo principal
         for node in getattr(self.artifact.graph, "nodes", []) or []:
@@ -548,18 +555,18 @@ Inspecciona el artifact para sugerir nombres de slots editables.
         return sorted(names)
 
     def discover_contact_fields(self) -> List[str]:
-            """
-Intenta descubrir variables `contact.*` para este agente.
+        """
+        Intenta descubrir variables `contact.*` para este agente.
 
-    Estrategia:
-              1) Leer agents/definitions/<slug>/input_variables.yaml si existe y
-                 extraer los nombres que comienzan por 'contact.'.
-              2) Si no existe o falla el parseo, buscar patrones '{{contact.X}}' en
-                 los textos del grafo (say/goal/do/trigger/route/fallback).
+        Estrategia:
+          1) Leer agents/definitions/<slug>/input_variables.yaml si existe y extraer los nombres que
+             comienzan por 'contact.'.
+          2) Si no existe o falla el parseo, buscar patrones '{{contact.X}}' en los textos del grafo
+             (say/goal/do/trigger/route/fallback).
 
-    Returns:
-        The result.
-    """
+        Returns:
+            Lista ordenada de campos contact.* detectados (sin el prefijo 'contact.').
+        """
         fields: set[str] = set()
         # 1) input_variables.yaml
         try:
@@ -594,14 +601,14 @@ Intenta descubrir variables `contact.*` para este agente.
         return sorted(fields)
 
     def discover_input_variables(self) -> List[Dict[str, str]]:
-            """
-Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
+        """
+        Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
 
-    [{"name": str, "description": str}] de las variables de entrada declaradas.
+        [{"name": str, "description": str}] de las variables de entrada declaradas.
 
-    Returns:
-        The result.
-    """
+        Returns:
+            Lista de dicts con nombre y descripción.
+        """
         results: list[dict[str, str]] = []
         try:
             import yaml  # type: ignore
@@ -627,34 +634,19 @@ Lee `agents/definitions/<slug>/input_variables.yaml` y devuelve
         opening_message: Optional[str] = None,
         initial_slots: Optional[Dict[str, Any]] = None,
     ) -> ChatTurnResult:
-            """
-Invoke the very first turn of a brand-new thread.
+        """
+        Invoke the very first turn of a brand-new thread.
 
-    `first_speaker` decides what the graph's first `eval: "llm"` gate
-            (or any other node reading `history`/`last_user_message`) gets to
-            reason from, since a plain `fresh_state()` starts with none of
-            that -- see `fresh_state`'s own docstring for why that silently
-            breaks an outbound-call agent's "was the call answered?" decision:
+        `first_speaker` decides what the graph's first `eval: "llm"` gate (or any other node reading
+        `history`/`last_user_message`) gets to reason from. A plain `fresh_state()` starts empty — see
+        `fresh_state`'s docstring for why outbound-call agents otherwise fall into the "not answered" path.
 
-            - "agent" (saliente/voz): seeds a neutral note that the call
-              connected, so that kind of gate has real evidence and the agent
-              actually gets to greet, instead of the graph landing on its
-              "not answered" fallback with zero context.
-            - "user" (entrante/texto): seeds `opening_message` as the first
-              thing the contact said, so any early node that reasons over
-              `last_user_message`/`history` sees it from turn one -- the same
-              shape a real inbound webhook delivers (the platform already has
-              the user's message when it starts the conversation).
+        - "agent" (saliente/voz): siembra una nota neutral de que la llamada conectó.
+        - "user" (entrante/texto): usa `opening_message` como primer mensaje del contacto.
 
-    Parameters:
-        thread_id: Description.
-        first_speaker: Description.
-        opening_message: Description.
-        initial_slots: Description.
-
-    Returns:
-        The result.
-    """
+        Returns:
+            ChatTurnResult con los mensajes del turno y estado de conversación.
+        """
         config = {"configurable": {"thread_id": thread_id}}
         self._say_buffer.clear()
         self._trace_buffer.clear()
