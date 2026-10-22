@@ -68,6 +68,7 @@ Builds a real `langgraph.graph.StateGraph` from a `RuntimeArtifact`.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Callable
 from typing import Any, TypedDict
@@ -733,6 +734,28 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
 
     return _INTERPOLATION_RE.sub(repl, text)
 
+logger = logging.getLogger(__name__)
+
+
+def _sync_language_change(
+    previous_language: str | None,
+    slots: dict[str, Any],
+    contact: dict[str, Any],
+    tool_executors: dict[str, Callable[..., dict[str, Any]]],
+) -> None:
+    """Push `preferred_language` to the CRM `language` field when the global router changed it."""
+    new_language = _language_name_from_slots(slots)
+    executor = tool_executors.get("update_custom_field")
+    if new_language is None or new_language == previous_language or executor is None:
+        return
+    contact_id = contact.get("contact_id")
+    if not contact_id:
+        return
+    try:
+        executor(name="language", value=new_language, contact_id=contact_id, location_id=contact.get("location_id"))
+    except Exception:
+        logger.warning("language sync to CRM failed for contact %r; continuing", contact_id, exc_info=True)
+
 
 def _make_render_say(
     llm_client: LLMClient,
@@ -1383,7 +1406,9 @@ Build one LangGraph node function for `node`.
                     policies=judgment_policies or [],
                     contact=contact,
                 )
+                previous_language = _language_name_from_slots(slots)
                 match = match_global_router(llm_client, router, router_ctx)
+                _sync_language_change(previous_language, slots, contact, tool_executors)
                 if match is None:
                     last_user_message = reply
                     if has_unanswered_side_question(llm_client, router_ctx):
