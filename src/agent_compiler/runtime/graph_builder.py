@@ -489,6 +489,19 @@ Best-effort coercion of a value against its declared type_expr.
 _LANGUAGE_NAMES = {"es": "Spanish", "en": "English", "pt": "Portuguese"}
 
 
+def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None = None) -> str | None:
+    """Resolve full language name from slots['preferred_language'] (code or name)."""
+    if not slots:
+        return fallback
+    value = slots.get("preferred_language")
+    if not isinstance(value, str):
+        return fallback
+    v = value.strip()
+    if v.lower() in _LANGUAGE_NAMES:
+        return _LANGUAGE_NAMES[v.lower()]
+    return v if v in set(_LANGUAGE_NAMES.values()) else fallback
+
+
 _INTERPOLATION_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]|<([A-Z_][A-Z0-9_]*)>")
 
 _ISO_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
@@ -741,6 +754,7 @@ Build a `say`-rendering function.
         language_code: str | None,
         slots: dict[str, Any],
         policies: list[str] | None = None,
+        user_message: str = "",
     ) -> str:
         """
         Render a `say` block, paraphrased naturally in the caller's language via the LLM.
@@ -778,6 +792,7 @@ Build a `say`-rendering function.
         language_code: Description.
         slots: Description.
         policies: Description.
+        user_message: Latest user message; accepted for call sites that pass it.
 
     Returns:
         The result.
@@ -1383,6 +1398,11 @@ Build one LangGraph node function for `node`.
                         say_callback(ack)
                         history = _append_history(history, f"agent: {ack}")
                     break
+                if match[1].node_id == "H_LANG_ASK":
+                    # Ambiguous "I don't speak X": ask once in all three languages and wait
+                    # for the answer instead of re-asking the pending question.
+                    rendered_say = "\n".join(match[1].say)
+                    continue
                 goto_target = handle_global_router_match(
                     match,
                     router_ctx,
@@ -1400,6 +1420,12 @@ Build one LangGraph node function for `node`.
                         goto=goto_target,
                     )
                 # else: resume where we were — loop back and re-ask.
+                language_name = _language_name_from_slots(slots)
+                say_language = None if node.node_id.startswith("LM__") else language_name
+                rendered_say = render_say(
+                    node.node_id, node.say, node.say_verbatim, say_language, slots, say_policies,
+                    user_message=reply,
+                )
 
             ctx = LLMContext(
                 slots=slots,

@@ -1,24 +1,15 @@
 """
-Global router — the interrupt-loop mechanism (DESIGN_PATTERNS.md P04).
+Global router for FAQs and handlers during question interrupts.
 
-    A "global router" (checking handler triggers / FAQ matches before treating
-    a reply as an answer) needs to intercept every inbound message — but in a
-    compiled graph, a "turn" only exists at the exact point a paused
-    `interrupt()` resumes. `graph_builder.py` wraps a question node's
-    `interrupt()` call in a loop; this module supplies the two decisions that
-    loop needs on each reply: whether it matches anything, and if so, where
-    handling it leads.
-
-    Decoupled from `graph_builder.py`'s condition-evaluation internals via
-    dependency injection (`resolve_edges`, `on_say`) rather than an import —
-    keeps this module trivially testable with fakes and avoids a circular
-    import between the two.
+    Decides whether a user reply is a continuation or an interrupt and,
+        if an interrupt, which handler/FAQ applies and where it routes.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
+from typing import Any
 
 from agent_compiler.dsl.utils import is_dynamic_target
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
@@ -30,7 +21,25 @@ from agent_compiler.targets.langgraph.graph_renderer import (
 )
 
 RouterMatch = tuple[str, "GraphNode | FaqNode"]
-"""`(kind, node)` where `kind` is `"handler"` or `"faq"`."""
+"""Tuple ``(kind, node)`` where ``kind`` is ``"handler"`` or ``"faq"``."""
+
+_LANGUAGE_CHANGE_HANDLER_ID = "H_LANG_CHANGE"
+
+_SUPPORTED_LANGUAGE_NAMES = {"English", "Spanish", "Portuguese"}
+_LANGUAGE_NAMES_BY_CODE = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
+
+
+def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None = None) -> str | None:
+    """Resolve full language name from ``slots['preferred_language']``."""
+    if not slots:
+        return fallback
+    value = slots.get("preferred_language")
+    if not isinstance(value, str):
+        return fallback
+    value = value.strip()
+    if value.lower() in _LANGUAGE_NAMES_BY_CODE:
+        return _LANGUAGE_NAMES_BY_CODE[value.lower()]
+    return value if value in _SUPPORTED_LANGUAGE_NAMES else fallback
 
 
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
@@ -46,61 +55,179 @@ def _candidate_lines(candidates: list[RouterMatch]) -> str:
     return "\n".join(lines)
 
 
-def _continues_the_flow(
+def _detect_language_and_intent(message: str, current_lang: str) -> tuple[str | None, str]:
+    """
+    Analyzes `message` for language intent.
+    Returns `(detected_language, intent_kind)` where:
+      intent_kind is one of: "explicit", "inability_clear", "inability_unclear", "content_answer", "none"
+    """
+    msg = (message or "").lower().strip()
+    if not msg:
+        return None, "none"
+
+    # Explicit requests
+    explicit_es = any(p in msg for p in [
+        "hablame en español", "háblame en español", "habla en español", "habla español",
+        "en español por favor", "espanol por favor", "español por favor",
+        "cambiar a español", "cambia a español", "escribe en español", "prefiero español",
+        "responde en español",
+    ]) or msg in {"español", "espanol", "spanish"}
+
+    explicit_pt = any(p in msg for p in [
+        "fale em português", "fale em portugues", "em português por favor", "em portugues por favor",
+        "mudar para português", "mude para português", "escreva em português", "prefiro português",
+        "responda em português",
+    ]) or msg in {"português", "portugues", "portuguese"}
+
+    explicit_en = any(p in msg for p in [
+        "speak in english", "speak english", "in english please", "switch to english",
+        "write in english", "prefer english", "answer in english",
+    ]) or msg in {"english", "inglés", "ingles"}
+
+    if explicit_es:
+        return "Spanish", "explicit"
+    if explicit_pt:
+        return "Portuguese", "explicit"
+    # Checked before `explicit_en`: "i dont speak english" contains "speak english".
+    if any(p in msg for p in [
+        "i don't speak english", "i dont speak english", "i don't understand english", "i dont understand english",
+    ]):
+        return None, "inability_unclear"
+    if explicit_en:
+        return "English", "explicit"
+
+    # Declared inability
+    inability_es = any(p in msg for p in [
+        "no hablo ingles", "no hablo inglés", "no entiendo ingles", "no entiendo inglés",
+        "no hablo este idioma", "no entiendo este idioma",
+    ])
+    inability_pt = any(p in msg for p in [
+        "nao falo ingles", "não falo inglês", "nao entendo ingles", "não entendo inglês",
+        "nao falo este idioma", "não entendo este idioma",
+    ])
+    inability_en = any(p in msg for p in [
+        "i don't speak english", "i dont speak english", "i don't understand english", "i dont understand english",
+        "i don't speak spanish", "i dont speak spanish", "i don't understand spanish", "i dont understand spanish",
+    ])
+
+    if inability_es:
+        return "Spanish", "inability_clear"
+    if inability_pt:
+        return "Portuguese", "inability_clear"
+    if inability_en:
+        return None, "inability_unclear"
+
+    # Content answers / general sentences in another language
+    es_score = sum(1 for w in [
+        "hola", "gracias", "por favor", "español", "espanol", "subrogacion", "subrrogacion",
+        "gestacion", "maternidad", "fertilización", "fertilizacion", "interesa", "quiero",
+        "método", "metodo", "ropa", "embarazo", "pareja", "nombre", "correo", "viajar",
+    ] if w in msg)
+
+    pt_score = sum(1 for w in [
+        "olá", "obrigado", "obrigada", "por favor", "português", "barriga", "maternidade",
+        "interessa", "quero", "voce", "você", "embrião",
+    ] if w in msg)
+
+    en_score = sum(1 for w in [
+        "hello", "thanks", "thank you", "please", "surrogacy", "fertility", "interested",
+        "looking", "treatment", "method", "process",
+    ] if w in msg)
+
+    if es_score >= 1 and es_score > max(pt_score, en_score):
+        if current_lang != "Spanish":
+            return "Spanish", "content_answer"
+    elif pt_score >= 1 and pt_score > max(es_score, en_score):
+        if current_lang != "Portuguese":
+            return "Portuguese", "content_answer"
+    elif en_score >= 1 and en_score > max(es_score, pt_score):
+        if current_lang != "English":
+            return "English", "content_answer"
+
+    return None, "none"
+
+
+def _classify_reply(
     llm_client: LLMClient,
     ctx: LLMContext,
-    candidates: list[RouterMatch],
     candidate_lines: str,
-) -> bool:
+    language_handler: RouterMatch | None,
+) -> str:
     """
-Stage 1: Determine if the user message is a normal continuation.
+Stage 1: prioritize language changes, then classify continuation vs interrupt.
 
-    This stage decides if the reply is a plausible answer to the pending question
-        or a simple acknowledgement, skipping the interrupt matching process for the
-        common case of a normal flow.
-
-        Parameters:
+    Parameters:
             llm_client: Client used to execute completion prompts.
             ctx: The current conversation context.
-            candidates: List of all possible global interrupts.
-            candidate_lines: Formatted string of candidate descriptions for the prompt.
+            candidate_lines: Numbered list of possible interrupts.
+            language_handler: The reserved language-change handler, if present.
 
         Returns:
-            True if the message is a continuation, False if it might be an interrupt.
+            ``LANGUAGE_CHANGE``, ``CONTINUE``, or ``INTERRUPT``.
 
     Parameters:
         llm_client: Description.
         ctx: Description.
-        candidates: Description.
         candidate_lines: Description.
 
     Returns:
         The result.
 """
-    # No deterministic pre-check: always consult the LLM for Stage 1.
-
-    question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
+    current_lang = _language_name_from_slots(ctx.slots, fallback="English") or "English"
+    question_context = (
+        f"The agent just asked (in {current_lang}): {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
+    )
+    language_priority = ""
+    if language_handler is not None:
+        language_priority = (
+            "LANGUAGE PRIORITY & ALIGNMENT CHECK (HIGHEST PRIORITY):\n"
+            "First, evaluate language alignment before classifying continuation or general interrupts:\n"
+            f"1. Agent language written to user: {current_lang}\n"
+            f"2. User reply language or requested language in latest message: {ctx.last_user_message!r}\n"
+            f"3. Are they the same language, or does [preferred_language] need to be updated?\n\n"
+            "Rules for language update (in order of priority):\n"
+            "Priority 1 - Explicit Request: If the user explicitly asks to switch language "
+            "(\"háblame en español\", \"speak English\", \"prefiero portugués\", \"in English please\", \"responde en X\", etc.), "
+            "you MUST reply LANGUAGE_CHANGE (or LANGUAGE_CHANGE: Spanish / LANGUAGE_CHANGE: English / LANGUAGE_CHANGE: Portuguese).\n"
+            "Priority 2 - Declared Inability: If the user states they cannot speak or understand the current language "
+            "(\"no hablo inglés\", \"I don't speak Spanish\", \"não falo inglês\"), infer the target language from the message if clearly written in another supported language (Spanish, English, or Portuguese). Reply LANGUAGE_CHANGE.\n"
+            "Priority 3 - Automatic Detection: If the user's latest message is clearly written in "
+            "Spanish, English, or Portuguese, and its language differs from the agent's current language "
+            f"({current_lang}), reply LANGUAGE_CHANGE.\n\n"
+            "CRITICAL EXCLUSIONS & LOOPS TO AVOID:\n"
+            f"- AVOID LOOPS: If the user's language or requested language ALREADY MATCHES the agent's current language ({current_lang}), do NOT reply LANGUAGE_CHANGE.\n"
+            "- Do NOT infer a language change from a single word, proper name, city/country name, brand name, number, date, or short answer (\"ok\", \"sí\", \"no\", \"claro\", \"hello\").\n"
+            "- A reply that directly and plausibly answers the pending question in context is NOT a language change unless it contains an explicit request or a full sentence in another language.\n"
+            "even if it also matches another handler or FAQ.\n\n"
+            f"Priority handler: {language_handler[1].node_id}; triggers: {language_handler[1].trigger}\n\n"
+        )
+        response_options = "LANGUAGE_CHANGE (or LANGUAGE_CHANGE: <LanguageName>), CONTINUE, or INTERRUPT"
+    else:
+        response_options = "CONTINUE or INTERRUPT"
     prompt = (
-        "You are a conversation flow analyzer. An agent is interacting with a user. "
-        "Your task is to decide if the user's latest reply is a normal CONTINUATION "
-        "of the current topic or if it represents an INTERRUPT that matches one of the "
-        "global triggers listed below.\n\n"
+        "A conversational agent asked the user a question. Does the user's latest "
+        "reply continue answering it normally, in the context of the recent "
+        "conversation — or does it match one of the global interrupts listed below "
+        "(things the agent should handle regardless of what it just asked)?\n\n"
         f"{ctx.block()}"
         f"{question_context}"
-        f"Global triggers (interrupts):\n{candidate_lines}\n\n"
-        "GUIDELINES:\n"
-        "1. A CONTINUATION is any reply that directly answers the pending question, "
-        "provides relevant information for the current topic, or is a simple "
-        "acknowledgement (e.g., \"ok\", \"fine\", \"thanks\", \"hello\").\n"
-        "2. An INTERRUPT is a clear shift to a different topic, a request for "
-        "information not asked for, a correction of a previous choice (e.g., \"I "
-        "changed my mind\", \"sorry I meant...\"), or an explicit match to one "
-        "of the triggers listed.\n"
-        "3. If the user's reply is ambiguous but could reasonably be an answer to "
-        "the pending question, prefer CONTINUE.\n\n"
-        "Reply with just CONTINUE or INTERRUPT."
+        f"{language_priority}"
+        f"Global interrupts:\n{candidate_lines}\n\n"
+        "A reply that directly and plausibly answers the pending question is always "
+        "a continuation, even if it also loosely resembles one of the interrupts "
+        "above (e.g. stating a specific nationality answers a nationality question, "
+        "it does not raise a foreign-residency FAQ). A bare one- or two-word reply "
+        "(a lone \"sí\"/\"no\"/\"ok\"/\"claro\") is almost always a continuation too — a "
+        "genuine interrupt takes more than a couple of words to express, unless it "
+        "IS itself, word for word, one of the trigger phrases listed.\n\n"
+        f"Reply with just {response_options}."
     )
-    return llm_client.complete(prompt).strip().upper() != "INTERRUPT"
+    decision = llm_client.complete(prompt).strip().upper()
+    if decision.startswith("LANGUAGE_CHANGE") and language_handler is not None:
+        return decision
+    if decision == "INTERRUPT":
+        return decision
+    return "CONTINUE"
 
 
 def _match_candidate(
@@ -110,19 +237,16 @@ def _match_candidate(
     candidate_lines: str,
 ) -> RouterMatch | None:
     """
-Stage 2: Identify which specific handler or FAQ matches the interrupt.
+Stage 2: pick the matching handler/FAQ, if any.
 
-    This stage is only called if Stage 1 decided the message is not a
-        continuation. It selects the best match among the provided candidates.
-
-        Parameters:
+    Parameters:
             llm_client: Client used to execute completion prompts.
-            candidates: List of all possible global interrupts.
+            candidates: List of candidate ``(kind, node)`` pairs.
             ctx: The current conversation context.
-            candidate_lines: Formatted string of candidate descriptions for the prompt.
+            candidate_lines: Numbered list of candidates for the prompt.
 
         Returns:
-            The matched (kind, node) tuple, or None if no candidate matches.
+            The matched ``(kind, node)`` tuple, or None if none apply.
 
     Parameters:
         llm_client: Description.
@@ -133,20 +257,18 @@ Stage 2: Identify which specific handler or FAQ matches the interrupt.
     Returns:
         The result.
 """
-    # Do not short-circuit deterministically; rely on the LLM for selection.
-
     question_context = f"The agent just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
-        "The user's reply below has been judged as an interrupt. Which specific "
-        "global interrupt (handler or FAQ) does it match best?\n\n"
+        "A conversational agent is mid-question. The user's reply below has already "
+        "been judged to be something other than a normal answer to that question — "
+        "which of these global interrupts (things the agent should handle regardless "
+        "of what it just asked) does it actually match?\n\n"
         f"{ctx.block()}"
         f"{question_context}"
         f"Candidates:\n{candidate_lines}\n\n"
-        "Select the candidate that best captures the user's intent. If the reply is "
-        "a correction of a previous choice, match it to the trigger that represents "
-        "the newly requested topic. If none of the candidates are a clear and "
-        "unambiguous match, reply NONE.\n\n"
-        "Reply with just the number of the matching candidate, or NONE."
+        "Only match when the reply is clearly, unambiguously one of these — reply "
+        "NONE rather than force a match if none genuinely fits.\n\n"
+        "Reply with just the number, or NONE if none apply."
     )
     text = llm_client.complete(prompt)
     if text.isdigit() and int(text) < len(candidates):
@@ -159,34 +281,80 @@ def match_global_router(
     router: GlobalRouterDefinition,
     ctx: LLMContext,
 ) -> RouterMatch | None:
-    """
-Check if the user message matches a global handler or FAQ.
-
-    Evaluates the message in two stages: first determining if it's a flow
-        continuation, then matching it to a specific interrupt if not.
-
-        Parameters:
-            llm_client: Client used to execute completion prompts.
-            router: The definition of global handlers and FAQs.
-            ctx: The current conversation context.
-
-        Returns:
-            The matched (kind, node) tuple if an interrupt is found, else None.
-
-    Parameters:
-        llm_client: Description.
-        router: Description.
-        ctx: Description.
-
-    Returns:
-        The result.
-"""
     candidates = _candidates(router)
     if not candidates:
         return None
-
     lines = _candidate_lines(candidates)
-    if _continues_the_flow(llm_client, ctx, candidates, lines):
+    language_handler = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate[0] == "handler" and candidate[1].node_id == _LANGUAGE_CHANGE_HANDLER_ID
+        ),
+        None,
+    )
+
+    current_lang = _language_name_from_slots(ctx.slots, fallback="English") or "English"
+    det_lang, det_intent = _detect_language_and_intent(ctx.last_user_message, current_lang)
+
+    # 1. First check rule-based detection
+    if language_handler is not None and det_intent != "none":
+        if det_intent == "content_answer" and det_lang:
+            if ctx.slots is not None:
+                ctx.slots["preferred_language"] = det_lang
+            return None  # Flow continuation!
+
+        if det_intent in ("explicit", "inability_clear") and det_lang:
+            if ctx.slots is not None:
+                ctx.slots["preferred_language"] = det_lang
+            synthetic = GraphNode(node_id="H_LANG_REASK", node_type="message", say=[], route=[], fallback=[])
+            return ("handler", synthetic)
+
+        if det_intent == "inability_unclear":
+            ask = GraphNode(
+                node_id="H_LANG_ASK",
+                node_type="message",
+                say=[
+                    "Puedo atenderte en español, English o português. / "
+                    "I can assist you in Spanish, English or Portuguese. / "
+                    "Posso atendê-lo em espanhol, inglês ou português."
+                ],
+                say_verbatim=True,
+                route=[],
+                fallback=[],
+            )
+            return ("handler", ask)
+
+    # 2. Fall back to LLM classification
+    decision = _classify_reply(llm_client, ctx, lines, language_handler)
+    if decision.startswith("LANGUAGE_CHANGE") and language_handler is not None:
+        upper_dec = decision.upper()
+        new_lang = None
+        if "SPANISH" in upper_dec or "ESPAÑOL" in upper_dec:
+            new_lang = "Spanish"
+        elif "ENGLISH" in upper_dec or "INGLÉS" in upper_dec or "INGLES" in upper_dec:
+            new_lang = "English"
+        elif "PORTUGUESE" in upper_dec or "PORTUGUÉS" in upper_dec or "PORTUGUES" in upper_dec:
+            new_lang = "Portuguese"
+        elif det_lang:
+            new_lang = det_lang
+
+        if new_lang and ctx.slots is not None:
+            ctx.slots["preferred_language"] = new_lang
+
+        # Check if the user message is a content answer
+        last_msg = (ctx.last_user_message or "").lower()
+        is_content = any(w in last_msg for w in [
+            "subrogacion", "subrrogacion", "fiv", "ivf", "ropa", "in vitro", "gestacion",
+            "maternidad", "pareja", "mi nombre", "me interesa", "quiero",
+        ])
+        if is_content:
+            return None  # Continue with answer!
+
+        synthetic = GraphNode(node_id="H_LANG_REASK", node_type="message", say=[], route=[], fallback=[])
+        return ("handler", synthetic)
+
+    if decision == "CONTINUE":
         return None
     return _match_candidate(llm_client, candidates, ctx, lines)
 
@@ -199,19 +367,16 @@ def handle_global_router_match(
     on_say: Callable[[GraphNode | FaqNode, list[str]], None] | None = None,
 ) -> str | None:
     """
-Resolve the destination of a matched handler or FAQ.
+Resolve where a matched handler/FAQ routes the conversation.
 
-    Executes the matched node's logic, including rendering its message and
-        resolving its routing edges to determine the next state.
-
-        Parameters:
-            match: The (kind, node) pair from match_global_router.
-            ctx: The current conversation context.
-            resolve_edges: Callback to evaluate routing conditions.
-            on_say: Optional callback to handle the node's output message.
+    Parameters:
+            match: The ``(kind, node)`` pair from ``match_global_router``.
+            ctx: Session context; passed to ``resolve_edges`` with handler goal/DO.
+            resolve_edges: Evaluates route/fallback edges to a target id or None.
+            on_say: Optional callback to emit the handler/FAQ message.
 
         Returns:
-            The ID of the next state to jump to, or None to resume the previous flow.
+            Target node id, or None to resume the pending question.
 
     Parameters:
         match: Description.
@@ -245,28 +410,19 @@ Resolve the destination of a matched handler or FAQ.
 UNANSWERED_QUESTION_ACK: list[str] = [
     "Buena pregunta — eso te lo puede aclarar mejor tu asesor en la charla."
 ]
-"""Fixed, non-specific deflection said when `has_unanswered_side_question`
-fires (2026-09-21). Deliberately generic and fact-free — never mentions
-anything about the business, so it carries zero fabrication risk. Authored
-in Spanish and left to `render_say`'s own translate-via-rephrase (already
-how the rest of this agent's `say`/FAQ content reaches other languages),
-not per-language here."""
+# Fixed, non-specific deflection used when a side question is detected.
 
 
 def has_unanswered_side_question(llm_client: LLMClient, ctx: LLMContext) -> bool:
     """
-Check if the reply contains a side question not covered by FAQs or handlers.
+Detect whether the latest reply includes an unanswered side question.
 
-    Determines if the user's message contains a fact-seeking request that is
-        not handled by existing logic, allowing the agent to provide a generic
-        deflection rather than ignoring it.
-
-        Parameters:
+    Parameters:
             llm_client: Client used to execute completion prompts.
             ctx: The current conversation context.
 
         Returns:
-            True if an unanswered side question is detected, else False.
+            True if a side question is present; otherwise False.
 
     Parameters:
         llm_client: Description.
@@ -287,8 +443,8 @@ Check if the reply contains a side question not covered by FAQs or handlers.
         "information (a fact, a number, a procedure detail, a personal-situation "
         "judgment) that is not already covered by the conversation so far, and that "
         "this agent has no specific approved content to answer? A bare answer to the "
-        "pending question, a greeting, or a short acknowledgement (\"ok\", \"yes\",\"sí\", "
-        "\"thanks\", \"thank you\", \"gracias\") is NOT this case.\n\n"
+        "pending question, a greeting, or a short acknowledgement (\"ok\", \"sí\", "
+        "\"gracias\") is NOT this case.\n\n"
         "Reply with just YES or NO."
     )
     return llm_client.complete(prompt).strip().upper().startswith("Y")
