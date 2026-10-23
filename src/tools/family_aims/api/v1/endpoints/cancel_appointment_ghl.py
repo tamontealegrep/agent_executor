@@ -1,0 +1,28 @@
+from fastapi import APIRouter
+
+from tools.family_aims.core.config import get_settings
+from tools.family_aims.schemas.booking import (
+    CancelAppointmentRequest,
+    CancelAppointmentResponse,
+)
+from tools.family_aims.services.ghl_calendar import delete_appointment as ghl_delete_appointment
+
+router = APIRouter()
+
+
+@router.post("/cancel-appointment-ghl", response_model=CancelAppointmentResponse)
+async def cancel_appointment_ghl(req: CancelAppointmentRequest):
+    settings = get_settings()
+
+    if not settings.ghl_token:
+        return CancelAppointmentResponse(success=False, errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+
+    try:
+        success = await ghl_delete_appointment(settings.ghl_token, req.event_id)
+        if success:
+            return CancelAppointmentResponse(success=True, message="The appointment has been successfully canceled.")
+        else:
+            return CancelAppointmentResponse(success=False, errors="Could not delete the event. Please verify the event_id.")
+
+    except Exception as e:
+        return CancelAppointmentResponse(success=False, errors=str(e))
