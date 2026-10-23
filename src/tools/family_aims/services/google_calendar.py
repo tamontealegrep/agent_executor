@@ -1,9 +1,10 @@
 """
 Todo lo que habla por HTTP con Google Calendar vive aquí. Nada de reglas de negocio.
 """
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import httpx
 
@@ -251,3 +252,101 @@ Actualiza parcialmente un evento en Google Calendar (PATCH).
         )
         resp.raise_for_status()
         return resp.json()
+
+def normalize_meet_url(value: Optional[str]) -> Optional[str]:
+    """Normaliza enlaces de Meet para compararlos sin query parameters."""
+    if not value:
+        return None
+
+    parsed = urlparse(value.strip())
+
+    if parsed.hostname != "meet.google.com":
+        return None
+
+    path = parsed.path.rstrip("/")
+
+    if not path:
+        return None
+
+    return f"https://meet.google.com{path}"
+
+
+async def find_synced_google_event(
+    access_token: str,
+    calendar_id: str,
+    start_dt: datetime,
+    end_dt: datetime,
+    meet_link: str,
+    attempts: int = 4,
+) -> Optional[dict]:
+    """
+    Busca el evento sincronizado desde GHL.
+
+    No crea ni modifica eventos.
+    Compara el enlace de Meet y el instante de inicio.
+    Hace reintentos limitados porque la sincronización puede tardar.
+    """
+    expected_meet = normalize_meet_url(meet_link)
+
+    if not expected_meet:
+        return None
+
+    if start_dt.tzinfo is None or end_dt.tzinfo is None:
+        raise ValueError("Las fechas deben incluir zona horaria.")
+
+    for attempt in range(attempts):
+        if attempt > 0:
+            # Esperas de 1, 2 y 4 segundos con attempts=4.
+            await asyncio.sleep(2 ** (attempt - 1))
+
+        events = await list_events(
+            access_token=access_token,
+            calendar_id=calendar_id,
+            time_min=start_dt - timedelta(minutes=5),
+            time_max=end_dt + timedelta(minutes=5),
+        )
+
+        matches = []
+
+        for event in events:
+            if event.get("status") == "cancelled":
+                continue
+
+            event_start = (event.get("start") or {}).get("dateTime")
+
+            if not event_start:
+                continue
+
+            try:
+                event_start_dt = datetime.fromisoformat(
+                    event_start.replace("Z", "+00:00")
+                )
+            except ValueError:
+                continue
+
+            if event_start_dt != start_dt:
+                continue
+
+            meeting_urls = {
+                normalize_meet_url(event.get("hangoutLink"))
+            }
+
+            conference_data = event.get("conferenceData") or {}
+
+            for entry in conference_data.get("entryPoints") or []:
+                if entry.get("entryPointType") == "video":
+                    meeting_urls.add(
+                        normalize_meet_url(entry.get("uri"))
+                    )
+
+            if expected_meet in meeting_urls:
+                matches.append(event)
+
+        if len(matches) == 1:
+            return matches[0]
+
+        if len(matches) > 1:
+            # No elegir arbitrariamente si hubiera duplicados.
+            return None
+
+    return None

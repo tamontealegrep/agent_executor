@@ -47,6 +47,7 @@ class ToolConfig:
     google_client_secret: str
     google_refresh_token: str
     calendar_id: str
+    ghl_calendar_id: str
     duration_minutes: int
     gap_minutes: int
     days_ahead: int
@@ -58,6 +59,7 @@ def _load_tool_config(suffix: str) -> ToolConfig:
         google_client_secret=os.getenv(f"FA_GOOGLE_CLIENT_SECRET_{suffix}", ""),
         google_refresh_token=os.getenv(f"FA_GOOGLE_REFRESH_TOKEN_{suffix}", ""),
         calendar_id=os.getenv(f"FA_CALENDAR_ID_{suffix}", ""),
+        ghl_calendar_id=os.getenv(f"FA_GHL_CALENDAR_ID_{suffix}", ""),
         duration_minutes=int(os.getenv(f"FA_DURATION_MINUTES_{suffix}", "30")),
         gap_minutes=int(os.getenv(f"FA_GAP_MINUTES_{suffix}", "0")),
         days_ahead=int(os.getenv(f"FA_DAYS_AHEAD_{suffix}", "14")),
@@ -76,6 +78,8 @@ class Settings:
     def __init__(self) -> None:
         self.ivf = _load_tool_config("IVF")
         self.sur = _load_tool_config("SUR")
+        self.ghl_token = os.getenv("GHL_ACCESS_TOKEN") or os.getenv("GHL_TOKEN", "")
+        self.ghl_location_id = os.getenv("GHL_LOCATION_ID", "")
         self.gmail = GmailConfig(
             google_client_id=os.getenv("FA_GOOGLE_CLIENT_ID_GMAIL", ""),
             google_client_secret=os.getenv("FA_GOOGLE_CLIENT_SECRET_GMAIL", ""),
