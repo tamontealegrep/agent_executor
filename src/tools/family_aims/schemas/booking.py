@@ -75,3 +75,22 @@ class EditAppointmentResponse(BaseModel):
     new_start_time: Optional[str] = None
     new_duration: Optional[str] = None
     errors: Optional[str] = None
+
+
+# --- GHL: resolve event link ---
+class ResolveEventLinkRequest(BaseModel):
+    calendar_type: str = Field(
+        default="IVF",
+        examples=["IVF", "SUR"],
+        description="'IVF' o 'SUR' para buscar en el calendario correspondiente",
+    )
+    start_date: str = Field(examples=["2026-08-28T09:00:00-05:00"])
+    iana_timezone: str = Field(default="America/Bogota", examples=["America/Bogota"])
+    contact_name: str = Field(default="", examples=["Maria Perez"])
+    meet_link: Optional[str] = Field(default=None, examples=["https://meet.google.com/xyz-abcd-efg"])
+
+
+class ResolveEventLinkResponse(BaseModel):
+    success: bool
+    event_link: Optional[str] = None
+    errors: Optional[str] = None

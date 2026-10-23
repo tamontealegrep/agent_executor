@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import asyncio
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter
 
@@ -12,6 +13,7 @@ from tools.family_aims.services.gmail import send_email
 from tools.family_aims.services.ghl_calendar import (
     get_available_slots as ghl_get_available_slots,
     list_events as ghl_list_events,
+    get_appointment as ghl_get_appointment,
     upsert_contact as ghl_upsert_contact,
     create_appointment as ghl_create_appointment,
     extract_appointment,
@@ -194,6 +196,100 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
         event_id = appointment.get("id")
         meet_link = get_meet_link(created)
 
+        # Intentar obtener el enlace del evento en Google Calendar (htmlLink)
+        event_link = None
+        try:
+            if meet_link and tool.google_client_id and tool.google_client_secret and tool.google_refresh_token and tool.calendar_id:
+                from tools.family_aims.services.google_calendar import (
+                    get_access_token as google_get_access_token,
+                    find_synced_google_event,
+                )
+                gcal_token = await google_get_access_token(tool.google_client_id, tool.google_client_secret, tool.google_refresh_token)
+                if gcal_token:
+                    synced = await find_synced_google_event(
+                        access_token=gcal_token,
+                        calendar_id=tool.calendar_id,
+                        start_dt=start_dt,
+                        end_dt=end_dt,
+                        meet_link=meet_link,
+                        attempts=4,
+                    )
+                    if isinstance(synced, dict):
+                        event_link = synced.get("htmlLink")
+                        # Si GCal ya tiene Meet y GHL aún no, úsalo como fallback
+                        if not meet_link:
+                            m = synced.get("hangoutLink")
+                            if not m:
+                                for ep in (synced.get("conferenceData") or {}).get("entryPoints", []) or []:
+                                    if ep.get("entryPointType") == "video" and isinstance(ep.get("uri"), str):
+                                        m = ep.get("uri")
+                                        break
+                            if m:
+                                meet_link = m
+            # Fallback: si no hay meet_link, intenta resolver por ventana temporal y título
+            if not event_link and tool.google_client_id and tool.google_client_secret and tool.google_refresh_token and tool.calendar_id:
+                from tools.family_aims.services.google_calendar import (
+                    get_access_token as google_get_access_token,
+                    list_events as gcal_list_events,
+                )
+                gcal_token = await google_get_access_token(tool.google_client_id, tool.google_client_secret, tool.google_refresh_token)
+                if gcal_token:
+                    events = await gcal_list_events(
+                        access_token=gcal_token,
+                        calendar_id=tool.calendar_id,
+                        time_min=start_dt - timedelta(minutes=5),
+                        time_max=end_dt + timedelta(minutes=5),
+                    )
+                    # Prefer exact start match; else a single candidate with expected summary pattern
+                    candidates = []
+                    for ev in events:
+                        if ev.get("status") == "cancelled":
+                            continue
+                        summary = (ev.get("summary") or "").lower()
+                        expected_prefix = f"family aims ({policy.EVENT_SUMMARY_TAG.lower()}) and"
+                        if expected_prefix in summary and contact_name.lower() in summary:
+                            candidates.append(ev)
+                    exact_start = []
+                    for ev in candidates:
+                        ev_start = (ev.get("start") or {}).get("dateTime")
+                        if not isinstance(ev_start, str):
+                            continue
+                        try:
+                            ev_dt = datetime.fromisoformat(ev_start.replace("Z", "+00:00"))
+                            if ev_dt == start_dt:
+                                exact_start.append(ev)
+                        except Exception:
+                            continue
+                    picked = exact_start[0] if len(exact_start) == 1 else (candidates[0] if len(candidates) == 1 else None)
+                    if isinstance(picked, dict):
+                        event_link = picked.get("htmlLink")
+                        # También extrae Meet si GHL aún no lo tiene
+                        if not meet_link:
+                            m = picked.get("hangoutLink")
+                            if not m:
+                                for ep in (picked.get("conferenceData") or {}).get("entryPoints", []) or []:
+                                    if ep.get("entryPointType") == "video" and isinstance(ep.get("uri"), str):
+                                        m = ep.get("uri")
+                                        break
+                            if m:
+                                meet_link = m
+        except Exception:
+            # Si falla la sincronización/búsqueda, continuamos sin event_link
+            pass
+
+        # Poll corto a GHL por si el Meet aparece en address tras la creación
+        if not meet_link and event_id:
+            try:
+                for attempt in range(3):  # ~1+2+4s = 7s máx
+                    await asyncio.sleep(1 << attempt)
+                    refreshed = await ghl_get_appointment(settings.ghl_token, event_id)
+                    m = get_meet_link(refreshed)
+                    if m:
+                        meet_link = m
+                        break
+            except Exception:
+                pass
+
         if not event_id:
             return BookAppointmentResponse(success=False, reason="creation_failed", errors="Failed to create the appointment. The booking was not completed")
 
@@ -212,16 +308,16 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
                 booking_date=date_formatting.format_full_date(local_start, language),
                 booking_time=date_formatting.format_booking_time(local_start, language),
                 meet_link=meet_link or "",
-                event_link="",
+                event_link=event_link or "",
             )
             await send_email(gmail_token, gmail.sender_email, contact_email, engine.EMAIL_SUBJECTS[language], html_body)
         except Exception as email_error:
             return BookAppointmentResponse(
-                success=True, event_id=event_id, event_link=None, meet_link=meet_link,
+                success=True, event_id=event_id, event_link=event_link, meet_link=meet_link,
                 errors=f"The appointment was created but email notification failed: {email_error}",
             )
 
-        return BookAppointmentResponse(success=True, event_id=event_id, event_link=None, meet_link=meet_link, errors=None)
+        return BookAppointmentResponse(success=True, event_id=event_id, event_link=event_link, meet_link=meet_link, errors=None)
 
     except Exception as e:
         return BookAppointmentResponse(success=False, errors=str(e))
