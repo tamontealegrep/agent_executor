@@ -2416,7 +2416,8 @@
         "goal": [
           "Capture the ID document(s) that the candidate has in Colombia.",
           "Strictly map each document mentioned to one of the following literals: cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro.",
-          "If the user says 'de extranjería y ppt', capture it as a list: ['cedula_extranjeria', 'ppt']."
+          "If the user says 'de extranjería y ppt', capture it as a list: ['cedula_extranjeria', 'ppt'].",
+          "A bare 'cédula' that does not say ciudadanía or extranjería is ambiguous: do NOT guess. Leave has_cc empty for that document and capture cc_ambiguous = 'yes'. Otherwise capture cc_ambiguous = 'no'."
         ],
         "do": [],
         "trigger": [],
@@ -2430,6 +2431,48 @@
           [
             "q__has_cc",
             "list[Literal[cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro]]"
+          ],
+          [
+            "q__cc_ambiguous",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_CC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_ASK_CC_WHICH",
+        "node_type": "question",
+        "goal": [
+          "The candidate said only 'cédula'. Ask which one it is and capture every ID document again.",
+          "Strictly map each document mentioned to one of the following literals: cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro.",
+          "A bare 'cédula' that still does not say ciudadanía or extranjería is ambiguous: do NOT guess. Leave has_cc empty and capture cc_ambiguous = 'yes'. Otherwise capture cc_ambiguous = 'no'."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "¿Tu cédula es de ciudadanía o de extranjería? Si además tienes otro documento, como PPT o pasaporte, cuéntamelo también."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "q__has_cc",
+            "list[Literal[cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro]]"
+          ],
+          [
+            "q__cc_ambiguous",
+            "Literal[yes, no]"
           ]
         ],
         "eval": "code",
@@ -2473,6 +2516,13 @@
             "condition_text": "IF [q__cc_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: Q__SQ_FORCE_CLS",
             "is_mechanical": true,
             "python_expression": "q__cc_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_CC_WHICH",
+            "condition_text": "IF [q__cc_ambiguous] == 'yes' -> GO_TO: Q__SQ_ASK_CC_WHICH",
+            "is_mechanical": true,
+            "python_expression": "q__cc_ambiguous == 'yes'",
             "reason": null
           },
           {
@@ -3003,7 +3053,10 @@
           "[s__slot_try] = 0",
           "[s__day_try] = 0",
           "[s__ok_try] = 0",
-          "[s__retry_try] = 0"
+          "[s__retry_try] = 0",
+          "[s__c_name_try] = 0",
+          "[s__c_phone_try] = 0",
+          "[s__c_email_try] = 0"
         ],
         "trigger": [],
         "say": [],
@@ -3013,7 +3066,10 @@
           "[s__slot_try] = 0",
           "[s__day_try] = 0",
           "[s__ok_try] = 0",
-          "[s__retry_try] = 0"
+          "[s__retry_try] = 0",
+          "[s__c_name_try] = 0",
+          "[s__c_phone_try] = 0",
+          "[s__c_email_try] = 0"
         ],
         "capture": [],
         "eval": "code",
@@ -3442,8 +3498,8 @@
             "reason": null
           },
           {
-            "target": "S__SC_BOOK",
-            "condition_text": "IF [s__ok] == 'yes' -> GO_TO: S__SC_BOOK",
+            "target": "S__SC_DEC_N",
+            "condition_text": "IF [s__ok] == 'yes' -> GO_TO: S__SC_DEC_N",
             "is_mechanical": true,
             "python_expression": "s__ok == 'yes'",
             "reason": null
@@ -3564,6 +3620,608 @@
         "fallback": []
       },
       {
+        "node_id": "S__SC_DEC_N",
+        "node_type": "decision",
+        "goal": [
+          "Check if the contact name is already captured; otherwise check the CRM."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_P",
+            "condition_text": "IF [s__c_name] IS NOT NULL -> GO_TO: S__SC_DEC_P",
+            "is_mechanical": true,
+            "python_expression": "s__c_name is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_DEC_N_CRM",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_DEC_N_CRM",
+        "node_type": "decision",
+        "goal": [
+          "Check the CRM for the contact's name."
+        ],
+        "do": [
+          "Treat the literal unresolved placeholder '{{contact.name}}' as missing data, not as a valid name."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "S__SC_ST_N",
+            "condition_text": "IF {{contact.name}} IS NOT NULL AND {{contact.name}} != '{{contact.name}}' -> GO_TO: S__SC_ST_N",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "disallowed syntax: Set"
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_DEC_N_GIVEN",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_ST_N",
+        "node_type": "registration",
+        "goal": [
+          "Use the CRM name for scheduling."
+        ],
+        "do": [
+          "[s__c_name] = {{contact.name}}"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_name] = {{contact.name}}"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_P",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_DEC_N_GIVEN",
+        "node_type": "decision",
+        "goal": [
+          "Reuse the name the lead already gave at the start of the conversation, if any."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_ST_N_GIVEN",
+            "condition_text": "IF [o__name] IS NOT NULL -> GO_TO: S__SC_ST_N_GIVEN",
+            "is_mechanical": true,
+            "python_expression": "o__name is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_N",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_ST_N_GIVEN",
+        "node_type": "registration",
+        "goal": [
+          "Use the name the lead already gave for scheduling."
+        ],
+        "do": [
+          "[s__c_name] = [o__name]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_name] = [o__name]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_P",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_ASK_N",
+        "node_type": "question",
+        "goal": [
+          "Ask for the contact's full name."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Para crear la cita, ¿me confirmas tu nombre completo?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_name] = [s__c_name]"
+        ],
+        "capture": [
+          [
+            "s__c_name",
+            "person_name"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_NC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_DEC_NC",
+        "node_type": "decision",
+        "goal": [
+          "Confirm the contact's name was captured."
+        ],
+        "do": [
+          "[s__c_name_try] = [s__c_name_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_P",
+            "condition_text": "IF [s__c_name] IS NOT NULL AND [s__c_name] != '{{contact.name}}' -> GO_TO: S__SC_DEC_P",
+            "is_mechanical": true,
+            "python_expression": "s__c_name is not None and s__c_name != '{{contact.name}}'",
+            "reason": null
+          },
+          {
+            "target": "S__SC_TO_C",
+            "condition_text": "IF [s__c_name_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: S__SC_TO_C",
+            "is_mechanical": true,
+            "python_expression": "s__c_name_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "S__SC_ASK_N",
+            "condition_text": "IF [s__c_name] IS NULL -> GO_TO: S__SC_ASK_N",
+            "is_mechanical": true,
+            "python_expression": "s__c_name is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_N",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_DEC_P",
+        "node_type": "decision",
+        "goal": [
+          "Check if the phone number is already captured; otherwise check the CRM."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_E",
+            "condition_text": "IF [s__c_phone] IS NOT NULL -> GO_TO: S__SC_DEC_E",
+            "is_mechanical": true,
+            "python_expression": "s__c_phone is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_DEC_P_CRM",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_DEC_P_CRM",
+        "node_type": "decision",
+        "goal": [
+          "Check the CRM for the contact's phone number."
+        ],
+        "do": [
+          "Treat the literal unresolved placeholder '{{contact.phone}}' as missing data, not as a valid phone number."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "S__SC_ST_P",
+            "condition_text": "IF {{contact.phone}} IS NOT NULL AND {{contact.phone}} != '{{contact.phone}}' -> GO_TO: S__SC_ST_P",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "disallowed syntax: Set"
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_P",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_ST_P",
+        "node_type": "registration",
+        "goal": [
+          "Use the CRM phone number for scheduling."
+        ],
+        "do": [
+          "[s__c_phone] = {{contact.phone}}"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_phone] = {{contact.phone}}"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_E",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_ASK_P",
+        "node_type": "question",
+        "goal": [
+          "Ask for the contact's phone number."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "¿Cuál es tu número de teléfono, incluyendo el indicativo del país?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_phone] = [s__c_phone]"
+        ],
+        "capture": [
+          [
+            "s__c_phone",
+            "phone_number"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_PC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_DEC_PC",
+        "node_type": "decision",
+        "goal": [
+          "Confirm the contact's phone number was captured."
+        ],
+        "do": [
+          "[s__c_phone_try] = [s__c_phone_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_E",
+            "condition_text": "IF [s__c_phone] IS NOT NULL AND [s__c_phone] != '{{contact.phone}}' -> GO_TO: S__SC_DEC_E",
+            "is_mechanical": true,
+            "python_expression": "s__c_phone is not None and s__c_phone != '{{contact.phone}}'",
+            "reason": null
+          },
+          {
+            "target": "S__SC_TO_C",
+            "condition_text": "IF [s__c_phone_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: S__SC_TO_C",
+            "is_mechanical": true,
+            "python_expression": "s__c_phone_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "S__SC_ASK_P",
+            "condition_text": "IF [s__c_phone] IS NULL -> GO_TO: S__SC_ASK_P",
+            "is_mechanical": true,
+            "python_expression": "s__c_phone is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_P",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_DEC_E",
+        "node_type": "decision",
+        "goal": [
+          "Check if the email is already captured; otherwise check the CRM."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_BOOK",
+            "condition_text": "IF [s__c_email] IS NOT NULL -> GO_TO: S__SC_BOOK",
+            "is_mechanical": true,
+            "python_expression": "s__c_email is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_DEC_E_CRM",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_DEC_E_CRM",
+        "node_type": "decision",
+        "goal": [
+          "Check the CRM for the contact's email."
+        ],
+        "do": [
+          "Treat the literal unresolved placeholder '{{contact.email}}' as missing data, not as a valid email address."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "S__SC_ST_E",
+            "condition_text": "IF {{contact.email}} IS NOT NULL AND {{contact.email}} != '{{contact.email}}' -> GO_TO: S__SC_ST_E",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "disallowed syntax: Set"
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_E",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ]
+      },
+      {
+        "node_id": "S__SC_ST_E",
+        "node_type": "registration",
+        "goal": [
+          "Use the CRM email for scheduling."
+        ],
+        "do": [
+          "[s__c_email] = {{contact.email}}"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_email] = {{contact.email}}"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_BOOK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_ASK_E",
+        "node_type": "question",
+        "goal": [
+          "Ask for the contact's email address."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "¿A qué correo electrónico te enviamos la confirmación de la cita?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[s__c_email] = [s__c_email]"
+        ],
+        "capture": [
+          [
+            "s__c_email",
+            "email"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_DEC_EC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "S__SC_DEC_EC",
+        "node_type": "decision",
+        "goal": [
+          "Confirm the contact's email was captured."
+        ],
+        "do": [
+          "[s__c_email_try] = [s__c_email_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "S__SC_BOOK",
+            "condition_text": "IF [s__c_email] IS NOT NULL AND [s__c_email] != '{{contact.email}}' -> GO_TO: S__SC_BOOK",
+            "is_mechanical": true,
+            "python_expression": "s__c_email is not None and s__c_email != '{{contact.email}}'",
+            "reason": null
+          },
+          {
+            "target": "S__SC_TO_C",
+            "condition_text": "IF [s__c_email_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: S__SC_TO_C",
+            "is_mechanical": true,
+            "python_expression": "s__c_email_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "S__SC_ASK_E",
+            "condition_text": "IF [s__c_email] IS NULL -> GO_TO: S__SC_ASK_E",
+            "is_mechanical": true,
+            "python_expression": "s__c_email is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "S__SC_ASK_E",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
         "node_id": "S__SC_BOOK",
         "node_type": "action",
         "goal": [
@@ -3573,7 +4231,7 @@
           "TOOL CALL ONLY: call book_appointment now.",
           "start_date = the literal start_co field of the object in [s__available_slots] chosen in [s__slot], without converting, rounding, or reformatting.",
           "duration = <APPOINTMENT_DURATION_MINUTES>. iana_timezone = 'America/Bogota'.",
-          "contact_name = {{contact.name}}, contact_email = {{contact.email}}, contact_phone = {{contact.phone}}."
+          "contact_name = [s__c_name], contact_email = [s__c_email], contact_phone = [s__c_phone]."
         ],
         "trigger": [],
         "say": [],
