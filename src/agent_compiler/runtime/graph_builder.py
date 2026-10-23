@@ -70,6 +70,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import unicodedata
 from collections.abc import Callable
 from typing import Any, TypedDict
 
@@ -123,6 +124,26 @@ _STORE_INCREMENT_RE = re.compile(r"^increment\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+b
 _STORE_SLOT_REF_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_SELF_ARITH_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*([+-])\s*(\d+)$")
 _QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
+_STORE_MATCH_IN_RE = re.compile(r"^match in <([A-Z_][A-Z0-9_]*)>\s*\|\s*(?:'([^']*)'|\"([^\"]*)\")$")
+
+
+def _fold(text: str) -> str:
+    """Accent- and case-insensitive comparison key."""
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(c for c in decomposed if unicodedata.category(c) != "Mn").casefold().strip()
+
+
+def _match_in_constant(current: Any, options_text: Any, fallback: str) -> str | None:
+    """
+    Canonical option of `options_text` (comma / "y" separated) equal to `current`, else `fallback`.
+
+    Returns None when there is nothing to match (no current value, or the constant is not text).
+    """
+    if current is None or not isinstance(options_text, str):
+        return None
+    options = [o.strip() for o in re.split(r",|\sy\s", options_text) if o.strip()]
+    wanted = _fold(str(current))
+    return next((o for o in options if _fold(o) == wanted), fallback)
 
 
 def _apply_store_line(line: str, ctx: LLMContext, llm_client: LLMClient) -> None:
@@ -187,6 +208,13 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
     quoted = _QUOTED_RE.match(rhs)
     if quoted:
         slots[name] = quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
+        return
+    match_in = _STORE_MATCH_IN_RE.match(rhs)
+    if match_in and match_in.group(1) in slots:
+        fallback = match_in.group(2) if match_in.group(2) is not None else match_in.group(3)
+        matched = _match_in_constant(slots.get(name), slots[match_in.group(1)], fallback)
+        if matched is not None:
+            slots[name] = matched
         return
 
     slots[name] = _llm_compute_store_value(llm_client, name, rhs, ctx)
