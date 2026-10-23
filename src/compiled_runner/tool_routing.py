@@ -14,6 +14,7 @@ Resolves a contract's tool name to the endpoint the tools backend really exposes
 from __future__ import annotations
 
 from typing import Any
+import os
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -28,6 +29,9 @@ _UTILS_TOOLS = frozenset(
 
 # App prefix (first path segment) -> suffix every one of its routes carries.
 _ROUTE_SUFFIX_BY_APP = {"babynova": "-sur"}
+
+# Optional feature flag: prefer family_aims "-ghl" variant first.
+_USE_GHL = os.getenv("FA_USE_GHL_ENDPOINTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def candidate_urls(url: str) -> list[str]:
@@ -50,6 +54,10 @@ Ordered URLs to try for a `{base}/{tool_name}` request, most likely first.
     suffix = _ROUTE_SUFFIX_BY_APP.get(app_name)
 
     paths = [f"{head}/{kebab}"]
+
+    # Family Aims: prefer the -ghl variant first (generic — no per-tool list)
+    if app_name == "family_aims" and _USE_GHL:
+        paths.insert(0, f"{head}/{kebab}-ghl")
     if suffix and not kebab.endswith(suffix):
         paths.insert(0, f"{head}/{kebab}{suffix}")
     if kebab in _UTILS_TOOLS:
