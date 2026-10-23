@@ -371,6 +371,17 @@ def _literal_members(type_expr: str) -> list[str] | None:
     return [m.strip() for m in match.group(1).split(",")]
 
 
+_LIST_ITEM_RE = re.compile(r"^list\[\s*(.*?)\s*\]$", re.DOTALL)
+
+
+def _list_item_members(type_expr: str) -> list[str] | None:
+    """Return the Literal members of a `list[...]` type (empty for `list[str]`), or None if not a list type."""
+    match = _LIST_ITEM_RE.match(type_expr.strip())
+    if not match:
+        return None
+    return _literal_members(match.group(1)) or []
+
+
 def _json_schema_type(type_expr: str) -> dict[str, Any]:
     """
 Map a `type_expr` to a nullable JSON-Schema property (OpenAI Structured Outputs).
@@ -381,6 +392,12 @@ Map a `type_expr` to a nullable JSON-Schema property (OpenAI Structured Outputs)
     Returns:
         The result.
 """
+    list_members = _list_item_members(type_expr)
+    if list_members is not None:
+        items: dict[str, Any] = {"type": "string"}
+        if list_members:
+            items["enum"] = list_members
+        return {"type": ["array", "null"], "items": items}
     members = _literal_members(type_expr)
     if members:
         return {"type": ["string", "null"], "enum": [*members, None]}
@@ -444,6 +461,23 @@ Ask the model to extract the declared capture slots from the user's reply.
     return llm_client.extract_structured(prompt, _capture_json_schema(capture))
 
 
+def _coerce_list(value: Any) -> Any:
+    """Turn a list-typed value that arrived as text (a JSON array or comma-separated) into a real list."""
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if text.startswith("["):
+        try:
+            parsed = json.loads(text)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, list):
+            return parsed
+    return [part.strip() for part in text.strip("[]").replace('"', "").split(",") if part.strip()]
+
+
 def _coerce_value(value: Any, type_expr: str) -> Any:
     """
 Best-effort coercion of a value against its declared type_expr.
@@ -470,6 +504,8 @@ Best-effort coercion of a value against its declared type_expr.
 """
     if value is None:
         return None
+    if _list_item_members(type_expr) is not None:
+        return _coerce_list(value)
     parsed = classify_type_expr(type_expr)
     if parsed.category == "canonical" and type_expr == "bool":
         return bool(value)
@@ -1007,6 +1043,8 @@ Parse `DO` lines for `input_name = <value>` tool-argument hints.
             if not match:
                 continue
             arg_name, rhs = match.group(1), match.group(2).strip()
+            if rhs.endswith(")") and "(" not in rhs:
+                rhs = rhs[:-1].rstrip()  # closing paren of "call tool (a=[x], b=[y])."
             resolved, value = _resolve_simple_rhs(rhs, slots)
             if resolved:
                 bindings[arg_name] = value
@@ -1513,6 +1551,8 @@ Build one LangGraph node function for `node`.
                             if slot_name.endswith(key):
                                 slots[slot_name] = value
                                 break
+                for line in node.store:
+                    _apply_store_line(line, ctx, llm_client)
 
         elif node.node_type == "registration":
             for line in node.store:
