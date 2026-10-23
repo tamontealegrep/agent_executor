@@ -19,6 +19,14 @@ def test_candidate_urls_kebab_cases_the_tool_name_then_falls_back_to_utils():
     ]
 
 
+def test_candidate_urls_tries_the_babynova_suffix_first_under_the_tools_prefix():
+    assert candidate_urls(f"{BASE}/tools/babynova/v1/check_documentation") == [
+        f"{BASE}/tools/babynova/v1/check-documentation-sur",
+        f"{BASE}/tools/babynova/v1/check-documentation",
+        f"{BASE}/tools/utils/v1/check-documentation",
+    ]
+
+
 def test_candidate_urls_tries_the_babynova_suffix_first():
     assert candidate_urls(f"{BASE}/babynova/v1/book_appointment") == [
         f"{BASE}/babynova/v1/book-appointment-sur",

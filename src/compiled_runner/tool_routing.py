@@ -46,6 +46,8 @@ Ordered URLs to try for a `{base}/{tool_name}` request, most likely first.
     # head looks like "/{app}/v1" (tests) or "/tools/{app}/v1" (runtime);
     # in both cases, the first segment is the app name when present.
     path_segments = [seg for seg in head.strip("/").split("/") if seg]
+    if path_segments[:1] == ["tools"]:
+        path_segments = path_segments[1:]
     app_name = path_segments[0] if len(path_segments) >= 1 else ""
     suffix = _ROUTE_SUFFIX_BY_APP.get(app_name)
 
