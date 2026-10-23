@@ -1178,9 +1178,7 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Other'"
-        ],
+        "store": [],
         "capture": [
           [
             "q__city_residence",
@@ -1191,6 +1189,35 @@
             "free_text"
           ]
         ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_NORM_CITY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_NORM_CITY",
+        "node_type": "registration",
+        "goal": [
+          "Convert the captured city to the exact name from the allowed list, or 'Otro' when it is not in the list."
+        ],
+        "do": [
+          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Otro'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Otro'"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -1229,7 +1256,7 @@
           },
           {
             "target": "Q__SQ_ASK_CITY_RETRY",
-            "condition_text": "IF [q__city_residence] == 'Other' -> GO_TO: Q__SQ_ASK_CITY_RETRY",
+            "condition_text": "IF [q__city_residence] == 'Otro' -> GO_TO: Q__SQ_ASK_CITY_RETRY",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
@@ -1389,15 +1416,50 @@
         ],
         "say_verbatim": true,
         "execute": null,
-        "store": [
-          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Other'"
-        ],
+        "store": [],
         "capture": [
           [
             "q__city_residence",
             "str"
           ]
         ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_NORM_CITY_RETRY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_NORM_CITY_RETRY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_NORM_CITY_RETRY",
+        "node_type": "registration",
+        "goal": [
+          "Convert the corrected city to the exact name from the allowed list, or 'Otro' when it is not in the list."
+        ],
+        "do": [
+          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Otro'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[q__city_residence] = match in <ALLOWED_CITIES> | 'Otro'"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -1408,15 +1470,7 @@
             "reason": null
           }
         ],
-        "fallback": [
-          {
-            "target": "Q__SQ_DECIDE_CITY",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ]
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_DECIDE_CITY",
