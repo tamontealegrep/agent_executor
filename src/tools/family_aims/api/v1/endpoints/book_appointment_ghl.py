@@ -78,33 +78,11 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
         if not tool.ghl_calendar_id:
             return BookAppointmentResponse(success=False, errors=f"Missing FA_GHL_CALENDAR_ID_{env_suffix} in environment")
 
-        # (Opcional) Pre-chequeo básico A: el slot pedido debe estar dentro de los libres del día
-        try:
-            same_day_start = start_dt.astimezone(ZoneInfo("America/Bogota")).replace(hour=0, minute=0, second=0, microsecond=0)
-            from datetime import timedelta as _td
-            same_day_end = same_day_start + _td(days=1)
-        except Exception:
-            from datetime import timedelta as _td
-            same_day_start = start_dt.astimezone(ZoneInfo("America/Bogota")).replace(hour=0, minute=0, second=0, microsecond=0)
-            same_day_end = same_day_start + _td(days=1)
+        # Validador de disponibilidad: comprobar solapamiento con eventos reales en GHL
+        # Config note: en desarrollo IVF y SUR pueden compartir ID; no bloqueamos.
+        # Si quieres forzar validación de IDs distintos, re-habilita el guard.
 
-        try:
-            free_slots = await ghl_get_available_slots(
-                access_token=settings.ghl_token,
-                calendar_id=tool.ghl_calendar_id,
-                start_dt=same_day_start,
-                end_dt=same_day_end,
-                timezone="America/Bogota",
-            )
-        except Exception:
-            free_slots = []  # No bloquea la reserva: GHL validará al crear
-
-        # Normalizamos el start pedido a UTC de la misma forma que GHL publica sus slots (Z)
-        start_utc = start_dt.astimezone(ZoneInfo("UTC")).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        if free_slots and start_utc not in free_slots:
-            return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
-
-        # Pre-chequeo B: consultar eventos en GHL en el rango exacto
+        # Overlap-based validator using real events
         try:
             existing = await ghl_list_events(
                 access_token=settings.ghl_token,
@@ -115,18 +93,59 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
             )
             events = existing.get("events", []) if isinstance(existing, dict) else []
             if events:
-                return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
+                # Consider overlap only if ev_start < end_dt and ev_end > start_dt (strict on end==start)
+                from datetime import datetime as _dt
+                def _p(v: str):
+                    try:
+                        return _dt.fromisoformat(v.replace("Z", "+00:00"))
+                    except Exception:
+                        return None
+                conflict = False
+                for ev in events:
+                    ev_s_raw = ev.get("startTime") or ev.get("start_time") or ev.get("start")
+                    ev_e_raw = ev.get("endTime") or ev.get("end_time") or ev.get("end")
+                    ev_s = _p(ev_s_raw) if isinstance(ev_s_raw, str) else None
+                    ev_e = _p(ev_e_raw) if isinstance(ev_e_raw, str) else None
+                    if ev_s is None or ev_e is None:
+                        # If we can't parse, be conservative: let GHL validate at creation
+                        continue
+                    # Normalize to aware datetimes; assume UTC if naive
+                    if ev_s.tzinfo is None:
+                        from zoneinfo import ZoneInfo as _ZI
+                        ev_s = ev_s.replace(tzinfo=_ZI("UTC"))
+                    if ev_e.tzinfo is None:
+                        from zoneinfo import ZoneInfo as _ZI
+                        ev_e = ev_e.replace(tzinfo=_ZI("UTC"))
+                    if (ev_s < end_dt) and (ev_e > start_dt):
+                        conflict = True
+                        break
+                if conflict:
+                    return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
         except Exception:
-            # No bloquea; GHL validará en create_appointment
+            # No bloquea si la consulta de eventos falla; GHL volverá a validar al crear
             pass
 
-        # Upsert de contacto para obtener contact_id
+        # Pre-chequeo B (no bloqueante): consultar eventos en GHL en el rango exacto.
+        # Si hay resultados, igual dejamos que GHL valide en create_appointment,
+        # porque free-slots es la fuente de verdad para disponibilidad pública.
+        try:
+            _ = await ghl_list_events(
+                access_token=settings.ghl_token,
+                location_id=settings.ghl_location_id,
+                calendar_id=tool.ghl_calendar_id,
+                start_dt=start_dt,
+                end_dt=end_dt,
+            )
+        except Exception:
+            pass
+
+        # Resolver contact_id vía upsert (formato original)
         upsert = await ghl_upsert_contact(
             access_token=settings.ghl_token,
             location_id=settings.ghl_location_id,
-            email=contact_email,
-            phone=contact_phone,
-            name=contact_name,
+            email=contact_email or None,
+            phone=contact_phone or None,
+            name=contact_name or None,
         )
         contact_obj = upsert.get("contact") or {}
         contact_id = contact_obj.get("id")
