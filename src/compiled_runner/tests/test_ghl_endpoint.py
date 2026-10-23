@@ -262,6 +262,51 @@ snapshot.next == () means the thread already reached a terminal node
     assert graph.invoke_calls[0]["seed_last_user_message"] == "Otra pregunta"
 
 
+def _post_and_wait(app, **payload_kwargs):
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/test_agent", json=_payload(**payload_kwargs))
+            await asyncio.sleep(0.3)
+
+    _run(scenario())
+
+
+def test_empty_message_mid_conversation_replies_with_the_fixed_text_and_skips_the_graph(monkeypatch):
+    graph = FakeGraph(
+        values={"current_state": "SC__SC_ASK_D", "slots": {"preferred_language": "English"}},
+        next_=("SC__SC_ASK_D",),
+    )
+    app, _, replies = _build_router(monkeypatch, graph)
+
+    _post_and_wait(app, message="", message_id="m-media")
+
+    assert graph.invoke_calls == []
+    assert len(replies) == 1
+    assert replies[0]["message"] == ghl_endpoint._DEFAULT_UNSUPPORTED_MEDIA_MESSAGES["en"]
+
+
+def test_unsupported_media_text_uses_language_then_spanish_default_and_overrides():
+    cfg = CompiledAgentGhlConfig(
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object()
+    )
+    defaults = ghl_endpoint._DEFAULT_UNSUPPORTED_MEDIA_MESSAGES
+    assert ghl_endpoint._unsupported_media_text(cfg, "pt") == defaults["pt"]
+    assert ghl_endpoint._unsupported_media_text(cfg, "Spanish") == defaults["es"]
+    assert ghl_endpoint._unsupported_media_text(cfg, "Klingon") == defaults["es"]
+    assert ghl_endpoint._unsupported_media_text(cfg, None) == defaults["es"]
+    cfg_str = CompiledAgentGhlConfig(
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object(),
+        unsupported_media_message="solo texto",
+    )
+    assert ghl_endpoint._unsupported_media_text(cfg_str, "en") == "solo texto"
+    cfg_dict = CompiledAgentGhlConfig(
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object(),
+        unsupported_media_message={"es": "x", "en": "y"},
+    )
+    assert ghl_endpoint._unsupported_media_text(cfg_dict, "en") == "y"
+
+
 def test_session_timeout_uses_the_shared_env_constant_not_the_compiled_artifact(monkeypatch):
     """
 GHL_TEXT_HISTORY_MAX_DAYS (.env, shared across every text agent) must

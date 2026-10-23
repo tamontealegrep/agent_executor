@@ -85,6 +85,13 @@ Everything that differs from one compiled agent's GHL endpoint to another.
     """(2026-10-02, pedido directamente) If True, an inbound message from
     the widget (LIVE_CHAT) is responded to via WhatsApp instead. Enabled
     by default; el widget solo se usa para el primer contacto."""
+    unsupported_media_message: "str | dict[str, str] | None" = None
+    """Override for the reply sent when a message arrives with no text (a
+    video, audio or sticker reaches GHL with an empty body) in the middle of
+    a conversation. Same shape as `closing_message`: a plain string always
+    wins; a dict is looked up by the conversation's language (falls back to
+    the built-in ES/EN/PT default). The graph is not invoked, so the pending
+    question stays pending."""
 
 
 _DEFAULT_CLOSING_MESSAGES: dict[str, str] = {
@@ -100,6 +107,28 @@ def _closing_message_text(cfg: CompiledAgentGhlConfig, preferred_language: "str 
     messages = cfg.closing_message if isinstance(cfg.closing_message, dict) else _DEFAULT_CLOSING_MESSAGES
     lang = (preferred_language or "es").lower()
     return messages.get(lang) or messages.get("es") or next(iter(messages.values()))
+
+
+_DEFAULT_UNSUPPORTED_MEDIA_MESSAGES: dict[str, str] = {
+    "es": "No pude entender ese mensaje. Por ahora solo puedo responderte por texto.",
+    "en": "I couldn't understand that message. For now I can only reply to text.",
+    "pt": "Não consegui entender essa mensagem. Por enquanto só posso responder por texto.",
+}
+
+_LANGUAGE_CODES = {"spanish": "es", "english": "en", "portuguese": "pt"}
+
+
+def _unsupported_media_text(cfg: CompiledAgentGhlConfig, language: "str | None") -> str:
+    if isinstance(cfg.unsupported_media_message, str):
+        return cfg.unsupported_media_message
+    messages = (
+        cfg.unsupported_media_message
+        if isinstance(cfg.unsupported_media_message, dict)
+        else _DEFAULT_UNSUPPORTED_MEDIA_MESSAGES
+    )
+    raw = (language or "es").strip().lower()
+    code = _LANGUAGE_CODES.get(raw, raw)
+    return messages.get(code) or messages.get("es") or next(iter(messages.values()))
 
 
 def _normalize_phone(raw: object) -> str:
@@ -475,8 +504,14 @@ Build a self-contained router for one compiled agent's GHL webhook.
                 result = await run_in_threadpool(graph.invoke, state, config)
             else:
                 if not combined_message:
-                    raise ValueError("message is required to continue an existing session.")
-                result = await run_in_threadpool(graph.invoke, Command(resume=combined_message), config)
+                    # No text mid-conversation: a video, audio or sticker. Answer with the fixed
+                    # message and leave the graph (and its pending question) untouched.
+                    slots = (snapshot.values or {}).get("slots") or {}
+                    language = slots.get("preferred_language") or (request.contact or {}).get("language")
+                    buffer.append(_unsupported_media_text(cfg, language))
+                    result = {}
+                else:
+                    result = await run_in_threadpool(graph.invoke, Command(resume=combined_message), config)
 
             interrupts = result.get("__interrupt__")
             if interrupts:

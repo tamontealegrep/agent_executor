@@ -116,5 +116,5 @@ Base request shape for any agent triggered by a GHL workflow webhook.
         if value is None:
             return None
         if isinstance(value, dict):
-            return value.get("body") or value.get("text") or value.get("message") or str(value)
+            return value.get("body") or value.get("text") or value.get("message") or None
         return str(value)

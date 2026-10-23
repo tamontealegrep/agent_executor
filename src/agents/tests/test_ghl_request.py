@@ -78,3 +78,10 @@ The exact real payload shared live (2026-09-29) -- contact_language
     }
     req = GhlAgentRequest(**payload)
     assert req.contact["language"] == "en"
+
+
+def test_empty_message_body_yields_no_message_instead_of_the_dict_repr():
+    req = GhlAgentRequest(**_base_payload(message={"type": 19, "body": ""}))
+    assert req.message is None
+    assert req.channel == "WHATSAPP"
+
