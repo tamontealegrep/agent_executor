@@ -1015,7 +1015,8 @@
           "[q__weight_try] = 0",
           "[q__height_try] = 0",
           "[q__drugs_try] = 0",
-          "[q__appt_try] = 0"
+          "[q__appt_try] = 0",
+          "[q__missing_try] = 0"
         ],
         "trigger": [],
         "say": [],
@@ -1062,7 +1063,8 @@
           "[q__weight_try] = 0",
           "[q__height_try] = 0",
           "[q__drugs_try] = 0",
-          "[q__appt_try] = 0"
+          "[q__appt_try] = 0",
+          "[q__missing_try] = 0"
         ],
         "capture": [],
         "eval": "code",
@@ -1127,8 +1129,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__age_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__age_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__age_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1490,8 +1492,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__city_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__city_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__city_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1578,8 +1580,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__eps_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__eps_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__eps_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1666,8 +1668,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__kids_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__kids_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__kids_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1799,8 +1801,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__birth_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__birth_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__birth_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1887,8 +1889,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__csec_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__csec_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__csec_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1975,8 +1977,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__abort_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__abort_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__abort_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2063,8 +2065,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__pree_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__pree_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__pree_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2151,8 +2153,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__weight_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__weight_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__weight_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2239,8 +2241,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__height_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2328,8 +2330,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__height_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2419,8 +2421,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__nationality_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__nationality_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__nationality_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2559,8 +2561,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__cc_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__cc_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__cc_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2704,8 +2706,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__drugs_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_NOFIT",
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__drugs_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
             "is_mechanical": true,
             "python_expression": "q__drugs_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2826,7 +2828,8 @@
         "node_id": "Q__SQ_DEC_ELIGIBILITY",
         "node_type": "decision",
         "goal": [
-          "Resolve the outcome with the surrogate_classification verdict (values in English)."
+          "Resolve the outcome with the surrogate_classification verdict (values in English).",
+          "A candidate under 18 also comes back as 'Rejected (Timing)', but that is about age, not about a recent birth, so it must not get the wait-a-year message."
         ],
         "do": [],
         "trigger": [],
@@ -2835,44 +2838,321 @@
         "execute": null,
         "store": [],
         "capture": [],
-        "eval": "llm",
+        "eval": "code",
         "route": [
           {
             "target": "Q__SQ_PASS",
             "condition_text": "IF [q__result] == 'Approved' -> GO_TO: Q__SQ_PASS",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Approved'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_DEC_MISSING",
+            "condition_text": "IF [q__result] == 'Inconclusive' -> GO_TO: Q__SQ_DEC_MISSING",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Inconclusive'",
+            "reason": null
           },
           {
             "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__result] == 'Inconclusive' -> GO_TO: Q__SQ_BYE_NOFIT",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "condition_text": "IF [q__result] == 'Rejected (Timing)' AND [q__surrogate_age] < 18 -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Timing)' and q__surrogate_age < 18",
+            "reason": null
           },
           {
             "target": "Q__SQ_WAIT_1Y",
             "condition_text": "IF [q__result] == 'Rejected (Timing)' -> GO_TO: Q__SQ_WAIT_1Y",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Timing)'",
+            "reason": null
           },
           {
             "target": "Q__SQ_BYE_NOFIT",
-            "condition_text": "IF [q__result] == 'Rejected' -> GO_TO: Q__SQ_BYE_NOFIT",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "condition_text": "IF [q__result] == 'Rejected (Age)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Age)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (City)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (City)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (EPS)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (EPS)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (Children)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Children)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (C-Sections)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (C-Sections)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (Preeclampsia)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Preeclampsia)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (BMI)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (BMI)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (Documentation)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Documentation)'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_BYE_NOFIT",
+            "condition_text": "IF [q__result] == 'Rejected (Drug Use)' -> GO_TO: Q__SQ_BYE_NOFIT",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Rejected (Drug Use)'",
+            "reason": null
           }
         ],
         "fallback": [
           {
             "target": "Q__SQ_BYE_NOFIT",
             "condition_text": null,
-            "is_mechanical": false,
+            "is_mechanical": true,
             "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_DEC_MISSING",
+        "node_type": "decision",
+        "goal": [
+          "The classification was inconclusive because data is missing: go back and ask for it again, a limited number of times, with fresh retries for each question."
+        ],
+        "do": [
+          "[q__missing_try] = [q__missing_try] + 1",
+          "[q__result] = NULL",
+          "[q__age_try] = 0",
+          "[q__city_try] = 0",
+          "[q__eps_try] = 0",
+          "[q__kids_try] = 0",
+          "[q__birth_try] = 0",
+          "[q__csec_try] = 0",
+          "[q__abort_try] = 0",
+          "[q__pree_try] = 0",
+          "[q__weight_try] = 0",
+          "[q__height_try] = 0",
+          "[q__nationality_try] = 0",
+          "[q__cc_try] = 0",
+          "[q__drugs_try] = 0"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": "IF [q__missing_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "is_mechanical": true,
+            "python_expression": "q__missing_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_MISSING_INTRO",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_MISSING_INTRO",
+        "node_type": "message",
+        "goal": [
+          "Tell the candidate some data is still missing and that it will be asked for again."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Para completar tu precalificación me faltan algunos datos. Te los voy a preguntar de nuevo, por favor."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_FIND_MISSING",
+        "node_type": "decision",
+        "goal": [
+          "Go back to the first question, in the order they are asked, whose data is still missing. The questions after it re-run in order, so everything that was never asked gets asked."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_ASK_AGE",
+            "condition_text": "IF [q__surrogate_age] IS NULL -> GO_TO: Q__SQ_ASK_AGE",
+            "is_mechanical": true,
+            "python_expression": "q__surrogate_age is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_CITY",
+            "condition_text": "IF [q__city_residence] IS NULL -> GO_TO: Q__SQ_ASK_CITY",
+            "is_mechanical": true,
+            "python_expression": "q__city_residence is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_EPS",
+            "condition_text": "IF [q__eps_status] IS NULL -> GO_TO: Q__SQ_ASK_EPS",
+            "is_mechanical": true,
+            "python_expression": "q__eps_status is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_CHILDREN",
+            "condition_text": "IF [q__children_count] IS NULL -> GO_TO: Q__SQ_ASK_CHILDREN",
+            "is_mechanical": true,
+            "python_expression": "q__children_count is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_LB",
+            "condition_text": "IF [q__last_birth_date] IS NULL -> GO_TO: Q__SQ_ASK_LB",
+            "is_mechanical": true,
+            "python_expression": "q__last_birth_date is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_CSEC",
+            "condition_text": "IF [q__csections_count] IS NULL -> GO_TO: Q__SQ_ASK_CSEC",
+            "is_mechanical": true,
+            "python_expression": "q__csections_count is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_ABORTIONS",
+            "condition_text": "IF [q__abortos] IS NULL -> GO_TO: Q__SQ_ASK_ABORTIONS",
+            "is_mechanical": true,
+            "python_expression": "q__abortos is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_PREE",
+            "condition_text": "IF [q__pree] IS NULL -> GO_TO: Q__SQ_ASK_PREE",
+            "is_mechanical": true,
+            "python_expression": "q__pree is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_WEIGHT",
+            "condition_text": "IF [q__weight] IS NULL -> GO_TO: Q__SQ_ASK_WEIGHT",
+            "is_mechanical": true,
+            "python_expression": "q__weight is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_HEIGHT",
+            "condition_text": "IF [q__height] IS NULL -> GO_TO: Q__SQ_ASK_HEIGHT",
+            "is_mechanical": true,
+            "python_expression": "q__height is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_CALCULATE_BMI",
+            "condition_text": "IF [q__imc] IS NULL -> GO_TO: Q__SQ_CALCULATE_BMI",
+            "is_mechanical": true,
+            "python_expression": "q__imc is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_NATIONALITY",
+            "condition_text": "IF [q__nationality] IS NULL -> GO_TO: Q__SQ_ASK_NATIONALITY",
+            "is_mechanical": true,
+            "python_expression": "q__nationality is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_CHECK_DOCUMENTATION",
+            "condition_text": "IF [q__documentation] IS NULL AND [q__nationality] == 'COL' -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
+            "is_mechanical": true,
+            "python_expression": "q__documentation is None and q__nationality == 'COL'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_CC",
+            "condition_text": "IF [q__documentation] IS NULL AND [q__has_cc] IS NULL -> GO_TO: Q__SQ_ASK_CC",
+            "is_mechanical": true,
+            "python_expression": "q__documentation is None and q__has_cc is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_CHECK_DOCUMENTATION",
+            "condition_text": "IF [q__documentation] IS NULL -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
+            "is_mechanical": true,
+            "python_expression": "q__documentation is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_DRUGS",
+            "condition_text": "IF [q__uses_drugs] IS NULL -> GO_TO: Q__SQ_ASK_DRUGS",
+            "is_mechanical": true,
+            "python_expression": "q__uses_drugs is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_BYE_INCOMPLETE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
           }
         ]
       },
@@ -3055,6 +3335,33 @@
         "trigger": [],
         "say": [
           "Muchas gracias por tu tiempo. En este momento no cumples con uno de nuestros requerimientos iniciales, por lo que no eres apta para continuar en el proceso. Que tengas un buen día."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_END",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_BYE_INCOMPLETE",
+        "node_type": "message",
+        "goal": [
+          "Close politely when the pre-qualification could not be completed: the data stayed missing, which is not the same as not qualifying."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Muchas gracias por tu tiempo. No logramos completar tu precalificación con la información recibida. Si quieres retomarla más adelante, escríbenos y con gusto continuamos. Que tengas un buen día."
         ],
         "say_verbatim": false,
         "execute": null,
