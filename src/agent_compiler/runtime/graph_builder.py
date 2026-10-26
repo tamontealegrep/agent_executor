@@ -568,6 +568,7 @@ def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None
 
 
 _INTERPOLATION_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]|<([A-Z_][A-Z0-9_]*)>|\{\{\s*contact\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
+_CONTACT_PLACEHOLDER_RE = re.compile(r"\{\{\s*contact\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 
 _ISO_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 _ISO_TIME_RE = re.compile(r"T(\d{2}):(\d{2})")
@@ -803,6 +804,40 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
 
     return _INTERPOLATION_RE.sub(repl, text)
 
+def _protect_contact_values(text: str, contact: dict[str, Any] | None, protected: dict[str, str]) -> str:
+    """
+Swap each `{{contact.field}}` the contact has for an opaque `<CONTACT_FIELD>` token.
+
+    The paraphrasing model rewrites names it sees (adding or dropping accents),
+        but leaves a placeholder token alone; `_restore_contact_values` puts the real
+        value back afterwards. Fields the contact lacks stay as written.
+
+    Parameters:
+        text: Say text before interpolation.
+        contact: The session's CRM contact fields.
+        protected: Filled with token -> real value, to restore after paraphrasing.
+
+    Returns:
+        The text with the contact placeholders replaced by tokens.
+"""
+
+    def repl(match: re.Match[str]) -> str:
+        value = (contact or {}).get(match.group(1))
+        if value in (None, ""):
+            return match.group(0)
+        token = f"<CONTACT_{match.group(1).upper()}>"
+        protected[token] = str(value)
+        return token
+
+    return _CONTACT_PLACEHOLDER_RE.sub(repl, text)
+
+
+def _restore_contact_values(text: str, protected: dict[str, str]) -> str:
+    for token, value in protected.items():
+        text = text.replace(token, value)
+    return text
+
+
 logger = logging.getLogger(__name__)
 
 _ADVISOR_HANDLER_ID = "H_ADVISOR_Q"
@@ -896,7 +931,11 @@ Build a `say`-rendering function.
     Returns:
         The result.
         """
-        raw = _interpolate_slots("\n".join(say), slots, language_code, contact)
+        protected: dict[str, str] = {}
+        text = "\n".join(say)
+        if not say_verbatim:
+            text = _protect_contact_values(text, contact, protected)
+        raw = _interpolate_slots(text, slots, language_code, contact)
         if say_verbatim:
             return raw
 
@@ -917,7 +956,7 @@ Build a `say`-rendering function.
             "a version of that\", no label, no quotes around it, nothing before or "
             f"after it:\n\n{raw}"
         )
-        return llm_client.complete(prompt, temperature=1.0) or raw
+        return _restore_contact_values(llm_client.complete(prompt, temperature=1.0) or raw, protected)
 
     return render_say
 
