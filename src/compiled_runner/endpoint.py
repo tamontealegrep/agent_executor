@@ -58,10 +58,12 @@ async def chat(slug: str, req: CompiledChatRequest) -> CompiledChatResponse:
 
     snapshot = graph.get_state(config)
     resolution = resolve_session(snapshot.values, artifact.session_timeout_minutes)
-    if resolution == "continuing" and not snapshot.next:
+    if resolution == "continuing" and not (snapshot.next or snapshot.interrupts):
         # A thread that already reached a terminal node (snapshot.next == ())
         # has nothing pending to resume -- resolve_session only knows elapsed
-        # time, not this. Treat a new message as a fresh conversation.
+        # time, not this. Treat a new message as a fresh conversation. A
+        # question re-asked after a global-router match is pending in
+        # snapshot.interrupts even though snapshot.next is empty.
         resolution = "new"
     logger.info("[%s] thread=%s session=%s", slug, req.thread_id, resolution)
 

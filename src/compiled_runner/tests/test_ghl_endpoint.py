@@ -35,14 +35,15 @@ Stands in for the real checkpointed LangGraph graph. `next`/`values`
         terminal node before the request under test arrives.
 """
 
-    def __init__(self, values=None, next_=()):
+    def __init__(self, values=None, next_=(), interrupts=()):
         self.values = values or {}
         self.next = next_
+        self.interrupts = interrupts
         self.invoke_calls: list[object] = []
         self.reply_prompt = ["Hola, ¿en qué puedo ayudarte?"]
 
     def get_state(self, config):
-        return SimpleNamespace(values=self.values, next=self.next)
+        return SimpleNamespace(values=self.values, next=self.next, interrupts=self.interrupts)
 
     def invoke(self, state_or_command, config):
         self.invoke_calls.append(state_or_command)
@@ -375,6 +376,35 @@ snapshot.next non-empty means the graph is mid-conversation, waiting
     assert len(graph.invoke_calls) == 1
     assert isinstance(graph.invoke_calls[0], Command)
     assert graph.invoke_calls[0].resume == "El martes"
+
+
+def test_re_asked_question_resumes_with_command(monkeypatch):
+    """
+A question re-asked after a global-router match (e.g. a language switch)
+
+    leaves snapshot.next empty but its interrupt still pending -- it must
+        resume via Command, not restart the conversation from the greeting.
+
+    Parameters:
+        monkeypatch: Description.
+
+    Returns:
+        None.
+"""
+    graph = FakeGraph(values={"current_state": "O__OP_GREET"}, next_=(), interrupts=("re-asked",))
+    app, _, _ = _build_router(monkeypatch, graph, debounce_seconds=0.05)
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/test_agent", json=_payload(message="metodo ropa", message_id="m5"))
+            await asyncio.sleep(0.3)
+
+    _run(scenario())
+
+    assert len(graph.invoke_calls) == 1
+    assert isinstance(graph.invoke_calls[0], Command)
+    assert graph.invoke_calls[0].resume == "metodo ropa"
 
 
 @pytest.mark.parametrize("marker", ["<\\>", "<\\\\>", "</>"])

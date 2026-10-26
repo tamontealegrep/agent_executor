@@ -478,12 +478,15 @@ Build a self-contained router for one compiled agent's GHL webhook.
 
             snapshot = graph.get_state(config)
             resolution = resolve_session(snapshot.values, GHL_TEXT_SESSION_TIMEOUT_MINUTES)
-            if resolution == "continuing" and not snapshot.next:
+            if resolution == "continuing" and not (snapshot.next or snapshot.interrupts):
                 # resolve_session only knows elapsed time, not whether the
                 # graph actually has a pending interrupt -- a thread that
                 # already reached a terminal node (snapshot.next == ()) has
                 # nothing to resume, so Command(resume=...) would silently
                 # do nothing. Treat this as the start of a fresh conversation.
+                # A question that re-asks itself after a global-router match
+                # (e.g. a language switch) is pending in snapshot.interrupts
+                # while snapshot.next is already empty -- that one resumes.
                 resolution = "new"
             if reset_requested:
                 resolution = "new"
