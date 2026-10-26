@@ -190,6 +190,8 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
             "Priority 1 - Explicit Request: If the user explicitly asks to switch language "
             "(\"háblame en español\", \"speak English\", \"prefiero portugués\", \"in English please\", \"responde en X\", etc.), "
             "you MUST reply LANGUAGE_CHANGE (or LANGUAGE_CHANGE: Spanish / LANGUAGE_CHANGE: English / LANGUAGE_CHANGE: Portuguese).\n"
+            "If the reply is written in another supported language but ALSO answers the pending question (even misspelled, "
+            "e.g. 'subrrogacion' to a service question), reply LANGUAGE_CHANGE_ANSWER: <LanguageName> instead, so the answer is kept.\n"
             "Priority 2 - Declared Inability: If the user states they cannot speak or understand the current language "
             "(\"no hablo inglés\", \"I don't speak Spanish\", \"não falo inglês\"), infer the target language from the message if clearly written in another supported language (Spanish, English, or Portuguese). Reply LANGUAGE_CHANGE.\n"
             "Priority 3 - Automatic Detection: If the user's latest message is clearly written in "
@@ -348,7 +350,7 @@ def match_global_router(
 
         # Check if the user message is a content answer
         last_msg = (ctx.last_user_message or "").lower()
-        is_content = any(w in last_msg for w in [
+        is_content = "_ANSWER" in upper_dec or any(w in last_msg for w in [
             "subrogacion", "subrrogacion", "fiv", "ivf", "ropa", "in vitro", "gestacion",
             "maternidad", "pareja", "mi nombre", "me interesa", "quiero",
         ])

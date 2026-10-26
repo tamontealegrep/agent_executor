@@ -904,7 +904,7 @@ Build a `say`-rendering function.
             "would say it in conversation rather than reading a script — vary the "
             "wording and sentence structure. Preserve the exact meaning, every fact, "
             "and any placeholders like <NAME> exactly as written; do not add, remove, "
-            "or soften any information.\n\n"
+            "or soften any information, and never add a question it does not already ask.\n\n"
             f"{policy_block}"
             "Output ONLY the rephrased message itself, "
             "exactly as the agent would send it to the user — no preamble like \"here's "
