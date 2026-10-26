@@ -31,7 +31,7 @@ GHL webhook endpoint for the compiled babynova_triage_obstetrico_text agent.
 
 import os
 
-from agents.helpers.ghl import default_ghl_client_config
+from agents.helpers.ghl import babynova_ghl_client_config
 from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_agent_router, load_phone_whitelist
 
 SLUG = "babynova_triage_obstetrico_text"
@@ -58,8 +58,9 @@ router = build_compiled_agent_router(
         debounce_seconds=DEBOUNCE_SECONDS,
         enforce_phone_whitelist=ENFORCE_PHONE_WHITELIST,
         closing_message_lookback_days=CLOSING_MESSAGE_LOOKBACK_DAYS,
-        # config/ghl_defaults.json -- agent-agnostic, same shared GHL config
-        # every compiled agent reuses (base_url, timeouts, channel map).
-        ghl_client_config=default_ghl_client_config,
+        # config/ghl_defaults.json -- same shared GHL defaults every compiled
+        # agent reuses (base_url, timeouts, channel map), authenticated with
+        # the BabyNova sub-account's own token (BN_GHL_TOKEN).
+        ghl_client_config=babynova_ghl_client_config,
     )
 )

@@ -18,7 +18,7 @@ BASE_URL = os.getenv("GHL_BASE_URL", "https://services.leadconnectorhq.com").rst
 GHL_VERSION = os.getenv("GHL_VERSION", "v3")
 
 def _resolve_ghl_token() -> str:
-    return (os.getenv("GHL_TOKEN") or "").strip()
+    return (os.getenv("FA_GHL_TOKEN") or os.getenv("GHL_TOKEN") or "").strip()
 
 def _build_headers() -> Dict[str, str]:
     token = _resolve_ghl_token()

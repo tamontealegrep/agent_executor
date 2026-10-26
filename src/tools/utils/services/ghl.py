@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Dict, Any
 import httpx
-from agents.helpers.ghl import default_ghl_client_config, get_ghl_headers
+from agents.helpers.ghl import ghl_client_config_for_location, get_ghl_headers
 from tools.utils.schemas.ghl import CustomValueResponse, GhlCustomValuesList
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ update_custom_field_service.
     Returns:
         The result.
 """
-    config = default_ghl_client_config()
+    config = ghl_client_config_for_location(location_id)
     headers = get_ghl_headers(config)
 
     if contact_id:

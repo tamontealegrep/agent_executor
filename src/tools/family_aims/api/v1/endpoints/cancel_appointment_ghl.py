@@ -15,7 +15,7 @@ async def cancel_appointment_ghl(req: CancelAppointmentRequest):
     settings = get_settings()
 
     if not settings.ghl_token:
-        return CancelAppointmentResponse(success=False, errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+        return CancelAppointmentResponse(success=False, errors="Missing FA_GHL_TOKEN in environment")
 
     try:
         success = await ghl_delete_appointment(settings.ghl_token, req.event_id)

@@ -37,9 +37,9 @@ async def find_appointment_ghl(req: FindAppointmentRequest):
 
         tool = settings.ivf if requested_cal == "IVF" else settings.sur
         if not settings.ghl_token:
-            return FindAppointmentResponse(success=False, errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+            return FindAppointmentResponse(success=False, errors="Missing FA_GHL_TOKEN in environment")
         if not settings.ghl_location_id:
-            return FindAppointmentResponse(success=False, errors="Missing GHL_LOCATION_ID in environment")
+            return FindAppointmentResponse(success=False, errors="Missing FA_GHL_LOCATION_ID in environment")
         if not tool.ghl_calendar_id:
             return FindAppointmentResponse(success=False, errors=f"Missing FA_GHL_CALENDAR_ID_{requested_cal} in environment")
 

@@ -28,9 +28,9 @@ async def edit_appointment_ghl(req: EditAppointmentRequest):
         now = datetime.now(ZoneInfo("UTC"))
 
         if not settings.ghl_token:
-            return EditAppointmentResponse(success=False, errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+            return EditAppointmentResponse(success=False, errors="Missing FA_GHL_TOKEN in environment")
         if not settings.ghl_location_id:
-            return EditAppointmentResponse(success=False, errors="Missing GHL_LOCATION_ID in environment")
+            return EditAppointmentResponse(success=False, errors="Missing FA_GHL_LOCATION_ID in environment")
 
         # 1) Procesar nuevos valores
         start_dt = None

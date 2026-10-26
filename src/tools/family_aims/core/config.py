@@ -78,8 +78,8 @@ class Settings:
     def __init__(self) -> None:
         self.ivf = _load_tool_config("IVF")
         self.sur = _load_tool_config("SUR")
-        self.ghl_token = os.getenv("GHL_ACCESS_TOKEN") or os.getenv("GHL_TOKEN", "")
-        self.ghl_location_id = os.getenv("GHL_LOCATION_ID", "")
+        self.ghl_token = os.getenv("FA_GHL_TOKEN") or os.getenv("GHL_ACCESS_TOKEN") or os.getenv("GHL_TOKEN", "")
+        self.ghl_location_id = os.getenv("FA_GHL_LOCATION_ID") or os.getenv("GHL_LOCATION_ID", "")
         self.gmail = GmailConfig(
             google_client_id=os.getenv("FA_GOOGLE_CLIENT_ID_GMAIL", ""),
             google_client_secret=os.getenv("FA_GOOGLE_CLIENT_SECRET_GMAIL", ""),

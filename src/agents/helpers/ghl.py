@@ -77,6 +77,7 @@ def build_ghl_client_config(
     ghl_settings: Dict[str, Any],
     runtime_settings: Dict[str, Any],
     messaging_settings: Dict[str, Any],
+    token_envs: tuple[str, ...] = ("FA_GHL_TOKEN", "GHL_TOKEN"),
 ) -> GhlClientConfig:
     timeouts = runtime_settings.get("timeouts", {})
     base_url_env = ghl_settings.get("base_url_env", "GHL_BASE_URL")
@@ -87,7 +88,7 @@ def build_ghl_client_config(
     return GhlClientConfig(
         base_url=os.getenv(base_url_env, ghl_settings.get("default_base_url", "https://services.leadconnectorhq.com")).rstrip("/"),
         version=os.getenv(version_env, ghl_settings.get("default_version", "v3")),
-        token=os.getenv("GHL_TOKEN", ""),
+        token=next((v for v in (os.getenv(env, "").strip() for env in token_envs) if v), ""),
         message_history_page_size=int(ghl_settings.get("message_history_page_size", 100)),
         conversation_search_limit=int(ghl_settings.get("conversation_search_limit", 1)),
         history_timeout_seconds=float(timeouts.get("history_seconds", 60.0)),
@@ -122,6 +123,44 @@ The agent-agnostic GhlClientConfig, read from config/ghl_defaults.json
         raw.get("runtime", {}),
         raw.get("messaging", {}),
     )
+
+
+@lru_cache
+def babynova_ghl_client_config() -> GhlClientConfig:
+    """
+The BabyNova GHL sub-account's config: same shared defaults as
+
+    default_ghl_client_config (Family Aims), but authenticated with BN_GHL_TOKEN.
+
+    Returns:
+        The result.
+"""
+    raw = json.loads(GHL_DEFAULTS_PATH.read_text(encoding="utf-8"))
+    return build_ghl_client_config(
+        raw.get("ghl", {}),
+        raw.get("runtime", {}),
+        raw.get("messaging", {}),
+        token_envs=("BN_GHL_TOKEN",),
+    )
+
+
+def ghl_client_config_for_location(location_id: "str | None") -> GhlClientConfig:
+    """
+Pick the GHL config (and so the token) that owns `location_id`.
+
+    A location id is only ever valid for its own sub-account's token, so the
+        BabyNova one selects the BabyNova config; anything else keeps the default.
+
+    Parameters:
+        location_id: The GHL location id the call targets, if any.
+
+    Returns:
+        The result.
+"""
+    babynova_location_id = os.getenv("BN_GHL_LOCATION_ID", "").strip()
+    if location_id and babynova_location_id and location_id == babynova_location_id:
+        return babynova_ghl_client_config()
+    return default_ghl_client_config()
 
 
 def get_ghl_headers(config: GhlClientConfig) -> Dict[str, str]:

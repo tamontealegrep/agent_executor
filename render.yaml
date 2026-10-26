@@ -44,9 +44,13 @@ services:
         value: "10"
       - key: FA_DAYS_AHEAD_SUR
         value: "7"
-      - key: GHL_ACCESS_TOKEN
+      - key: FA_GHL_TOKEN
         sync: false
-      - key: GHL_LOCATION_ID
+      - key: FA_GHL_LOCATION_ID
+        sync: false
+      - key: BN_GHL_TOKEN
+        sync: false
+      - key: BN_GHL_LOCATION_ID
         sync: false
       - key: FA_GHL_CALENDAR_ID_IVF
         sync: false

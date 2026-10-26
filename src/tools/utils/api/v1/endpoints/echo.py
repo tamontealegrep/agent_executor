@@ -26,7 +26,7 @@ def _allowed_phones() -> set[str]:
     return {number.strip() for number in raw.split(",") if number.strip()}
 
 def _resolve_ghl_token() -> str:
-    token = (os.getenv("GHL_TOKEN") or "").strip()
+    token = (os.getenv("FA_GHL_TOKEN") or os.getenv("GHL_TOKEN") or "").strip()
 
     if token:
         return token

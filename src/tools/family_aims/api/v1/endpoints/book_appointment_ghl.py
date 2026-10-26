@@ -77,9 +77,9 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
 
         # Validación de configuración GHL
         if not settings.ghl_token:
-            return BookAppointmentResponse(success=False, errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+            return BookAppointmentResponse(success=False, errors="Missing FA_GHL_TOKEN in environment")
         if not settings.ghl_location_id:
-            return BookAppointmentResponse(success=False, errors="Missing GHL_LOCATION_ID in environment")
+            return BookAppointmentResponse(success=False, errors="Missing FA_GHL_LOCATION_ID in environment")
         if not tool.ghl_calendar_id:
             return BookAppointmentResponse(success=False, errors=f"Missing FA_GHL_CALENDAR_ID_{env_suffix} in environment")
 

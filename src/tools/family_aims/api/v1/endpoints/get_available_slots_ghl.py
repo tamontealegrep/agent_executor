@@ -48,7 +48,7 @@ async def get_available_slots_ghl(req: SlotsRequest):
         now = datetime.now(ZoneInfo("UTC"))
 
         if not settings.ghl_token:
-            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="Missing GHL_ACCESS_TOKEN/GHL_TOKEN in environment")
+            return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors="Missing FA_GHL_TOKEN in environment")
         if not tool.ghl_calendar_id:
             return SlotsResponse(success=False, iana_timezone=user_tz, available_slots=[], errors=f"Missing FA_GHL_CALENDAR_ID_{env_suffix} in environment")
 
