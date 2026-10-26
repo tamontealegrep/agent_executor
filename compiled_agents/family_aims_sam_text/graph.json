@@ -1358,7 +1358,7 @@
         "store": [
           "[o__svc_try] = 0",
           "[svc] = NULL",
-          "[preferred_language] = 'English' | 'Spanish' | 'Portuguese' derived from {{contact.language}}; if missing, default to 'English'"
+          "[preferred_language] = the full language name (English, Spanish, or Portuguese) that matches {{contact.language}}, or English if it is missing"
         ],
         "capture": [],
         "eval": "code",
@@ -1496,7 +1496,7 @@
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
           "If [svc] is still NULL, infer it from the user's latest message using the approved service labels.",
-          "If [svc] == 'ropa', set [svc] = 'ivf'."
+          "If [svc] == 'ropa', set [ropa] = 'yes' and [svc] = 'ivf'; otherwise set [ropa] = NULL."
         ],
         "trigger": [],
         "say": [],
@@ -4328,6 +4328,27 @@
         "eval": "code",
         "route": [
           {
+            "target": "VI__VI_SET_ROPA",
+            "condition_text": "IF [profile] == 'women_couple' AND [ropa] == 'yes' -> GO_TO: VI__VI_SET_ROPA",
+            "is_mechanical": true,
+            "python_expression": "profile == 'women_couple' and ropa == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "VI__VI_MENU_R",
+            "condition_text": "IF [profile] == 'women_couple' -> GO_TO: VI__VI_MENU_R",
+            "is_mechanical": true,
+            "python_expression": "profile == 'women_couple'",
+            "reason": null
+          },
+          {
+            "target": "VI__VI_NO_ROPA",
+            "condition_text": "IF [ropa] == 'yes' -> GO_TO: VI__VI_NO_ROPA",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes'",
+            "reason": null
+          },
+          {
             "target": "VI__VI_MENU_S",
             "condition_text": "IF [profile] == 'heterosexual_couple' -> GO_TO: VI__VI_MENU_S",
             "is_mechanical": true,
@@ -4340,12 +4361,59 @@
             "is_mechanical": true,
             "python_expression": "profile == 'single_woman'",
             "reason": null
-          },
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "VI__VI_SET_ROPA",
+        "node_type": "registration",
+        "goal": [
+          "The lead asked for the ROPA method and is a couple of women: ROPA is the only relevant option, so skip the options menu."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[vi__treat] = 'ropa'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
           {
-            "target": "VI__VI_MENU_R",
-            "condition_text": "IF [profile] == 'women_couple' -> GO_TO: VI__VI_MENU_R",
+            "target": "VI__VI_ASK_KNOW_ROPA",
+            "condition_text": null,
             "is_mechanical": true,
-            "python_expression": "profile == 'women_couple'",
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "VI__VI_NO_ROPA",
+        "node_type": "message",
+        "goal": [
+          "Explain that the ROPA method is only for couples of women and continue with the IVF options for this profile."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "The ROPA Method is only available for couples of women, but we can look at the IVF options that fit your case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "VI__VI_MENU_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
             "reason": null
           }
         ],
@@ -4568,6 +4636,40 @@
         "trigger": [],
         "say": [
           "Do you already know what that option consists of?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[vi__knows] = [vi__knows]"
+        ],
+        "capture": [
+          [
+            "vi__knows",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "VI__VI_DEC_KNOW",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "VI__VI_ASK_KNOW_ROPA",
+        "node_type": "question",
+        "goal": [
+          "Ask whether the lead already knows the ROPA method."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Do you already know what the ROPA Method consists of?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -6169,6 +6271,7 @@
           "[sc__end_try] = 0",
           "[user_timezone] = NULL",
           "[sc__available_slots] = NULL",
+          "[sc__fresh_available_slots] = NULL",
           "[sc__day] = NULL",
           "[sc__slot] = NULL",
           "[sc__now] = NULL",
@@ -6677,6 +6780,13 @@
         "eval": "code",
         "route": [
           {
+            "target": "SC__SC_SUM",
+            "condition_text": "IF [sc__c_email] IS NOT NULL AND [sc__slot] IS NOT NULL -> GO_TO: SC__SC_SUM",
+            "is_mechanical": true,
+            "python_expression": "sc__c_email is not None and sc__slot is not None",
+            "reason": null
+          },
+          {
             "target": "SC__SC_DEC_T",
             "condition_text": "IF [sc__c_email] IS NOT NULL -> GO_TO: SC__SC_DEC_T",
             "is_mechanical": true,
@@ -6809,6 +6919,13 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "SC__SC_SUM",
+            "condition_text": "IF [sc__c_email] IS NOT NULL AND [sc__c_email] != '{{contact.email}}' AND [sc__slot] IS NOT NULL -> GO_TO: SC__SC_SUM",
+            "is_mechanical": true,
+            "python_expression": "sc__c_email is not None and sc__c_email != '{{contact.email}}' and sc__slot is not None",
+            "reason": null
+          },
           {
             "target": "SC__SC_DEC_T",
             "condition_text": "IF [sc__c_email] IS NOT NULL AND [sc__c_email] != '{{contact.email}}' -> GO_TO: SC__SC_DEC_T",
@@ -7178,7 +7295,7 @@
         ],
         "do": [
           "[sc__slot_try] = [sc__slot_try] + 1",
-          "Map [sc__slot] to the exact object in [sc__available_slots]. It is valid only if that object has start_co and end_co."
+          "Map [sc__slot] to the exact object in [sc__available_slots]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co and end_co."
         ],
         "trigger": [],
         "say": [],
@@ -7189,8 +7306,8 @@
         "eval": "llm",
         "route": [
           {
-            "target": "SC__SC_TIME",
-            "condition_text": "IF [sc__slot] corresponds to an object in [sc__available_slots] with a non-null start_co -> GO_TO: SC__SC_TIME",
+            "target": "SC__SC_DEC_CHK",
+            "condition_text": "IF [sc__slot] corresponds to an object in [sc__available_slots] with a non-null start_co -> GO_TO: SC__SC_DEC_CHK",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
@@ -7219,6 +7336,173 @@
             "reason": "eval='llm' forces an LLM-evaluated edge"
           }
         ]
+      },
+      {
+        "node_id": "SC__SC_DEC_CHK",
+        "node_type": "decision",
+        "goal": [
+          "Choose the availability tool that re-verifies the chosen time according to the active commercial service."
+        ],
+        "do": [
+          "[sc__fresh_available_slots] = NULL"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_CHK_I",
+            "condition_text": "IF [appt_svc] == 'ivf' -> GO_TO: SC__SC_CHK_I",
+            "is_mechanical": true,
+            "python_expression": "appt_svc == 'ivf'",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_CHK_S",
+            "condition_text": "IF [appt_svc] == 'surrogacy' -> GO_TO: SC__SC_CHK_S",
+            "is_mechanical": true,
+            "python_expression": "appt_svc == 'surrogacy'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_TO_OB",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_CHK_I",
+        "node_type": "action",
+        "goal": [
+          "You MUST execute get_available_slots this turn to confirm the chosen time is still free. It is mandatory and your only possible action here."
+        ],
+        "do": [
+          "TOOL CALL ONLY: call get_available_slots now.",
+          "calendar_type = 'IVF'. Send [user_timezone] as iana_timezone.",
+          "It is FORBIDDEN to write to the contact, run FAQs or handlers, or route before capturing [sc__fresh_available_slots]."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "get_available_slots",
+        "store": [],
+        "capture": [
+          [
+            "sc__fresh_available_slots",
+            "list[Slot]"
+          ]
+        ],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "SC__SC_TIME",
+            "condition_text": "IF [sc__fresh_available_slots] IS NULL -> GO_TO: SC__SC_TIME",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          },
+          {
+            "target": "SC__SC_TIME",
+            "condition_text": "IF [sc__fresh_available_slots] contains an object whose start_local time equals [sc__slot] on [sc__day] -> GO_TO: SC__SC_TIME",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_TAKEN",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_CHK_S",
+        "node_type": "action",
+        "goal": [
+          "You MUST execute get_available_slots this turn to confirm the chosen time is still free. It is mandatory and your only possible action here."
+        ],
+        "do": [
+          "TOOL CALL ONLY: call get_available_slots now.",
+          "calendar_type = 'SUR'. Send [user_timezone] as iana_timezone.",
+          "It is FORBIDDEN to write to the contact, run FAQs or handlers, or route before capturing [sc__fresh_available_slots]."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "get_available_slots",
+        "store": [],
+        "capture": [
+          [
+            "sc__fresh_available_slots",
+            "list[Slot]"
+          ]
+        ],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "SC__SC_TIME",
+            "condition_text": "IF [sc__fresh_available_slots] IS NULL -> GO_TO: SC__SC_TIME",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          },
+          {
+            "target": "SC__SC_TIME",
+            "condition_text": "IF [sc__fresh_available_slots] contains an object whose start_local time equals [sc__slot] on [sc__day] -> GO_TO: SC__SC_TIME",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_TAKEN",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_TAKEN",
+        "node_type": "message",
+        "goal": [
+          "Tell the contact the chosen time is no longer available and go get the current availability."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "That time is no longer available. Let me check the current availability."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_T",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "SC__SC_MORE",
@@ -7315,7 +7599,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Before creating the appointment, I confirm the summary:\n\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
+          "Before creating the appointment, I confirm the summary:\n\n- Day: [sc__day]\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7337,7 +7621,8 @@
         "node_id": "SC__SC_ASK_OK",
         "node_type": "question",
         "goal": [
-          "Ask for confirmation of the summary before creating the appointment."
+          "Ask for confirmation of the summary before creating the appointment.",
+          "Also capture [sc__fix] when the reply asks to change or gives a new value for the name, phone, email, day, time, or location; otherwise leave [sc__fix] null."
         ],
         "do": [],
         "trigger": [],
@@ -7347,12 +7632,17 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[sc__ok] = [sc__ok]"
+          "[sc__ok] = [sc__ok]",
+          "[sc__fix] = [sc__fix]"
         ],
         "capture": [
           [
             "sc__ok",
             "Literal[yes, no]"
+          ],
+          [
+            "sc__fix",
+            "free_text"
           ]
         ],
         "eval": "code",
@@ -7389,6 +7679,13 @@
             "condition_text": "IF [sc__ok_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_ASK_AGAIN",
             "is_mechanical": true,
             "python_expression": "sc__ok_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_FIX",
+            "condition_text": "IF [sc__fix] IS NOT NULL -> GO_TO: SC__SC_FIX",
+            "is_mechanical": true,
+            "python_expression": "sc__fix is not None",
             "reason": null
           },
           {
@@ -7497,8 +7794,10 @@
           "Apply the correction indicated by the contact."
         ],
         "do": [
-          "If the correction is the name, update [sc__c_name]; the phone, [sc__c_phone]; the email, [sc__c_email].",
-          "If the correction affects the date, day, time, or timezone, set [sc__day], [sc__slot], and [sc__available_slots] to NULL to force a new selection from the tool."
+          "If the contact gives a new name, phone, or email, set [sc__c_name], [sc__c_phone], or [sc__c_email] to it. If they only say they want to change one of them, set it to NULL.",
+          "If the contact gives a new time, set [sc__slot] to it. If they only say they want to change the time, set [sc__slot] to NULL.",
+          "If the contact gives a new day, set [sc__day] to it and [sc__slot] to NULL. If they only say they want to change the day, set [sc__day] and [sc__slot] to NULL.",
+          "If the contact changes their country or city, set [user_timezone], [sc__day], [sc__slot], and [sc__available_slots] to NULL."
         ],
         "trigger": [],
         "say": [],
@@ -7506,7 +7805,10 @@
         "execute": null,
         "store": [
           "[sc__success] = NULL",
-          "[sc__reason] = NULL"
+          "[sc__reason] = NULL",
+          "[sc__fix] = NULL",
+          "[sc__ok] = NULL",
+          "[sc__ok_try] = 0"
         ],
         "capture": [],
         "eval": "code",
@@ -7525,7 +7827,7 @@
         "node_id": "SC__SC_DEC_FIX_R",
         "node_type": "decision",
         "goal": [
-          "Decide whether the correction forces a return to availability or just re-presenting the summary."
+          "Send the correction back to the step it affects: ask again for a detail that was cleared, show the days or times again when they were cleared, and validate a new time before re-presenting the summary."
         ],
         "do": [],
         "trigger": [],
@@ -7537,23 +7839,51 @@
         "eval": "code",
         "route": [
           {
-            "target": "SC__SC_DEC_T",
-            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_DEC_T",
+            "target": "SC__SC_ASK_TZ",
+            "condition_text": "IF [user_timezone] IS NULL -> GO_TO: SC__SC_ASK_TZ",
             "is_mechanical": true,
-            "python_expression": "sc__slot is None",
+            "python_expression": "user_timezone is None",
             "reason": null
           },
           {
-            "target": "SC__SC_DEC_T",
-            "condition_text": "IF [sc__available_slots] IS NULL -> GO_TO: SC__SC_DEC_T",
+            "target": "SC__SC_ASK_N",
+            "condition_text": "IF [sc__c_name] IS NULL -> GO_TO: SC__SC_ASK_N",
             "is_mechanical": true,
-            "python_expression": "sc__available_slots is None",
+            "python_expression": "sc__c_name is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_ASK_P",
+            "condition_text": "IF [sc__c_phone] IS NULL -> GO_TO: SC__SC_ASK_P",
+            "is_mechanical": true,
+            "python_expression": "sc__c_phone is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_ASK_E",
+            "condition_text": "IF [sc__c_email] IS NULL -> GO_TO: SC__SC_ASK_E",
+            "is_mechanical": true,
+            "python_expression": "sc__c_email is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_DAYS",
+            "condition_text": "IF [sc__day] IS NULL -> GO_TO: SC__SC_DAYS",
+            "is_mechanical": true,
+            "python_expression": "sc__day is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_DEC_D",
+            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_DEC_D",
+            "is_mechanical": true,
+            "python_expression": "sc__slot is None",
             "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "SC__SC_SUM",
+            "target": "SC__SC_DEC_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7747,6 +8077,13 @@
             "reason": null
           },
           {
+            "target": "SC__SC_TAKEN",
+            "condition_text": "IF [sc__reason] == 'slot_taken' -> GO_TO: SC__SC_TAKEN",
+            "is_mechanical": true,
+            "python_expression": "sc__reason == 'slot_taken'",
+            "reason": null
+          },
+          {
             "target": "SC__SC_ERR",
             "condition_text": "IF [sc__reason] == 'invalid_hour' -> GO_TO: SC__SC_ERR",
             "is_mechanical": true,
@@ -7876,7 +8213,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Perfect, your appointment is scheduled for [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
+          "Perfect, your appointment is scheduled for [sc__day] at [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -9749,7 +10086,7 @@
         }
       ],
       "notes": [
-        "MANDATORY EXECUTION: on entering SC__SC_AV_I (IVF) or SC__SC_AV_S (SUR), and on any intent to schedule/reschedule/see-more/retry.",
+        "MANDATORY EXECUTION: on entering SC__SC_AV_I (IVF) or SC__SC_AV_S (SUR), or SC__SC_CHK_I (IVF) or SC__SC_CHK_S (SUR) to re-verify the chosen time, and on any intent to schedule/reschedule/see-more/retry.",
         "ARGUMENTS: calendar_type in {'IVF','SUR'}; iana_timezone is a real IANA zone (e.g., America/Bogota) resolved in-flow.",
         "SOURCE OF TRUTH: use only available_slots; each slot must include start_co/end_co and start_local/end_local.",
         "PRESENTATION: speak only with start_local/end_local; start_co/end_co are internal."
@@ -10115,7 +10452,7 @@
     "When a question must be asked again because the previous reply did not resolve it, do not restate it almost verbatim: briefly acknowledge what the lead just said and re-ask the same question with different, more natural wording, so the retry does not sound scripted or robotic.",
     "This is an asynchronous text channel: process the user's full latest message and do not use voice-specific instructions such as call flow, silence handling, interruptions, or audio cues.",
     "If the user asks for more detail, answer concretely and gently return to the next qualification, value, or scheduling step.",
-    "Keep each response focused: at most 2 short paragraphs, and end with one clear question when you need to advance the flow.",
+    "Keep each response focused: at most 2 short paragraphs, and end with one clear question only when the approved text already asks one.",
     "Never invent a closing question (e.g. 'do you have any questions about this?', 'would you like to know more?') when rephrasing an informational message. Only end with a question if the approved text you are rephrasing already asks one — presenting information is a complete turn on its own and does not need an invented prompt for a reply.",
     "Use short messages for classification questions.",
     "When explaining requirements, programs, or documents, use 3 to 5 brief bullets instead of a dense block.",

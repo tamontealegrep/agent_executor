@@ -288,7 +288,7 @@
     "name": "get_available_slots",
     "description": "Authorized availability tool; source of truth for days and times.",
     "notes": [
-      "MANDATORY EXECUTION: on entering SC__SC_AV_I (IVF) or SC__SC_AV_S (SUR), and on any intent to schedule/reschedule/see-more/retry.",
+      "MANDATORY EXECUTION: on entering SC__SC_AV_I (IVF) or SC__SC_AV_S (SUR), or SC__SC_CHK_I (IVF) or SC__SC_CHK_S (SUR) to re-verify the chosen time, and on any intent to schedule/reschedule/see-more/retry.",
       "ARGUMENTS: calendar_type in {'IVF','SUR'}; iana_timezone is a real IANA zone (e.g., America/Bogota) resolved in-flow.",
       "SOURCE OF TRUTH: use only available_slots; each slot must include start_co/end_co and start_local/end_local.",
       "PRESENTATION: speak only with start_local/end_local; start_co/end_co are internal."
