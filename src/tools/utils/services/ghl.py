@@ -47,9 +47,17 @@ update_custom_field_service.
             if len(name) >= 15 and any(c.isdigit() for c in name):
                 field_id = name
             elif location_id:
-                field_id = await _find_custom_field_id_by_name(location_id, name, config, headers)
-                if not field_id:
+                field = await _find_custom_field_by_name(location_id, name, config, headers)
+                if not field:
                     return {"success": False, "type": "contact", "errors": f"Field '{name}' not found"}
+                invalid = _invalid_options(field, value)
+                if invalid:
+                    allowed = ", ".join(field["picklistOptions"])
+                    return {
+                        "success": False, "type": "contact",
+                        "errors": f"Invalid value(s) {invalid} for '{name}'. Allowed: {allowed}",
+                    }
+                field_id = field["id"]
             else:
                 return {"success": False, "type": "contact", "errors": "location_id is required to search by name"}
             
@@ -95,9 +103,33 @@ update_custom_field_service.
 
     return {"success": False, "type": "unknown", "errors": "Missing contact_id or location_id"}
 
-async def _find_custom_field_id_by_name(location_id: str, name: str, config, headers: dict) -> Optional[str]:
+_OPTION_DATA_TYPES = {"SINGLE_OPTIONS", "MULTIPLE_OPTIONS"}
+
+
+def _invalid_options(field: Dict[str, Any], value: str) -> list[str]:
     """
-Helper interno para mapear nombre de campo -> ID en una ubicación.
+Valores de `value` que no son opciones del campo desplegable (GHL los guarda igual).
+
+    Un campo de selección múltiple recibe las opciones separadas por coma.
+    Un campo que no es desplegable acepta cualquier valor.
+
+    Parameters:
+        field: Definición del campo devuelta por GHL.
+        value: Valor que se quiere escribir.
+
+    Returns:
+        Los valores inválidos; lista vacía si todos son válidos.
+"""
+    options = field.get("picklistOptions")
+    if field.get("dataType") not in _OPTION_DATA_TYPES or not options:
+        return []
+    values = [v.strip() for v in value.split(",")] if field["dataType"] == "MULTIPLE_OPTIONS" else [value]
+    return [v for v in values if v not in options]
+
+
+async def _find_custom_field_by_name(location_id: str, name: str, config, headers: dict) -> Optional[Dict[str, Any]]:
+    """
+Helper interno para mapear nombre de campo -> definición del campo en una ubicación.
 
     Parameters:
         location_id: Description.
@@ -117,7 +149,7 @@ Helper interno para mapear nombre de campo -> ID en una ubicación.
             # Búsqueda por nombre (case-insensitive) o por fieldKey
             for f in fields:
                 if f.get("name", "").lower() == name.lower() or f.get("fieldKey") == name:
-                    return f.get("id")
+                    return f
     except Exception as e:
         logger.error(f"Error buscando custom field '{name}': {e}")
     return None
