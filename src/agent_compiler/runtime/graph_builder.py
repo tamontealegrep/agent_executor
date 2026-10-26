@@ -88,7 +88,7 @@ from agent_compiler.runtime.global_router import (
     match_global_router,
 )
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
-from agent_compiler.runtime.tool_executor import make_tool_executor
+from agent_compiler.runtime.tool_executor import ToolExecutionError, make_tool_executor
 from agent_compiler.targets.langgraph.condition_parser import NAMED_PREDICATES
 from agent_compiler.targets.langgraph.graph_renderer import FaqNode, GlobalRouterDefinition, GraphEdge, GraphNode
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact
@@ -1620,15 +1620,24 @@ Build one LangGraph node function for `node`.
             executor = tool_executors.get(node.execute)
             if executor is not None:
                 inputs = _bind_tool_inputs(tool_input_fields.get(node.execute, []), ctx, llm_client)
-                result = executor(**inputs)
+                try:
+                    result = executor(**inputs)
+                except ToolExecutionError:
+                    # A tool that captures nothing (a CRM sync, say) has no result to route on:
+                    # its failure must not end the conversation, so the flow just moves on.
+                    if node.capture:
+                        raise
+                    logger.warning("tool %s failed in %s; continuing", node.execute, node.node_id, exc_info=True)
+                    result = {}
                 for slot_name, _type_expr in node.capture:
                     if slot_name in result:
                         slots[slot_name] = result[slot_name]
                     else:
-                        for key, value in result.items():
-                            if slot_name.endswith(key):
-                                slots[slot_name] = value
-                                break
+                        # The namespaced slot (`q__eligibility_result`) matches by suffix; the longest key wins so
+                        # `eligibility_result` is never taken for `result`.
+                        key = max((k for k in result if slot_name.endswith(k)), key=len, default=None)
+                        if key is not None:
+                            slots[slot_name] = result[key]
                 for line in node.store:
                     _apply_store_line(line, ctx, llm_client)
 
