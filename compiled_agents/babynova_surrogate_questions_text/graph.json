@@ -518,22 +518,22 @@
             "reason": null
           },
           {
-            "target": "O__OP_ASK_CONSENT",
-            "condition_text": "IF [o__interest] == 'yes' -> GO_TO: O__OP_ASK_CONSENT",
+            "target": "O__OP_SYNC_INT_YES",
+            "condition_text": "IF [o__interest] == 'yes' -> GO_TO: O__OP_SYNC_INT_YES",
             "is_mechanical": true,
             "python_expression": "o__interest == 'yes'",
             "reason": null
           },
           {
-            "target": "O__OP_ASK_CONSENT",
-            "condition_text": "IF [o__interest] == 'maybe' -> GO_TO: O__OP_ASK_CONSENT",
+            "target": "O__OP_SYNC_INT_MAYBE",
+            "condition_text": "IF [o__interest] == 'maybe' -> GO_TO: O__OP_SYNC_INT_MAYBE",
             "is_mechanical": true,
             "python_expression": "o__interest == 'maybe'",
             "reason": null
           },
           {
-            "target": "O__OP_ASK_NOI",
-            "condition_text": "IF [o__interest] == 'no' -> GO_TO: O__OP_ASK_NOI",
+            "target": "O__OP_SYNC_INT_NO",
+            "condition_text": "IF [o__interest] == 'no' -> GO_TO: O__OP_SYNC_INT_NO",
             "is_mechanical": true,
             "python_expression": "o__interest == 'no'",
             "reason": null
@@ -548,6 +548,96 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_SYNC_INT_YES",
+        "node_type": "action",
+        "goal": [
+          "Sync surrogate_interest to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'surrogate_interest'",
+          "value = 'interested'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ASK_CONSENT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SYNC_INT_MAYBE",
+        "node_type": "action",
+        "goal": [
+          "Sync surrogate_interest to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'surrogate_interest'",
+          "value = 'unknown'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ASK_CONSENT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SYNC_INT_NO",
+        "node_type": "action",
+        "goal": [
+          "Sync surrogate_interest to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'surrogate_interest'",
+          "value = 'not_interested'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ASK_NOI",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_ASK_NOI",
@@ -1016,7 +1106,8 @@
           "[q__height_try] = 0",
           "[q__drugs_try] = 0",
           "[q__appt_try] = 0",
-          "[q__missing_try] = 0"
+          "[q__missing_try] = 0",
+          "[q__doc_try] = 0"
         ],
         "trigger": [],
         "say": [],
@@ -1064,8 +1155,161 @@
           "[q__height_try] = 0",
           "[q__drugs_try] = 0",
           "[q__appt_try] = 0",
-          "[q__missing_try] = 0"
+          "[q__missing_try] = 0",
+          "[q__doc_try] = 0"
         ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_TIME_START",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_TIME_START",
+        "node_type": "action",
+        "goal": [
+          "Capture the time the pre-qualification started."
+        ],
+        "do": [
+          "iana_timezone = 'America/Bogota'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "time_now",
+        "store": [],
+        "capture": [
+          [
+            "q__now",
+            "str"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_STATUS_START",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_STATUS_START",
+        "node_type": "action",
+        "goal": [
+          "Sync screening_status to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'screening_status'",
+          "value = 'in_progress'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_STARTED_AT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_STARTED_AT",
+        "node_type": "action",
+        "goal": [
+          "Sync screening_started_at to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'screening_started_at'",
+          "value = [q__now]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_RESULT_PENDING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_RESULT_PENDING",
+        "node_type": "action",
+        "goal": [
+          "Sync eligibility_result to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'eligibility_result'",
+          "value = 'pending'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_REASON_NONE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_REASON_NONE",
+        "node_type": "action",
+        "goal": [
+          "Sync eligibility_reason to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'eligibility_reason'",
+          "value = 'none'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
         "capture": [],
         "eval": "code",
         "route": [
@@ -1129,8 +1373,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__age_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__age_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__age_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1150,8 +1394,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_CITY",
-            "condition_text": "IF [q__surrogate_age] IS NOT NULL -> GO_TO: Q__SQ_ASK_CITY",
+            "target": "Q__SQ_SYNC_AGE",
+            "condition_text": "IF [q__surrogate_age] IS NOT NULL -> GO_TO: Q__SQ_SYNC_AGE",
             "is_mechanical": true,
             "python_expression": "q__surrogate_age is not None",
             "reason": null
@@ -1366,7 +1610,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_ASK_EPS",
+            "target": "Q__SQ_SYNC_CITY_RAW",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -1435,15 +1679,7 @@
             "reason": null
           }
         ],
-        "fallback": [
-          {
-            "target": "Q__SQ_NORM_CITY_RETRY",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ]
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_NORM_CITY_RETRY",
@@ -1492,8 +1728,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__city_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__city_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__city_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1513,8 +1749,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_EPS",
-            "condition_text": "IF [q__city_residence] IS NOT NULL -> GO_TO: Q__SQ_ASK_EPS",
+            "target": "Q__SQ_SYNC_CITY_RAW",
+            "condition_text": "IF [q__city_residence] IS NOT NULL -> GO_TO: Q__SQ_SYNC_CITY_RAW",
             "is_mechanical": true,
             "python_expression": "q__city_residence is not None",
             "reason": null
@@ -1534,7 +1770,8 @@
         "node_id": "Q__SQ_ASK_EPS",
         "node_type": "question",
         "goal": [
-          "Ask for active EPS."
+          "Ask for active EPS.",
+          "If the candidate says they do not know or are not sure, capture 'unknown' instead of guessing yes or no."
         ],
         "do": [],
         "trigger": [],
@@ -1547,7 +1784,7 @@
         "capture": [
           [
             "q__eps_status",
-            "Literal[yes, no]"
+            "Literal[yes, no, unknown]"
           ]
         ],
         "eval": "code",
@@ -1580,8 +1817,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__eps_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__eps_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__eps_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1601,8 +1838,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_CHILDREN",
-            "condition_text": "IF [q__eps_status] IS NOT NULL -> GO_TO: Q__SQ_ASK_CHILDREN",
+            "target": "Q__SQ_SYNC_EPS",
+            "condition_text": "IF [q__eps_status] IS NOT NULL -> GO_TO: Q__SQ_SYNC_EPS",
             "is_mechanical": true,
             "python_expression": "q__eps_status is not None",
             "reason": null
@@ -1668,8 +1905,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__kids_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__kids_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__kids_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1689,8 +1926,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_LB",
-            "condition_text": "IF [q__children_count] IS NOT NULL -> GO_TO: Q__SQ_ASK_LB",
+            "target": "Q__SQ_SYNC_CHILDREN",
+            "condition_text": "IF [q__children_count] IS NOT NULL -> GO_TO: Q__SQ_SYNC_CHILDREN",
             "is_mechanical": true,
             "python_expression": "q__children_count is not None",
             "reason": null
@@ -1711,7 +1948,7 @@
         "node_type": "question",
         "goal": [
           "Capture last birth date.",
-          "Accepts exact date (YYYY-MM-DD) or relative expression (e.g., 'hace 8 meses', 'el año pasado', 'enero de 2024').",
+          "Accepts exact date (YYYY/MM/DD) or relative expression (e.g., 'hace 8 meses', 'el año pasado', 'enero de 2024').",
           "If the user says they have no children (which contradicts a previous answer), capture 'no_children'."
         ],
         "do": [],
@@ -1748,14 +1985,14 @@
         ],
         "do": [
           "TOOL CALL: call time_now ('America/Bogota').",
-          "[q__last_birth_date] = [q__last_birth_date] converted to YYYY-MM-DD using [q__now]."
+          "[q__last_birth_date] = [q__last_birth_date] converted to YYYY/MM/DD using [q__now]."
         ],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
         "execute": "time_now",
         "store": [
-          "[q__last_birth_date] = normalized YYYY-MM-DD derived from [q__last_birth_date] using [q__now]"
+          "[q__last_birth_date] = normalized YYYY/MM/DD derived from [q__last_birth_date] using [q__now]"
         ],
         "capture": [
           [
@@ -1801,8 +2038,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__birth_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__birth_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__birth_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1822,8 +2059,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_CSEC",
-            "condition_text": "IF [q__last_birth_date] IS NOT NULL -> GO_TO: Q__SQ_ASK_CSEC",
+            "target": "Q__SQ_SYNC_LAST_BIRTH",
+            "condition_text": "IF [q__last_birth_date] IS NOT NULL -> GO_TO: Q__SQ_SYNC_LAST_BIRTH",
             "is_mechanical": true,
             "python_expression": "q__last_birth_date is not None",
             "reason": null
@@ -1889,8 +2126,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__csec_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__csec_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__csec_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1910,8 +2147,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_ABORTIONS",
-            "condition_text": "IF [q__csections_count] IS NOT NULL -> GO_TO: Q__SQ_ASK_ABORTIONS",
+            "target": "Q__SQ_SYNC_CSECTIONS",
+            "condition_text": "IF [q__csections_count] IS NOT NULL -> GO_TO: Q__SQ_SYNC_CSECTIONS",
             "is_mechanical": true,
             "python_expression": "q__csections_count is not None",
             "reason": null
@@ -1931,7 +2168,8 @@
         "node_id": "Q__SQ_ASK_ABORTIONS",
         "node_type": "question",
         "goal": [
-          "Ask about previous abortions."
+          "Ask about previous abortions.",
+          "If the candidate says they do not know or are not sure, capture 'unknown' instead of guessing yes or no."
         ],
         "do": [],
         "trigger": [],
@@ -1944,7 +2182,7 @@
         "capture": [
           [
             "q__abortos",
-            "Literal[yes, no]"
+            "Literal[yes, no, unknown]"
           ]
         ],
         "eval": "code",
@@ -1977,8 +2215,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__abort_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__abort_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__abort_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -1998,8 +2236,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_PREE",
-            "condition_text": "IF [q__abortos] IS NOT NULL -> GO_TO: Q__SQ_ASK_PREE",
+            "target": "Q__SQ_SYNC_ABORTIONS",
+            "condition_text": "IF [q__abortos] IS NOT NULL -> GO_TO: Q__SQ_SYNC_ABORTIONS",
             "is_mechanical": true,
             "python_expression": "q__abortos is not None",
             "reason": null
@@ -2019,7 +2257,8 @@
         "node_id": "Q__SQ_ASK_PREE",
         "node_type": "question",
         "goal": [
-          "Ask about preeclampsia."
+          "Ask about preeclampsia.",
+          "If the candidate says they do not know or are not sure, capture 'unknown' instead of guessing yes or no."
         ],
         "do": [],
         "trigger": [],
@@ -2032,7 +2271,7 @@
         "capture": [
           [
             "q__pree",
-            "Literal[yes, no]"
+            "Literal[yes, no, unknown]"
           ]
         ],
         "eval": "code",
@@ -2065,8 +2304,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__pree_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__pree_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__pree_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2086,8 +2325,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_WEIGHT",
-            "condition_text": "IF [q__pree] IS NOT NULL -> GO_TO: Q__SQ_ASK_WEIGHT",
+            "target": "Q__SQ_SYNC_PREE",
+            "condition_text": "IF [q__pree] IS NOT NULL -> GO_TO: Q__SQ_SYNC_PREE",
             "is_mechanical": true,
             "python_expression": "q__pree is not None",
             "reason": null
@@ -2153,8 +2392,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__weight_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__weight_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__weight_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2174,8 +2413,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_HEIGHT",
-            "condition_text": "IF [q__weight] IS NOT NULL -> GO_TO: Q__SQ_ASK_HEIGHT",
+            "target": "Q__SQ_SYNC_WEIGHT",
+            "condition_text": "IF [q__weight] IS NOT NULL -> GO_TO: Q__SQ_SYNC_WEIGHT",
             "is_mechanical": true,
             "python_expression": "q__weight is not None",
             "reason": null
@@ -2241,8 +2480,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__height_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2264,7 +2503,7 @@
         ],
         "fallback": [
           {
-            "target": "Q__SQ_CALCULATE_BMI",
+            "target": "Q__SQ_SYNC_HEIGHT",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2330,8 +2569,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__height_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__height_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2351,8 +2590,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_ASK_NATIONALITY",
-            "condition_text": "IF [q__imc] IS NOT NULL -> GO_TO: Q__SQ_ASK_NATIONALITY",
+            "target": "Q__SQ_SYNC_BMI",
+            "condition_text": "IF [q__imc] IS NOT NULL -> GO_TO: Q__SQ_SYNC_BMI",
             "is_mechanical": true,
             "python_expression": "q__imc is not None",
             "reason": null
@@ -2421,8 +2660,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__nationality_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__nationality_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__nationality_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2442,15 +2681,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_CHECK_DOCUMENTATION",
-            "condition_text": "IF [q__nationality] == 'COL' -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
-            "is_mechanical": true,
-            "python_expression": "q__nationality == 'COL'",
-            "reason": null
-          },
-          {
-            "target": "Q__SQ_ASK_CC",
-            "condition_text": "IF [q__nationality] IS NOT NULL -> GO_TO: Q__SQ_ASK_CC",
+            "target": "Q__SQ_SYNC_NATIONALITY",
+            "condition_text": "IF [q__nationality] IS NOT NULL -> GO_TO: Q__SQ_SYNC_NATIONALITY",
             "is_mechanical": true,
             "python_expression": "q__nationality is not None",
             "reason": null
@@ -2561,8 +2793,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__cc_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__cc_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__cc_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2620,7 +2852,8 @@
         "say_verbatim": false,
         "execute": "check_documentation",
         "store": [
-          "[q__documentation] = [q__doc_approved]"
+          "[q__documentation] = [q__doc_approved]",
+          "[q__doc_try] = [q__doc_try] + 1"
         ],
         "capture": [
           [
@@ -2639,28 +2872,21 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_ASK_DRUGS",
+            "target": "Q__SQ_SYNC_DOCUMENTS",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
           }
         ],
-        "fallback": [
-          {
-            "target": "Q__SQ_ASK_DRUGS",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ]
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_ASK_DRUGS",
         "node_type": "question",
         "goal": [
-          "Ask about recreational drugs."
+          "Ask about recreational drugs.",
+          "If the candidate says they do not know or are not sure, capture 'unknown' instead of guessing yes or no."
         ],
         "do": [],
         "trigger": [],
@@ -2673,7 +2899,7 @@
         "capture": [
           [
             "q__uses_drugs",
-            "Literal[yes, no]"
+            "Literal[yes, no, unknown]"
           ]
         ],
         "eval": "code",
@@ -2706,8 +2932,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__drugs_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__drugs_try] >= <MAX_RETRY_ATTEMPTS> AND [q__force_cls] == TRUE -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__drugs_try >= MAX_RETRY_ATTEMPTS and q__force_cls == True",
             "reason": null
@@ -2727,8 +2953,8 @@
             "reason": null
           },
           {
-            "target": "Q__SQ_RUN_CLASSIFICATION",
-            "condition_text": "IF [q__uses_drugs] IS NOT NULL -> GO_TO: Q__SQ_RUN_CLASSIFICATION",
+            "target": "Q__SQ_SYNC_DRUGS",
+            "condition_text": "IF [q__uses_drugs] IS NOT NULL -> GO_TO: Q__SQ_SYNC_DRUGS",
             "is_mechanical": true,
             "python_expression": "q__uses_drugs is not None",
             "reason": null
@@ -2743,6 +2969,489 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "Q__SQ_SYNC_AGE",
+        "node_type": "action",
+        "goal": [
+          "Sync surrogate_age to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'surrogate_age'",
+          "value = [q__surrogate_age]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_EPS",
+        "node_type": "action",
+        "goal": [
+          "Sync eps_status to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'eps_status'",
+          "value = [q__eps_status]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_CHILDREN",
+        "node_type": "action",
+        "goal": [
+          "Sync children_count to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'children_count'",
+          "value = [q__children_count]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_LAST_BIRTH",
+        "node_type": "action",
+        "goal": [
+          "Sync last_birth_date to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'last_birth_date'",
+          "value = [q__last_birth_date]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_CSECTIONS",
+        "node_type": "action",
+        "goal": [
+          "Sync csections_count to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'csections_count'",
+          "value = [q__csections_count]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_ABORTIONS",
+        "node_type": "action",
+        "goal": [
+          "Sync abortions_history to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'abortions_history'",
+          "value = [q__abortos]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_PREE",
+        "node_type": "action",
+        "goal": [
+          "Sync preeclampsia_history to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'preeclampsia_history'",
+          "value = [q__pree]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_WEIGHT",
+        "node_type": "action",
+        "goal": [
+          "Sync weight_kg to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'weight_kg'",
+          "value = [q__weight]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_BMI",
+        "node_type": "action",
+        "goal": [
+          "Sync bmi to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'bmi'",
+          "value = [q__imc]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_DRUGS",
+        "node_type": "action",
+        "goal": [
+          "Sync uses_drugs to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'uses_drugs'",
+          "value = [q__uses_drugs]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_CITY_RAW",
+        "node_type": "action",
+        "goal": [
+          "Sync city_raw to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'city_raw'",
+          "value = [q__city_raw]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_CITY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_CITY",
+        "node_type": "action",
+        "goal": [
+          "Sync city_residence to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'city_residence'",
+          "value = [q__city_residence]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_HEIGHT",
+        "node_type": "action",
+        "goal": [
+          "Sync height_cm to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'height_cm'",
+          "value = [q__height]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_CALCULATE_BMI",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_NATIONALITY",
+        "node_type": "action",
+        "goal": [
+          "Sync nationality to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'nationality'",
+          "value = [q__nationality]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_NATIONALITY_NEXT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_DEC_NATIONALITY_NEXT",
+        "node_type": "decision",
+        "goal": [
+          "Colombians skip the document question; every other nationality is asked which document they hold."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_CHECK_DOCUMENTATION",
+            "condition_text": "IF [q__nationality] == 'COL' -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
+            "is_mechanical": true,
+            "python_expression": "q__nationality == 'COL'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_ASK_CC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_SYNC_DOCUMENTS",
+        "node_type": "action",
+        "goal": [
+          "Sync identity_documents to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'identity_documents'",
+          "value = [q__normalized_documents]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_FORCE_CLS",
@@ -2802,12 +3511,20 @@
           [
             "q__result",
             "str"
+          ],
+          [
+            "q__eligibility_result",
+            "str"
+          ],
+          [
+            "q__eligibility_reason",
+            "str"
           ]
         ],
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_DEC_ELIGIBILITY",
+            "target": "Q__SQ_SYNC_ELIGIBILITY_RESULT",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2823,6 +3540,199 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "Q__SQ_SYNC_ELIGIBILITY_RESULT",
+        "node_type": "action",
+        "goal": [
+          "Sync eligibility_result to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'eligibility_result'",
+          "value = [q__eligibility_result]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_ELIGIBILITY_REASON",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_ELIGIBILITY_REASON",
+        "node_type": "action",
+        "goal": [
+          "Sync eligibility_reason to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'eligibility_reason'",
+          "value = [q__eligibility_reason]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_FINAL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_DEC_FINAL",
+        "node_type": "decision",
+        "goal": [
+          "An inconclusive classification is not final: it goes back to ask for the missing data. Anything else closes the pre-qualification."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_ELIGIBILITY",
+            "condition_text": "IF [q__result] == 'Inconclusive' -> GO_TO: Q__SQ_DEC_ELIGIBILITY",
+            "is_mechanical": true,
+            "python_expression": "q__result == 'Inconclusive'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_SYNC_STATUS_DONE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_SYNC_STATUS_DONE",
+        "node_type": "action",
+        "goal": [
+          "Sync screening_status to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'screening_status'",
+          "value = 'completed'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_TIME_DONE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_TIME_DONE",
+        "node_type": "action",
+        "goal": [
+          "Capture the time the pre-qualification finished."
+        ],
+        "do": [
+          "iana_timezone = 'America/Bogota'"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "time_now",
+        "store": [],
+        "capture": [
+          [
+            "q__now",
+            "str"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_COMPLETED_AT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_DEC_ELIGIBILITY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_SYNC_COMPLETED_AT",
+        "node_type": "action",
+        "goal": [
+          "Sync screening_completed_at to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'screening_completed_at'",
+          "value = [q__now]",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_ELIGIBILITY",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_DEC_ELIGIBILITY",
@@ -2974,8 +3884,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
-            "condition_text": "IF [q__missing_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_SYNC_ABANDONED",
+            "condition_text": "IF [q__missing_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: Q__SQ_SYNC_ABANDONED",
             "is_mechanical": true,
             "python_expression": "q__missing_try >= MAX_RETRY_ATTEMPTS",
             "reason": null
@@ -2983,7 +3893,40 @@
         ],
         "fallback": [
           {
+            "target": "Q__SQ_ANY_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_ANY_MISSING",
+        "node_type": "decision",
+        "goal": [
+          "Only announce that data will be asked again when something is actually missing or answered with unknown."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
             "target": "Q__SQ_MISSING_INTRO",
+            "condition_text": "IF [q__surrogate_age] IS NULL OR [q__city_residence] IS NULL OR [q__eps_status] IS NULL OR [q__eps_status] == 'unknown' OR [q__children_count] IS NULL OR [q__last_birth_date] IS NULL OR [q__csections_count] IS NULL OR [q__abortos] IS NULL OR [q__abortos] == 'unknown' OR [q__pree] IS NULL OR [q__pree] == 'unknown' OR [q__weight] IS NULL OR [q__height] IS NULL OR [q__imc] IS NULL OR [q__nationality] IS NULL OR [q__documentation] IS NULL AND [q__doc_try] < 1 OR [q__uses_drugs] IS NULL OR [q__uses_drugs] == 'unknown' -> GO_TO: Q__SQ_MISSING_INTRO",
+            "is_mechanical": true,
+            "python_expression": "q__surrogate_age is None or q__city_residence is None or q__eps_status is None or q__eps_status == 'unknown' or q__children_count is None or q__last_birth_date is None or q__csections_count is None or q__abortos is None or q__abortos == 'unknown' or q__pree is None or q__pree == 'unknown' or q__weight is None or q__height is None or q__imc is None or q__nationality is None or q__documentation is None and q__doc_try < 1 or q__uses_drugs is None or q__uses_drugs == 'unknown'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_SYNC_ABANDONED",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3022,7 +3965,7 @@
         "node_id": "Q__SQ_FIND_MISSING",
         "node_type": "decision",
         "goal": [
-          "Go back to the first question, in the order they are asked, whose data is still missing. The questions after it re-run in order, so everything that was never asked gets asked."
+          "Go to the first question, in the order they are asked, whose data is still missing; with nothing missing, classify. An 'unknown' answer is asked once more, and only after a classification came back inconclusive ([q__missing_try] above 0)."
         ],
         "do": [],
         "trigger": [],
@@ -3055,6 +3998,13 @@
             "reason": null
           },
           {
+            "target": "Q__SQ_ASK_EPS",
+            "condition_text": "IF [q__eps_status] == 'unknown' AND [q__missing_try] > 0 AND [q__eps_try] == 0 -> GO_TO: Q__SQ_ASK_EPS",
+            "is_mechanical": true,
+            "python_expression": "q__eps_status == 'unknown' and q__missing_try > 0 and q__eps_try == 0",
+            "reason": null
+          },
+          {
             "target": "Q__SQ_ASK_CHILDREN",
             "condition_text": "IF [q__children_count] IS NULL -> GO_TO: Q__SQ_ASK_CHILDREN",
             "is_mechanical": true,
@@ -3083,10 +4033,24 @@
             "reason": null
           },
           {
+            "target": "Q__SQ_ASK_ABORTIONS",
+            "condition_text": "IF [q__abortos] == 'unknown' AND [q__missing_try] > 0 AND [q__abort_try] == 0 -> GO_TO: Q__SQ_ASK_ABORTIONS",
+            "is_mechanical": true,
+            "python_expression": "q__abortos == 'unknown' and q__missing_try > 0 and q__abort_try == 0",
+            "reason": null
+          },
+          {
             "target": "Q__SQ_ASK_PREE",
             "condition_text": "IF [q__pree] IS NULL -> GO_TO: Q__SQ_ASK_PREE",
             "is_mechanical": true,
             "python_expression": "q__pree is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_PREE",
+            "condition_text": "IF [q__pree] == 'unknown' AND [q__missing_try] > 0 AND [q__pree_try] == 0 -> GO_TO: Q__SQ_ASK_PREE",
+            "is_mechanical": true,
+            "python_expression": "q__pree == 'unknown' and q__missing_try > 0 and q__pree_try == 0",
             "reason": null
           },
           {
@@ -3119,23 +4083,23 @@
           },
           {
             "target": "Q__SQ_CHECK_DOCUMENTATION",
-            "condition_text": "IF [q__documentation] IS NULL AND [q__nationality] == 'COL' -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
+            "condition_text": "IF [q__documentation] IS NULL AND [q__doc_try] < 1 AND [q__nationality] == 'COL' -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
             "is_mechanical": true,
-            "python_expression": "q__documentation is None and q__nationality == 'COL'",
+            "python_expression": "q__documentation is None and q__doc_try < 1 and q__nationality == 'COL'",
             "reason": null
           },
           {
             "target": "Q__SQ_ASK_CC",
-            "condition_text": "IF [q__documentation] IS NULL AND [q__has_cc] IS NULL -> GO_TO: Q__SQ_ASK_CC",
+            "condition_text": "IF [q__documentation] IS NULL AND [q__doc_try] < 1 AND [q__has_cc] IS NULL -> GO_TO: Q__SQ_ASK_CC",
             "is_mechanical": true,
-            "python_expression": "q__documentation is None and q__has_cc is None",
+            "python_expression": "q__documentation is None and q__doc_try < 1 and q__has_cc is None",
             "reason": null
           },
           {
             "target": "Q__SQ_CHECK_DOCUMENTATION",
-            "condition_text": "IF [q__documentation] IS NULL -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
+            "condition_text": "IF [q__documentation] IS NULL AND [q__doc_try] < 1 -> GO_TO: Q__SQ_CHECK_DOCUMENTATION",
             "is_mechanical": true,
-            "python_expression": "q__documentation is None",
+            "python_expression": "q__documentation is None and q__doc_try < 1",
             "reason": null
           },
           {
@@ -3144,11 +4108,18 @@
             "is_mechanical": true,
             "python_expression": "q__uses_drugs is None",
             "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_DRUGS",
+            "condition_text": "IF [q__uses_drugs] == 'unknown' AND [q__missing_try] > 0 AND [q__drugs_try] == 0 -> GO_TO: Q__SQ_ASK_DRUGS",
+            "is_mechanical": true,
+            "python_expression": "q__uses_drugs == 'unknown' and q__missing_try > 0 and q__drugs_try == 0",
+            "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "Q__SQ_BYE_INCOMPLETE",
+            "target": "Q__SQ_RUN_CLASSIFICATION",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -3344,6 +4315,36 @@
         "route": [
           {
             "target": "Q__SQ_END",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_SYNC_ABANDONED",
+        "node_type": "action",
+        "goal": [
+          "Sync screening_status to the contact's GHL custom field."
+        ],
+        "do": [
+          "name = 'screening_status'",
+          "value = 'abandoned'",
+          "contact_id = [contact.contact_id]",
+          "location_id = [contact.location_id]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "update_custom_field",
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_BYE_INCOMPLETE",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -6467,6 +7468,90 @@
       ]
     },
     {
+      "name": "update_custom_field",
+      "description": "Actualiza un campo personalizado (Custom Field de contacto) o un valor personalizado (Custom Value global) en GoHighLevel.",
+      "inputs": [
+        {
+          "name": "name",
+          "required": true,
+          "description": "Nombre o ID del campo/valor a actualizar. Ejemplo: 'language', 'uWLes...'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "value",
+          "required": true,
+          "description": "Nuevo valor a asignar. Ejemplo: 'Spanish', 'English'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "contact_id",
+          "required": false,
+          "description": "ID del contacto en GHL (disponible en context.contact_id). Si se provee, se actualiza su campo personalizado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "location_id",
+          "required": false,
+          "description": "ID de la ubicación en GHL (disponible en context.location_id). Necesario para valores globales o para buscar campos por nombre.",
+          "type_expr": "str",
+          "examples": []
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "required": true,
+          "description": "Indica si la operación fue exitosa.",
+          "type_expr": "bool",
+          "examples": []
+        },
+        {
+          "name": "type",
+          "required": true,
+          "description": "Indica qué se actualizó: 'contact' (campo de usuario) o 'custom_value' (global).",
+          "type_expr": "Literal[contact, custom_value]",
+          "examples": []
+        },
+        {
+          "name": "field_id",
+          "required": false,
+          "description": "ID técnico del campo/valor actualizado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "field_name",
+          "required": false,
+          "description": "Eco del nombre del campo solicitado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "value",
+          "required": false,
+          "description": "Eco del valor asignado.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "errors",
+          "required": false,
+          "description": "Mensaje de error si la operación falló.",
+          "type_expr": "str",
+          "examples": []
+        }
+      ],
+      "notes": [
+        "MANDATORY EXECUTION: cuando el usuario pide cambiar una preferencia personalizada como su idioma, o una configuración global de la subcuenta.",
+        "ARGUMENTS: name (nombre legible como 'language' o ID técnico), value (nuevo valor).",
+        "CONTEXT RULE: provee contactId para cambios específicos del usuario; si se omite pero se da locationId, actualiza un valor global (Custom Value).",
+        "SOURCE OF TRUTH: usa success para confirmar que GHL aceptó el cambio."
+      ]
+    },
+    {
       "name": "calculate_bmi",
       "description": "Authorized tool to calculate BMI. Its result is the source of truth for eligibility.",
       "inputs": [
@@ -7032,6 +8117,20 @@
           "name": "result",
           "required": true,
           "description": "Candidate's final classification. Expected values: 'Approved', 'Inconclusive', 'Rejected (Age)', 'Rejected (Timing)' (covers both age under 18 and recent birth, 12 months ago or less), 'Rejected (City)', 'Rejected (EPS)', 'Rejected (Children)', 'Rejected (C-Sections)', 'Rejected (Preeclampsia)', 'Rejected (BMI)', 'Rejected (Documentation)', 'Rejected (Drug Use)'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "eligibility_result",
+          "required": true,
+          "description": "Eligibility value for the GHL field: 'approved', 'rejected' or 'inconclusive'.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "eligibility_reason",
+          "required": true,
+          "description": "Reason for the GHL field: 'age', 'timing', 'city', 'eps', 'children', 'c_sections', 'preeclampsia', 'bmi', 'documentation', 'drug_use' when rejected, 'missing_data' when inconclusive, 'none' when approved.",
           "type_expr": "str",
           "examples": []
         },
