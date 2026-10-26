@@ -5,11 +5,29 @@ from fastapi import APIRouter
 from tools.family_aims.core.config import get_settings
 from tools.family_aims.schemas.slots import SlotsRequest, SlotsResponse, Slot
 from tools.family_aims.services import slots_ivf, slots_sur
-from tools.family_aims.services.slot_engine import compute_start_date, compute_end_date, BUSINESS_TZ
+from tools.family_aims.services.slot_engine import compute_start_date, compute_end_date, is_holiday, BUSINESS_TZ
 from tools.family_aims.services.ghl_calendar import get_available_slots as ghl_get_available_slots
-from tools.family_aims.utils.timezones import format_iso_with_offset
+from tools.family_aims.utils.timezones import format_iso_with_offset, get_weekday_in_tz
 
 router = APIRouter()
+
+
+def _meets_policy(start: datetime, end: datetime, policy) -> bool:
+    """El slot libre de GHL debe caer en un día hábil, dentro de la ventana del día y fuera del almuerzo."""
+    local_start = start.astimezone(ZoneInfo(BUSINESS_TZ))
+    local_end = end.astimezone(ZoneInfo(BUSINESS_TZ))
+    if is_holiday(local_start.year, local_start.month, local_start.day):
+        return False
+    window = policy.day_window(get_weekday_in_tz(start, BUSINESS_TZ))
+    if not window:
+        return False
+    h1, m1, h2, m2 = window
+    start_min = local_start.hour * 60 + local_start.minute
+    end_min = local_end.hour * 60 + local_end.minute
+    if start_min < h1 * 60 + m1 or end_min > h2 * 60 + m2:
+        return False
+    return not policy.lunch_break(start_min, end_min)
+
 
 @router.post("/get-available-slots-ghl", response_model=SlotsResponse)
 async def get_available_slots_ghl(req: SlotsRequest):
@@ -55,6 +73,8 @@ async def get_available_slots_ghl(req: SlotsRequest):
             # ISO proviene en Z (UTC)
             dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
             dt_end = dt + timedelta(minutes=duration)
+            if not _meets_policy(dt, dt_end, policy):
+                continue
 
             result.append(
                 Slot(
