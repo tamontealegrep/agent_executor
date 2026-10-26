@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import asyncio
+import logging
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter
 
@@ -8,6 +9,7 @@ from tools.family_aims.schemas.booking import BookAppointmentRequest, BookAppoin
 from tools.family_aims.services import booking_ivf, booking_sur
 from tools.family_aims.services import booking_engine as engine
 from tools.family_aims.services import date_formatting
+from tools.family_aims.services import slot_engine as engine_slots
 from tools.family_aims.services.email_templates import render_email_template
 from tools.family_aims.services.gmail import send_email
 from tools.family_aims.services.ghl_calendar import (
@@ -21,6 +23,7 @@ from tools.family_aims.services.ghl_calendar import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/book-appointment-ghl", response_model=BookAppointmentResponse)
 async def book_appointment_ghl(req: BookAppointmentRequest):
@@ -80,9 +83,30 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
         if not tool.ghl_calendar_id:
             return BookAppointmentResponse(success=False, errors=f"Missing FA_GHL_CALENDAR_ID_{env_suffix} in environment")
 
-        # Validador de disponibilidad: comprobar solapamiento con eventos reales en GHL
-        # Config note: en desarrollo IVF y SUR pueden compartir ID; no bloqueamos.
-        # Si quieres forzar validación de IDs distintos, re-habilita el guard.
+        # Regla de anticipación mínima (misma que get-available-slots-ghl)
+        if start_dt < engine_slots.compute_start_date(now):
+            return BookAppointmentResponse(success=False, reason="invalid_hour", errors="The requested time does not meet the minimum advance notice")
+
+        # Festivos (misma lista que usa el cálculo de slots)
+        local_day = start_dt.astimezone(ZoneInfo("America/Bogota"))
+        if engine_slots.is_holiday(local_day.year, local_day.month, local_day.day):
+            return BookAppointmentResponse(success=False, reason="invalid_hour", errors="The requested date is a holiday")
+
+        # Disponibilidad real: el inicio debe ser uno de los free-slots de GHL
+        try:
+            free_slots = await ghl_get_available_slots(
+                access_token=settings.ghl_token,
+                calendar_id=tool.ghl_calendar_id,
+                start_dt=start_dt - timedelta(hours=12),
+                end_dt=end_dt + timedelta(hours=12),
+                timezone="America/Bogota",
+            )
+        except Exception as exc:
+            logger.warning("GHL free-slots check failed: %s", exc)
+            return BookAppointmentResponse(success=False, reason="creation_failed", errors=f"Could not verify availability in GHL: {exc}")
+        free_starts = {datetime.fromisoformat(s.replace("Z", "+00:00")) for s in free_slots}
+        if start_dt not in free_starts:
+            return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
 
         # Overlap-based validator using real events
         try:
@@ -123,9 +147,9 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
                         break
                 if conflict:
                     return BookAppointmentResponse(success=False, reason="slot_taken", errors="That time is no longer available")
-        except Exception:
+        except Exception as exc:
             # No bloquea si la consulta de eventos falla; GHL volverá a validar al crear
-            pass
+            logger.warning("GHL list_events overlap check failed: %s", exc)
 
         # Pre-chequeo B (no bloqueante): consultar eventos en GHL en el rango exacto.
         # Si hay resultados, igual dejamos que GHL valide en create_appointment,
@@ -273,9 +297,9 @@ async def book_appointment_ghl(req: BookAppointmentRequest):
                                         break
                             if m:
                                 meet_link = m
-        except Exception:
+        except Exception as exc:
             # Si falla la sincronización/búsqueda, continuamos sin event_link
-            pass
+            logger.warning("Google Calendar sync lookup failed: %s", exc)
 
         # Poll corto a GHL por si el Meet aparece en address tras la creación
         if not meet_link and event_id:

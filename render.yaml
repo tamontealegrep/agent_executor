@@ -44,6 +44,14 @@ services:
         value: "10"
       - key: FA_DAYS_AHEAD_SUR
         value: "7"
+      - key: GHL_ACCESS_TOKEN
+        sync: false
+      - key: GHL_LOCATION_ID
+        sync: false
+      - key: FA_GHL_CALENDAR_ID_IVF
+        sync: false
+      - key: FA_GHL_CALENDAR_ID_SUR
+        sync: false
       - key: FA_GOOGLE_CLIENT_ID_GMAIL
         sync: false
       - key: FA_GOOGLE_CLIENT_SECRET_GMAIL
