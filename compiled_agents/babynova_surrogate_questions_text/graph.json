@@ -126,7 +126,7 @@
         "node_id": "O__OP_HAS_NAME",
         "node_type": "decision",
         "goal": [
-          "Check if contact name exists in the CRM."
+          "Check if the contact's first name exists in the CRM."
         ],
         "do": [],
         "trigger": [],
@@ -139,7 +139,7 @@
         "route": [
           {
             "target": "O__OP_ASK_WHO",
-            "condition_text": "IF {{contact.name}} IS NOT NULL -> GO_TO: O__OP_ASK_WHO",
+            "condition_text": "IF {{contact.first_name}} IS NOT NULL -> GO_TO: O__OP_ASK_WHO",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "disallowed syntax: Set"
@@ -164,7 +164,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Hola {{contact.name}} soy <AGENT_NAME> Te saludo de <COMPANY_NAME>."
+          "Hola {{contact.first_name}} soy <AGENT_NAME> Te saludo de <COMPANY_NAME>."
         ],
         "say_verbatim": false,
         "execute": null,

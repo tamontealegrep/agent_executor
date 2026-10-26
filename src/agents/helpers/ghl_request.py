@@ -72,6 +72,14 @@ Base request shape for any agent triggered by a GHL workflow webhook.
         contact_obj["name"] = normalized.get("full_name") or contact_obj.get("name") or custom_data.get("contact_full_name")
         contact_obj["email"] = normalized.get("email") or contact_obj.get("email") or custom_data.get("contact_email")
         contact_obj["phone"] = normalized.get("phone") or contact_obj.get("phone") or custom_data.get("contact_phone")
+        contact_obj["first_name"] = (
+            normalized.get("first_name")
+            or contact_obj.get("first_name")
+            or contact_obj.get("firstName")
+            or custom_data.get("contact_first_name")
+            or (contact_obj["name"] or "").split(" ")[0]
+            or None
+        )
 
         if normalized.get("contactId"):
             contact_obj["contact_id"] = normalized.get("contactId")

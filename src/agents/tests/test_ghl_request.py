@@ -85,3 +85,21 @@ def test_empty_message_body_yields_no_message_instead_of_the_dict_repr():
     assert req.message is None
     assert req.channel == "WHATSAPP"
 
+
+
+def test_contact_first_name_comes_from_the_payload_or_from_the_full_name():
+    """
+`{{contact.first_name}}` has nothing to read unless fix_ghl_paths sets it:
+
+    the explicit payload field wins, otherwise the first word of the full name.
+
+    Returns:
+        None.
+"""
+    explicit = GhlAgentRequest(**_base_payload(first_name="Tomás", full_name="Tomas Montealegre"))
+    derived = GhlAgentRequest(**_base_payload(full_name="Tomas Montealegre"))
+    missing = GhlAgentRequest(**_base_payload())
+
+    assert explicit.contact["first_name"] == "Tomás"
+    assert derived.contact["first_name"] == "Tomas"
+    assert missing.contact["first_name"] is None
