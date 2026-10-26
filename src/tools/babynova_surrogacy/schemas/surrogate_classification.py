@@ -20,4 +20,6 @@ class SurrogateClassificationRequest(BaseModel):
 class SurrogateClassificationResponse(BaseModel):
     success: bool
     result: Optional[str] = None
+    eligibility_result: Optional[str] = Field(default=None, description="approved, rejected o inconclusive.")
+    eligibility_reason: Optional[str] = Field(default=None, description="Motivo del rechazo, missing_data o none.")
     errors: Optional[str] = None

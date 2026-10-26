@@ -6,7 +6,7 @@ inglÃ©s a pedido del owner (2026-08-27) â€” la lÃ³gica de cada regla no
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from tools.babynova_surrogacy.utils.parsing import is_present, normalize, parse_boolean, parse_flexible_date, parse_float
 
@@ -14,6 +14,30 @@ ALLOWED_CITIES = {
     "BOGOTA", "SOACHA", "ZIPAQUIRA", "CHIA", "MOSQUERA", "FUNZA", "CAJICA",
     "MADRID", "LA CALERA", "CALERA", "COTA", "FACATATIVA", "SIBATE",
 }
+
+
+_ELIGIBILITY_REASON_BY_REJECTION = {
+    "Age": "age",
+    "Timing": "timing",
+    "City": "city",
+    "EPS": "eps",
+    "Children": "children",
+    "C-Sections": "c_sections",
+    "Preeclampsia": "preeclampsia",
+    "BMI": "bmi",
+    "Documentation": "documentation",
+    "Drug Use": "drug_use",
+}
+
+
+def eligibility_fields(result: str) -> Tuple[str, str]:
+    """Traduce la etiqueta de clasificación a los valores de los campos de GHL `eligibility_result` y `eligibility_reason`."""
+    if result == "Approved":
+        return "approved", "none"
+    if result == "Inconclusive":
+        return "inconclusive", "missing_data"
+    rejection = result.partition("(")[2].rstrip(")")
+    return "rejected", _ELIGIBILITY_REASON_BY_REJECTION.get(rejection, "none")
 
 
 def classify_surrogate(data: Dict[str, Any]) -> str:

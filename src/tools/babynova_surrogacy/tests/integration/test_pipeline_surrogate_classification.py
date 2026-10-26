@@ -14,7 +14,13 @@ def test_surrogate_classification_endpoint_returns_approved_for_valid_payload():
     }
     response = client.post("/api/v1/surrogate-classification", json=payload)
     assert response.status_code == 200
-    assert response.json() == {"success": True, "result": "Approved", "errors": None}
+    assert response.json() == {
+        "success": True,
+        "result": "Approved",
+        "eligibility_result": "approved",
+        "eligibility_reason": "none",
+        "errors": None,
+    }
 
 
 def test_surrogate_classification_endpoint_returns_inconclusive_for_empty_payload():

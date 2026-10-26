@@ -281,3 +281,13 @@ def test_classify_surrogate_stops_at_first_failing_rule(valid_candidate_payload)
     valid_candidate_payload["city"] = "Medellin"
     assert classify_surrogate(valid_candidate_payload) == "Rejected (Age)"
 
+
+def test_eligibility_fields_map_each_classification_label():
+    from tools.babynova_surrogacy.services.surrogate_classifier import eligibility_fields
+
+    assert eligibility_fields("Approved") == ("approved", "none")
+    assert eligibility_fields("Inconclusive") == ("inconclusive", "missing_data")
+    assert eligibility_fields("Rejected (Age)") == ("rejected", "age")
+    assert eligibility_fields("Rejected (Timing)") == ("rejected", "timing")
+    assert eligibility_fields("Rejected (C-Sections)") == ("rejected", "c_sections")
+    assert eligibility_fields("Rejected (Drug Use)") == ("rejected", "drug_use")
