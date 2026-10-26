@@ -567,7 +567,7 @@ def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None
     return v if v in set(_LANGUAGE_NAMES.values()) else fallback
 
 
-_INTERPOLATION_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]|<([A-Z_][A-Z0-9_]*)>")
+_INTERPOLATION_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]|<([A-Z_][A-Z0-9_]*)>|\{\{\s*contact\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 
 _ISO_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 _ISO_TIME_RE = re.compile(r"T(\d{2}):(\d{2})")
@@ -751,7 +751,9 @@ Format a `[slot]`-shaped list of appointment objects for display.
     return "\n".join(f"📅 {_format_date_human(d, language_code)}" for d in sorted(candidate_dates))
 
 
-def _interpolate_slots(text: str, slots: dict[str, Any], language_code: str | None = None) -> str:
+def _interpolate_slots(
+    text: str, slots: dict[str, Any], language_code: str | None = None, contact: dict[str, Any] | None = None
+) -> str:
     """
 Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
 
@@ -791,6 +793,9 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
         return str(value)
 
     def repl(match: re.Match[str]) -> str:
+        if match.group(3) is not None:
+            value = (contact or {}).get(match.group(3))
+            return match.group(0) if value in (None, "") else str(value)
         name = match.group(1) or match.group(2)
         if name not in slots or slots[name] is None:
             return match.group(0)
@@ -848,6 +853,7 @@ Build a `say`-rendering function.
         slots: dict[str, Any],
         policies: list[str] | None = None,
         user_message: str = "",
+        contact: dict[str, Any] | None = None,
     ) -> str:
         """
         Render a `say` block, paraphrased naturally in the caller's language via the LLM.
@@ -890,7 +896,7 @@ Build a `say`-rendering function.
     Returns:
         The result.
         """
-        raw = _interpolate_slots("\n".join(say), slots, language_code)
+        raw = _interpolate_slots("\n".join(say), slots, language_code, contact)
         if say_verbatim:
             return raw
 
@@ -1432,7 +1438,8 @@ Build one LangGraph node function for `node`.
 
         if node.node_type in ("message", "terminal") and node.say:
             rendered_message = render_say(
-                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies
+                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies,
+                contact=contact,
             )
             say_callback(rendered_message)
             history = _append_history(history, f"agent: {rendered_message}")
@@ -1443,7 +1450,8 @@ Build one LangGraph node function for `node`.
             # on every turn. The caller reads the prompt from the interrupt
             # payload instead, exactly once.
             rendered_say = render_say(
-                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies
+                node.node_id, node.say, node.say_verbatim, language_code, slots, say_policies,
+                contact=contact,
             )
 
             # Global router: every reply is checked against every handler
@@ -1462,6 +1470,7 @@ Build one LangGraph node function for `node`.
                     language_code,
                     slots,
                     say_policies,
+                    contact=contact,
                 )
                 say_callback(rendered)
                 history = _append_history(history, f"agent: {rendered}")
@@ -1498,6 +1507,7 @@ Build one LangGraph node function for `node`.
                             language_code,
                             slots,
                             say_policies,
+                            contact=contact,
                         )
                         say_callback(ack)
                         history = _append_history(history, f"agent: {ack}")
@@ -1529,6 +1539,7 @@ Build one LangGraph node function for `node`.
                 rendered_say = render_say(
                     node.node_id, node.say, node.say_verbatim, say_language, slots, say_policies,
                     user_message=reply,
+                    contact=contact,
                 )
 
             ctx = LLMContext(
