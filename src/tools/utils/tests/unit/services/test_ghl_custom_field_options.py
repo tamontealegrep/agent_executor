@@ -37,3 +37,9 @@ def test_update_is_rejected_before_calling_ghl_when_the_option_is_invalid(monkey
 
     assert result["success"] is False
     assert "Medellín" in result["errors"] and "Allowed: Bogotá, Chía, Otro" in result["errors"]
+
+
+def test_multiple_options_field_accepts_a_slot_list_and_writes_it_comma_separated():
+    assert ghl._as_option_values(DOCS, "['cedula_ciudadania', 'ppt']") == "cedula_ciudadania,ppt"
+    assert ghl._as_option_values(DOCS, "ppt") == "ppt"
+    assert ghl._as_option_values(CITY, "['x']") == "['x']"

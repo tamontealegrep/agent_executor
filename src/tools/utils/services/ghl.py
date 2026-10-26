@@ -1,5 +1,7 @@
+import ast
 import logging
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, List
 import httpx
 from agents.helpers.ghl import ghl_client_config_for_location, get_ghl_headers
 from tools.utils.schemas.ghl import CustomValueResponse, GhlCustomValuesList
@@ -50,6 +52,7 @@ update_custom_field_service.
                 field = await _find_custom_field_by_name(location_id, name, config, headers)
                 if not field:
                     return {"success": False, "type": "contact", "errors": f"Field '{name}' not found"}
+                value = _as_option_values(field, value)
                 invalid = _invalid_options(field, value)
                 if invalid:
                     allowed = ", ".join(field["picklistOptions"])
@@ -105,6 +108,32 @@ update_custom_field_service.
 
 _OPTION_DATA_TYPES = {"SINGLE_OPTIONS", "MULTIPLE_OPTIONS"}
 
+_FIELDS_CACHE_SECONDS = 600
+_fields_cache: Dict[str, tuple[float, List[Dict[str, Any]]]] = {}
+
+
+def _as_option_values(field: Dict[str, Any], value: str) -> str:
+    """
+Un campo de selección múltiple puede llegar como la lista de un slot (`['a', 'b']`):
+
+    se convierte a las opciones separadas por coma que GHL espera.
+
+    Parameters:
+        field: Definición del campo devuelta por GHL.
+        value: Valor recibido.
+
+    Returns:
+        El valor listo para validar y escribir.
+"""
+    if field.get("dataType") == "MULTIPLE_OPTIONS" and value.strip().startswith("["):
+        try:
+            items = ast.literal_eval(value.strip())
+        except (ValueError, SyntaxError):
+            return value
+        if isinstance(items, (list, tuple)):
+            return ",".join(str(item) for item in items)
+    return value
+
 
 def _invalid_options(field: Dict[str, Any], value: str) -> list[str]:
     """
@@ -140,16 +169,24 @@ Helper interno para mapear nombre de campo -> definición del campo en una ubica
     Returns:
         The result.
     """
+    def _match(fields: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        # Búsqueda por nombre (case-insensitive) o por fieldKey
+        return next((f for f in fields if f.get("name", "").lower() == name.lower() or f.get("fieldKey") == name), None)
+
+    cached = _fields_cache.get(location_id)
+    if cached and time.monotonic() - cached[0] < _FIELDS_CACHE_SECONDS:
+        found = _match(cached[1])
+        if found:
+            return found
+
     url = f"{config.base_url}/locations/{location_id}/customFields"
     try:
         async with httpx.AsyncClient(timeout=config.history_timeout_seconds) as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             fields = resp.json().get("customFields", [])
-            # Búsqueda por nombre (case-insensitive) o por fieldKey
-            for f in fields:
-                if f.get("name", "").lower() == name.lower() or f.get("fieldKey") == name:
-                    return f
+            _fields_cache[location_id] = (time.monotonic(), fields)
+            return _match(fields)
     except Exception as e:
         logger.error(f"Error buscando custom field '{name}': {e}")
     return None
