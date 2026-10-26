@@ -2705,7 +2705,7 @@
           "Capture the ID document(s) that the candidate has in Colombia.",
           "Strictly map each document mentioned to one of the following literals: cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro.",
           "If the user says 'de extranjería y ppt', capture it as a list: ['cedula_extranjeria', 'ppt'].",
-          "A bare 'cédula' that does not say ciudadanía or extranjería is ambiguous: do NOT guess. Leave has_cc empty for that document and capture cc_ambiguous = 'yes'. Otherwise capture cc_ambiguous = 'no'."
+          "A bare 'cédula' that does not say ciudadanía or extranjería is ambiguous, even when other documents are listed next to it ('cédula y pasaporte', 'cédula y PPT'): do NOT guess and never map it to cedula_ciudadania. Capture cc_ambiguous = 'yes' and leave has_cc empty. Otherwise capture cc_ambiguous = 'no'."
         ],
         "do": [],
         "trigger": [],
@@ -2743,7 +2743,7 @@
         "goal": [
           "The candidate said only 'cédula'. Ask which one it is and capture every ID document again.",
           "Strictly map each document mentioned to one of the following literals: cedula_ciudadania, cedula_extranjeria, ppt, pasaporte, otro.",
-          "A bare 'cédula' that still does not say ciudadanía or extranjería is ambiguous: do NOT guess. Leave has_cc empty and capture cc_ambiguous = 'yes'. Otherwise capture cc_ambiguous = 'no'."
+          "A bare 'cédula' that still does not say ciudadanía or extranjería is ambiguous, even when other documents are listed next to it: do NOT guess and never map it to cedula_ciudadania. Capture cc_ambiguous = 'yes' and leave has_cc empty. Otherwise capture cc_ambiguous = 'no'."
         ],
         "do": [],
         "trigger": [],
