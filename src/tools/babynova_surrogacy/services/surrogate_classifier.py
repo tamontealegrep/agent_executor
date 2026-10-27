@@ -93,7 +93,7 @@ def classify_surrogate(data: Dict[str, Any]) -> str:
             num_children = parse_float(number_of_children)
             if num_children is None:
                 result = "Inconclusive"
-            elif num_children > 4:
+            elif num_children < 1 or num_children > 4:
                 result = "Rejected (Children)"
 
     # 5. Fecha del Ultimo Parto

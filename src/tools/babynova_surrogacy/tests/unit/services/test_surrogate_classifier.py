@@ -119,6 +119,11 @@ def test_classify_surrogate_inconclusive_when_number_of_children_missing(valid_c
     assert classify_surrogate(valid_candidate_payload) == "Inconclusive"
 
 
+def test_classify_surrogate_rejected_children_when_no_children(valid_candidate_payload):
+    valid_candidate_payload["number_of_children"] = "0"
+    assert classify_surrogate(valid_candidate_payload) == "Rejected (Children)"
+
+
 def test_classify_surrogate_rejected_children_when_over_4(valid_candidate_payload):
     valid_candidate_payload["number_of_children"] = "5"
     assert classify_surrogate(valid_candidate_payload) == "Rejected (Children)"
