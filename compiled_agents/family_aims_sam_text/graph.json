@@ -9734,13 +9734,106 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "the contact asks to book, schedule or set up an appointment, consultation or call (for IVF, ROPA or surrogacy) instead of answering what was just asked"
+          "the contact asks to book, schedule or set up an appointment, consultation or call without naming a service, instead of answering what was just asked",
+          "I want to schedule an appointment",
+          "I want to book an appointment",
+          "I want to book a consultation",
+          "I would like to book a call",
+          "can I schedule an appointment",
+          "quiero agendar una cita",
+          "quiero programar una cita",
+          "quiero reservar una cita",
+          "quiero agendar una asesoria",
+          "quiero agendar una asesoría",
+          "agendame una cita",
+          "agéndame una cita",
+          "podemos agendar una cita",
+          "quero agendar uma consulta",
+          "quero marcar uma consulta",
+          "quero agendar uma consultoria"
         ],
         "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "If the latest user message mentions IVF, FIV or ROPA, set [svc] = 'ivf' and [appt_svc] = 'ivf'. If it mentions surrogacy (subrogación, subrogação, gestación subrogada), set [svc] = 'surrogacy' and [appt_svc] = 'surrogacy'. If it names no service, change nothing."
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_SCHEDULE_IVF",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact asks to book, schedule or set up an appointment, consultation or call for IVF or the ROPA method, instead of answering what was just asked",
+          "I want to schedule an appointment for IVF",
+          "I want to book an appointment for the ROPA method",
+          "schedule an appointment for IVF",
+          "quiero agendar una cita de fiv",
+          "quiero agendar una cita de ropa",
+          "quiero agendar una cita para fiv",
+          "quiero agendar una cita para el método ropa",
+          "quiero agendar una cita de fertilización in vitro",
+          "quero agendar uma consulta de fiv",
+          "quero agendar uma consulta de ropa",
+          "quero marcar uma consulta de fertilização in vitro"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = 'ivf'",
+          "[appt_svc] = 'ivf'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_SCHEDULE_SUR",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact asks to book, schedule or set up an appointment, consultation or call for surrogacy, instead of answering what was just asked",
+          "I want to schedule an appointment for surrogacy",
+          "I want to book an appointment for gestational surrogacy",
+          "book an appointment for surrogacy",
+          "quiero agendar una cita de subrogacion",
+          "quiero agendar una cita de subrogación",
+          "quiero agendar una cita para subrogación",
+          "quiero agendar una cita de gestación subrogada",
+          "quero agendar uma consulta de subrogação",
+          "quero agendar uma consulta de barriga de aluguel",
+          "quero marcar uma consulta de gestação de substituição"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = 'surrogacy'",
+          "[appt_svc] = 'surrogacy'"
         ],
         "capture": [],
         "eval": "code",
