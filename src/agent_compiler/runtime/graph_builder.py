@@ -673,6 +673,10 @@ Does an already-captured slot name one of `candidate_dates`?
     values = _captured_string_values(slots)
 
     for value in values:
+        # A bare date only: a timestamp (a `now` anchor) or a list of dates (a
+        # `calendar`) is a reference, never the date the contact picked.
+        if len(value.strip()) > 10:
+            continue
         parts = _date_parts(value)
         if parts is not None and parts in candidate_dates:
             return parts
@@ -682,10 +686,14 @@ Does an already-captured slot name one of `candidate_dates`?
         by_day_number.setdefault(str(int(parts[2])), set()).add(parts)
 
     for value in values:
-        for number in _STANDALONE_NUMBER_RE.findall(value):
-            matches = by_day_number.get(number)
-            if matches and len(matches) == 1:
-                return next(iter(matches))
+        numbers = {n for n in _STANDALONE_NUMBER_RE.findall(value) if n in by_day_number}
+        # A value that points at several of the dates on offer lists dates
+        # (a `calendar`); it does not name one.
+        if len(numbers) != 1:
+            continue
+        matches = by_day_number[next(iter(numbers))]
+        if len(matches) == 1:
+            return next(iter(matches))
     return None
 
 
