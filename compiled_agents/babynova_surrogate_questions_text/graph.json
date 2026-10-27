@@ -1415,7 +1415,9 @@
         "node_id": "Q__SQ_ASK_CITY",
         "node_type": "question",
         "goal": [
-          "Capture city or municipality of residence and normalize it."
+          "Capture city or municipality of residence and normalize it.",
+          "A locality or neighborhood of Bogotá (Kennedy, Usaquén, Suba, Engativá, Chapinero, Bosa, Fontibón, Ciudad Bolívar, Teusaquillo, etc.) or 'Bogotá D.C.' means city_residence = 'Bogotá'; keep city_raw exactly as the user wrote it.",
+          "A place outside Colombia (for example 'Madrid, España') is not a Colombian city: capture city_residence = 'Otro'."
         ],
         "do": [],
         "trigger": [],
@@ -1653,7 +1655,9 @@
         "node_id": "Q__SQ_ASK_CITY_RETRY",
         "node_type": "question",
         "goal": [
-          "Confirm city when not in allowed list or allow correction."
+          "Confirm city when not in allowed list or allow correction.",
+          "A locality or neighborhood of Bogotá (Kennedy, Usaquén, Suba, Engativá, Chapinero, Bosa, Fontibón, Ciudad Bolívar, Teusaquillo, etc.) or 'Bogotá D.C.' means city_residence = 'Bogotá'; keep city_raw exactly as the user wrote it.",
+          "A place outside Colombia (for example 'Madrid, España') is not a Colombian city: capture city_residence = 'Otro'."
         ],
         "do": [],
         "trigger": [],
@@ -2886,6 +2890,7 @@
         "node_type": "question",
         "goal": [
           "Ask about recreational drugs.",
+          "Cigarettes, tobacco and vaping count as recreational drug use (yes). Alcohol alone does not (no).",
           "If the candidate says they do not know or are not sure, capture 'unknown' instead of guessing yes or no."
         ],
         "do": [],
@@ -2969,6 +2974,181 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "Q__SQ_APPLY_CORRECTION",
+        "node_type": "registration",
+        "goal": [
+          "The candidate is correcting an answer given earlier in the questionnaire. Apply only the corrected value and say which answer it was."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[q__fixed_field] = NULL",
+          "If the latest message corrects the age, set [q__surrogate_age] to the corrected age as a number and [q__fixed_field] to 'age'.",
+          "If the latest message corrects the city or municipality of residence, set [q__city_raw] and [q__city_residence] to the corrected place as written and [q__fixed_field] to 'city'.",
+          "If the latest message corrects whether they have an active EPS, set [q__eps_status] to 'yes' or 'no' and [q__fixed_field] to 'eps'.",
+          "If the latest message corrects the number of children, set [q__children_count] to the corrected number and [q__fixed_field] to 'children'.",
+          "If the latest message corrects the date of the last birth, set [q__last_birth_date] to null and [q__fixed_field] to 'birth'.",
+          "If the latest message corrects the number of c-sections, set [q__csections_count] to the corrected number and [q__fixed_field] to 'csections'.",
+          "If the latest message corrects whether they have had abortions, set [q__abortos] to 'yes' or 'no' and [q__fixed_field] to 'abortions'.",
+          "If the latest message corrects whether they have had preeclampsia, set [q__pree] to 'yes' or 'no' and [q__fixed_field] to 'preeclampsia'.",
+          "If the latest message corrects the weight, set [q__weight] to the corrected weight in kilograms as a number, [q__imc] to null and [q__fixed_field] to 'weight'.",
+          "If the latest message corrects the height, set [q__height] to the corrected height in centimeters as a number, [q__imc] to null and [q__fixed_field] to 'height'.",
+          "If the latest message corrects whether they use recreational drugs, set [q__uses_drugs] to 'yes' or 'no' and [q__fixed_field] to 'drugs'. Cigarettes count as yes, alcohol alone as no."
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_DEC_CORRECTION",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "Q__SQ_DEC_CORRECTION",
+        "node_type": "decision",
+        "goal": [
+          "Sync the corrected answer and continue with whatever is still missing."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_SYNC_AGE",
+            "condition_text": "IF [q__fixed_field] == 'age' -> GO_TO: Q__SQ_SYNC_AGE",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'age'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_NORM_CITY",
+            "condition_text": "IF [q__fixed_field] == 'city' -> GO_TO: Q__SQ_NORM_CITY",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'city'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_EPS",
+            "condition_text": "IF [q__fixed_field] == 'eps' -> GO_TO: Q__SQ_SYNC_EPS",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'eps'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_CHILDREN",
+            "condition_text": "IF [q__fixed_field] == 'children' -> GO_TO: Q__SQ_SYNC_CHILDREN",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'children'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_ASK_LB",
+            "condition_text": "IF [q__fixed_field] == 'birth' -> GO_TO: Q__SQ_ASK_LB",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'birth'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_CSECTIONS",
+            "condition_text": "IF [q__fixed_field] == 'csections' -> GO_TO: Q__SQ_SYNC_CSECTIONS",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'csections'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_ABORTIONS",
+            "condition_text": "IF [q__fixed_field] == 'abortions' -> GO_TO: Q__SQ_SYNC_ABORTIONS",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'abortions'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_PREE",
+            "condition_text": "IF [q__fixed_field] == 'preeclampsia' -> GO_TO: Q__SQ_SYNC_PREE",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'preeclampsia'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_WEIGHT",
+            "condition_text": "IF [q__fixed_field] == 'weight' -> GO_TO: Q__SQ_SYNC_WEIGHT",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'weight'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_RESET_HEIGHT",
+            "condition_text": "IF [q__fixed_field] == 'height' AND [q__weight] IS NULL -> GO_TO: Q__SQ_RESET_HEIGHT",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'height' and q__weight is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_HEIGHT",
+            "condition_text": "IF [q__fixed_field] == 'height' -> GO_TO: Q__SQ_SYNC_HEIGHT",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'height'",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_SYNC_DRUGS",
+            "condition_text": "IF [q__fixed_field] == 'drugs' -> GO_TO: Q__SQ_SYNC_DRUGS",
+            "is_mechanical": true,
+            "python_expression": "q__fixed_field == 'drugs'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "Q__SQ_RESET_HEIGHT",
+        "node_type": "registration",
+        "goal": [
+          "The height was corrected before the weight was asked, and the BMI cannot be calculated yet: drop it so it is asked in its turn."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[q__height] = NULL"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_FIND_MISSING",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "Q__SQ_SYNC_AGE",
@@ -4009,6 +4189,13 @@
             "condition_text": "IF [q__children_count] IS NULL -> GO_TO: Q__SQ_ASK_CHILDREN",
             "is_mechanical": true,
             "python_expression": "q__children_count is None",
+            "reason": null
+          },
+          {
+            "target": "Q__SQ_RUN_CLASSIFICATION",
+            "condition_text": "IF [q__children_count] == 0 -> GO_TO: Q__SQ_RUN_CLASSIFICATION",
+            "is_mechanical": true,
+            "python_expression": "q__children_count == 0",
             "reason": null
           },
           {
@@ -6728,13 +6915,63 @@
         "fallback": []
       },
       {
+        "node_id": "H_CORRECTION",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "perdón, en realidad",
+          "me equivoqué",
+          "corrijo",
+          "quiero corregir un dato",
+          "antes dije",
+          "mejor dicho",
+          "en realidad no es",
+          "en realidad tengo",
+          "en realidad es",
+          "perdón, tengo",
+          "mi peso en realidad",
+          "te dije mal",
+          "dije mal ese dato",
+          "perdón, mido",
+          "en realidad mido",
+          "el usuario corrige un dato que dio antes (edad, ciudad, EPS, hijos, peso, estatura, etc.)"
+        ],
+        "say": [
+          "Claro, lo corrijo."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "Q__SQ_APPLY_CORRECTION",
+            "condition_text": "IF [q__surrogate_age] IS NOT NULL -> GO_TO: Q__SQ_APPLY_CORRECTION",
+            "is_mechanical": true,
+            "python_expression": "q__surrogate_age is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "[current_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
         "node_id": "H_WRONG",
         "node_type": "message",
         "goal": [],
         "do": [],
         "trigger": [
           "número equivocado",
-          "se equivocaron",
+          "se equivocaron de número",
           "aquí no vive",
           "no conozco a esa persona",
           "este no es su número"
