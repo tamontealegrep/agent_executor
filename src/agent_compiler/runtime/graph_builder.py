@@ -1011,6 +1011,12 @@ def _make_resolve_edges(
         llm_candidates: list[GraphEdge] = []
         for edge in edges:
             if edge.condition_text is None:
+                # An unconditional edge is the default: the LLM-judged conditions listed before it
+                # still get their turn, and only when none applies does the default win.
+                if llm_candidates:
+                    chosen = _llm_pick_condition(llm_client, llm_candidates, ctx)
+                    if chosen is not None:
+                        return chosen.target
                 return edge.target
             if edge.is_mechanical and edge.python_expression is not None:
                 try:
