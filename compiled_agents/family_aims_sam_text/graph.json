@@ -1683,7 +1683,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'; map a request to book an appointment, consultation or call without naming a service to 'book' (it is not a refusal)."
+          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map an explicit refusal or lack of interest to 'none' (a question about the process is not a refusal: leave [svc] empty); map a request to book an appointment, consultation or call without naming a service to 'book' (it is not a refusal)."
         ],
         "do": [],
         "trigger": [],
@@ -1721,7 +1721,7 @@
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
-          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' using the approved service labels. A request to book an appointment without naming a service is 'book', never 'none'."
+          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' (only for an explicit refusal) using the approved service labels; a question that chooses no service leaves it empty. A request to book an appointment without naming a service is 'book', never 'none'."
         ],
         "trigger": [],
         "say": [],
@@ -6366,7 +6366,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "That's a great question, and the best person to answer it in detail is one of our human advisors. Would you like to schedule a conversation with an advisor?"
+          "Our human advisors are the best people to explain that in detail, including prices and the specifics of your case. Would you like to schedule a conversation with an advisor?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -9283,55 +9283,6 @@
         "fallback": []
       },
       {
-        "node_id": "H_SPECIFIC_Q",
-        "node_type": "decision",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "specific questions about costs, prices, or requirements",
-          "prices",
-          "costs",
-          "how much does it cost",
-          "initial requirements",
-          "what do I need to start",
-          "process duration",
-          "budget",
-          "precios",
-          "costos",
-          "cuanto cuesta",
-          "cuánto cuesta",
-          "requisitos iniciales",
-          "que necesito para empezar",
-          "qué necesito para empezar",
-          "duracion del proceso",
-          "duración del proceso",
-          "presupuesto",
-          "preços",
-          "custos",
-          "quanto custa",
-          "requisitos iniciais",
-          "o que preciso para começar",
-          "duração do processo",
-          "orçamento"
-        ],
-        "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "CL__CL_S",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
         "node_id": "H_SUR_CAND",
         "node_type": "message",
         "goal": [],
@@ -9686,7 +9637,54 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "a question about the treatment process, legal aspects, medical details or program specifics that no FAQ or other handler covers and that a human advisor should answer"
+          "a question about the treatment process, legal aspects, medical details or program specifics that a human advisor should answer, only when no FAQ or other handler covers it (never for questions about requirements, documents, duration, prices, guarantees or the advisor)"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_PRICE",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "a question about the price, cost, value or budget of a treatment or program, instead of answering what was just asked",
+          "how much does it cost",
+          "what is the price",
+          "what are the prices",
+          "how much is the process",
+          "what is the budget",
+          "cuanto cuesta",
+          "cuánto cuesta",
+          "cuál es el precio",
+          "cuáles son los precios",
+          "cuanto vale el proceso",
+          "cuánto vale el proceso",
+          "precio",
+          "costos",
+          "valor del proceso",
+          "presupuesto",
+          "quanto custa",
+          "qual é o preço",
+          "quais são os preços",
+          "quanto vale o processo",
+          "custos",
+          "valor do processo",
+          "orçamento"
         ],
         "say": [],
         "say_verbatim": false,
@@ -10023,6 +10021,7 @@
       {
         "faq_id": "F_REQ_DOCS",
         "match": [
+          "any question about the initial requirements, documents or what is needed to start (never an answer to the question the agent just asked, even if it is only a question)",
           "what documents do you need",
           "initial requirements",
           "what do I need to start",
@@ -10246,33 +10245,9 @@
         "resume_to": "[current_state]"
       },
       {
-        "faq_id": "F_COSTS",
-        "match": [
-          "how much does it cost",
-          "price of the process",
-          "value of surrogacy",
-          "surrogacy prices",
-          "cuanto cuesta",
-          "cuánto cuesta",
-          "precio del proceso",
-          "valor de la subrogacion",
-          "valor de la subrogación",
-          "precios de subrogacion",
-          "precios de subrogación",
-          "quanto custa",
-          "preço do processo",
-          "valor da subrogação",
-          "preços da subrogação"
-        ],
-        "say": [
-          "Values depend on the program and the specific needs of each case. That is why they are reviewed in detail during the commercial advisory session."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
         "faq_id": "F_TIME",
         "match": [
+          "any question about how long or how much time the process or treatment takes (never an answer to the question the agent just asked, even if it is only a question)",
           "how long does surrogacy last",
           "process time",
           "treatment duration",
