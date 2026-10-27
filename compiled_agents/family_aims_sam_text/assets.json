@@ -151,6 +151,11 @@
         "description": "Current date and time in the given timezone, ISO 8601 with offset. Example: 2026-08-28T18:18:28.935329-05:00. null on error."
       },
       {
+        "name": "calendar",
+        "required": false,
+        "description": "The next 21 days starting today in the given timezone, as 'YYYY-MM-DD Weekday' entries separated by commas (e.g. '2026-10-27 Tuesday, 2026-10-28 Wednesday'). Use it to resolve weekday names and relative days ('Wednesday', 'tomorrow') to a calendar date. null on error."
+      },
+      {
         "name": "errors",
         "required": true,
         "description": "Error message if the query failed. null on success."

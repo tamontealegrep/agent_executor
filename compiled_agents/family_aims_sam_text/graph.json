@@ -1527,11 +1527,45 @@
             "reason": "not a parseable expression: unterminated string literal (detected at line 1) (<unknown>, line 1)"
           },
           {
+            "target": "O__OP_FI_BOOK",
+            "condition_text": "IF the latest user message asks to book, schedule or set up an appointment, consultation or call -> GO_TO: O__OP_FI_BOOK",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
             "target": "O__OP_GREET",
             "condition_text": null,
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FI_BOOK",
+        "node_type": "registration",
+        "goal": [
+          "The first message already asks to book an appointment: send the contact straight to scheduling, carrying the service when the message names one."
+        ],
+        "do": [
+          "If the latest user message mentions IVF, FIV or ROPA, set [svc] = 'ivf' and [appt_svc] = 'ivf'. If it mentions surrogacy (subrogación, subrogação, gestación subrogada), set [svc] = 'surrogacy' and [appt_svc] = 'surrogacy'. If it names no service, change nothing."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
           }
         ],
         "fallback": []
@@ -6495,6 +6529,8 @@
           "[sc__c_phone_try] = 0",
           "[sc__c_email_try] = 0",
           "[sc__time_try] = 0",
+          "[sc__day_now_try] = 0",
+          "[sc__svc_ask_try] = 0",
           "[sc__book_try] = 0",
           "[sc__end_try] = 0",
           "[user_timezone] = NULL",
@@ -6503,11 +6539,158 @@
           "[sc__day] = NULL",
           "[sc__slot] = NULL",
           "[sc__now] = NULL",
+          "[sc__calendar] = NULL",
+          "[sc__day_label] = NULL",
           "[sc__success] = NULL",
           "[sc__reason] = NULL",
           "[sc__fix] = NULL",
           "[sc__ok] = NULL",
           "[sc__retry_ok] = NULL"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_DEC_SVC",
+        "node_type": "decision",
+        "goal": [
+          "Make sure the commercial service is known before scheduling: use the one already set, take it from [svc], or ask for it when the contact asked to book before saying which service."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_ASK_TZ",
+            "condition_text": "IF [appt_svc] IS NOT NULL -> GO_TO: SC__SC_ASK_TZ",
+            "is_mechanical": true,
+            "python_expression": "appt_svc is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_SET_SVC",
+            "condition_text": "IF [svc] IS NOT NULL -> GO_TO: SC__SC_SET_SVC",
+            "is_mechanical": true,
+            "python_expression": "svc is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_ASK_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_ASK_SVC",
+        "node_type": "question",
+        "goal": [
+          "Ask which service the contact wants the consultation for. IVF and the ROPA method are captured as 'ivf'."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Which service would you like the consultation for: conventional fertility treatment (IVF or the ROPA method) or gestational surrogacy?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [appt_svc]"
+        ],
+        "capture": [
+          [
+            "appt_svc",
+            "Literal[ivf, surrogacy]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_ASK_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_DEC_ASK_SVC",
+        "node_type": "decision",
+        "goal": [
+          "Continue scheduling once the service is known."
+        ],
+        "do": [
+          "[sc__svc_ask_try] = [sc__svc_ask_try] + 1"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_ASK_TZ",
+            "condition_text": "IF [appt_svc] IS NOT NULL -> GO_TO: SC__SC_ASK_TZ",
+            "is_mechanical": true,
+            "python_expression": "appt_svc is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_TO_OB",
+            "condition_text": "IF [sc__svc_ask_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_TO_OB",
+            "is_mechanical": true,
+            "python_expression": "sc__svc_ask_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_ASK_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_SET_SVC",
+        "node_type": "registration",
+        "goal": [
+          "Use the service the contact is interested in for scheduling."
+        ],
+        "do": [
+          "[appt_svc] = [svc]"
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
         ],
         "capture": [],
         "eval": "code",
@@ -7253,8 +7436,8 @@
         "eval": "llm",
         "route": [
           {
-            "target": "SC__SC_DAYS",
-            "condition_text": "IF [sc__available_slots] IS NOT NULL AND [sc__available_slots] is a list with at least one valid object -> GO_TO: SC__SC_DAYS",
+            "target": "SC__SC_CAL",
+            "condition_text": "IF [sc__available_slots] IS NOT NULL AND [sc__available_slots] is a list with at least one valid object -> GO_TO: SC__SC_CAL",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
@@ -7297,8 +7480,8 @@
         "eval": "llm",
         "route": [
           {
-            "target": "SC__SC_DAYS",
-            "condition_text": "IF [sc__available_slots] IS NOT NULL AND [sc__available_slots] is a list with at least one valid object -> GO_TO: SC__SC_DAYS",
+            "target": "SC__SC_CAL",
+            "condition_text": "IF [sc__available_slots] IS NOT NULL AND [sc__available_slots] is a list with at least one valid object -> GO_TO: SC__SC_CAL",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
@@ -7342,6 +7525,62 @@
         "fallback": []
       },
       {
+        "node_id": "SC__SC_CAL",
+        "node_type": "action",
+        "goal": [
+          "You MUST execute time_now this turn to anchor today's date and weekdays before the contact chooses a day. It is mandatory and your only possible action here.",
+          "It is FORBIDDEN to deduce, estimate, or assume the current date or time from your knowledge, training, or context. The only valid reference is [sc__now] and [sc__calendar]."
+        ],
+        "do": [
+          "[sc__day_now_try] = [sc__day_now_try] + 1",
+          "TOOL CALL ONLY: call time_now now.",
+          "iana_timezone = [user_timezone].",
+          "It is FORBIDDEN to write to the contact, run FAQs or handlers, or route before capturing the 'now' and 'calendar' fields.",
+          "If you do not execute time_now, STAY here and retry."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "time_now",
+        "store": [],
+        "capture": [
+          [
+            "sc__now",
+            "str"
+          ],
+          [
+            "sc__calendar",
+            "str"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DAYS",
+            "condition_text": "IF [sc__now] IS NOT NULL -> GO_TO: SC__SC_DAYS",
+            "is_mechanical": true,
+            "python_expression": "sc__now is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_TO_OB",
+            "condition_text": "IF [sc__day_now_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_TO_OB",
+            "is_mechanical": true,
+            "python_expression": "sc__day_now_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_CAL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
         "node_id": "SC__SC_DAYS",
         "node_type": "message",
         "goal": [
@@ -7373,7 +7612,8 @@
         "node_id": "SC__SC_ASK_D",
         "node_type": "question",
         "goal": [
-          "Capture the day the contact chooses."
+          "Capture the day the contact chooses as [sc__day] in YYYY-MM-DD, resolving weekday names and relative days only with the dates and weekdays in [sc__calendar]: a weekday ('miércoles', 'Wednesday', 'quarta') is the date in [sc__calendar] with that weekday that is one of the start_local dates of [sc__available_slots], or the first date in [sc__calendar] after today with that weekday if none is offered; 'hoy' / 'today' is the first entry of [sc__calendar] and 'mañana' / 'tomorrow' the second, exactly, even if that date is not offered (never replace it with an offered date); a day number alone is the first entry of [sc__calendar] with that day number; a day and month takes the earliest year that is not in the past. If the reply is not a real date (for example February 31) or names no day, leave [sc__day] empty.",
+          "Also capture [sc__day_label]: that date written in the contact's language as weekday, day and month (for example 'miércoles 28 de octubre'), taking the weekday from the same entry of [sc__calendar], never computing it yourself. Leave it empty when [sc__day] is empty."
         ],
         "do": [],
         "trigger": [],
@@ -7383,14 +7623,104 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[sc__day] = [sc__day]"
+          "[sc__day] = [sc__day]",
+          "[sc__day_label] = [sc__day_label]"
         ],
         "capture": [
           [
             "sc__day",
             "free_text"
+          ],
+          [
+            "sc__day_label",
+            "free_text"
           ]
         ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_D",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_DAY_NOW",
+        "node_type": "action",
+        "goal": [
+          "You MUST execute time_now this turn to anchor today's date before converting the chosen day. It is mandatory and your only possible action here.",
+          "It is FORBIDDEN to deduce, estimate, or assume the current date or time from your knowledge, training, or context. The only valid reference is [sc__now]."
+        ],
+        "do": [
+          "[sc__day_now_try] = [sc__day_now_try] + 1",
+          "TOOL CALL ONLY: call time_now now.",
+          "iana_timezone = [user_timezone].",
+          "It is FORBIDDEN to write to the contact, run FAQs or handlers, or route before capturing the 'now' field into [sc__now].",
+          "If you do not execute time_now, STAY here and retry."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": "time_now",
+        "store": [],
+        "capture": [
+          [
+            "sc__now",
+            "str"
+          ],
+          [
+            "sc__calendar",
+            "str"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_NORM_D",
+            "condition_text": "IF [sc__now] IS NOT NULL -> GO_TO: SC__SC_NORM_D",
+            "is_mechanical": true,
+            "python_expression": "sc__now is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_TO_OB",
+            "condition_text": "IF [sc__day_now_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_TO_OB",
+            "is_mechanical": true,
+            "python_expression": "sc__day_now_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_DAY_NOW",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_NORM_D",
+        "node_type": "registration",
+        "goal": [
+          "Convert the day the contact chose into a calendar date."
+        ],
+        "do": [
+          "Only [sc__day] and [sc__day_label] may change here; never modify [sc__calendar] or [sc__now].",
+          "Using only [sc__calendar] (the real dates and weekdays from today on), rewrite [sc__day] as a calendar date in YYYY-MM-DD. A weekday name ('miércoles', 'Wednesday', 'quarta') is the date in [sc__calendar] with that weekday that is one of the start_local dates of [sc__available_slots]; if none of the offered dates falls on that weekday, the first date in [sc__calendar] after today with that weekday. 'today' / 'hoy' is the first entry of [sc__calendar]; 'tomorrow' / 'mañana' is the second; a day number alone ('el 28') is the first entry of [sc__calendar] with that day number; a day and month without a year takes the earliest year that is not in the past. If [sc__day] is already a valid YYYY-MM-DD date keep it. If [sc__day] is not a real date (for example February 31) or cannot be resolved to one, set [sc__day] to NULL.",
+          "When [sc__day] is not NULL, also set [sc__day_label] to that date written in the contact's language as weekday, day and month (for example 'miércoles 28 de octubre'); otherwise set [sc__day_label] to NULL."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -7411,7 +7741,7 @@
         ],
         "do": [
           "[sc__day_try] = [sc__day_try] + 1",
-          "Compare [sc__day] only against the start_local dates in [sc__available_slots]. Do not accept approximate, inferred, or unlisted days."
+          "First list the distinct dates (YYYY-MM-DD) of the start_local values in [sc__available_slots]. [sc__day] is valid only if it is exactly one of those dates. Do not accept approximate, inferred, or unlisted days: if [sc__day] is not in that list, do not go to SC_HOURS."
         ],
         "trigger": [],
         "say": [],
@@ -7463,7 +7793,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "For [sc__day], these are the available times (24-hour format):\n\n[sc__available_slots]"
+          "For [sc__day_label], these are the available times (24-hour format):\n\n[sc__available_slots]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7827,7 +8157,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Before creating the appointment, I confirm the summary:\n\n- Day: [sc__day]\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
+          "Before creating the appointment, I confirm the summary:\n\n- Day: [sc__day_label]\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -8102,8 +8432,8 @@
             "reason": null
           },
           {
-            "target": "SC__SC_DEC_D",
-            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_DEC_D",
+            "target": "SC__SC_DAY_NOW",
+            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_DAY_NOW",
             "is_mechanical": true,
             "python_expression": "sc__slot is None",
             "reason": null
@@ -8441,7 +8771,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Perfect, your appointment is scheduled for [sc__day] at [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
+          "Perfect, your appointment is scheduled for [sc__day_label] at [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -9397,6 +9727,33 @@
           }
         ],
         "fallback": []
+      },
+      {
+        "node_id": "H_SCHEDULE",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact asks to book, schedule or set up an appointment, consultation or call (for IVF, ROPA or surrogacy) instead of answering what was just asked"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "If the latest user message mentions IVF, FIV or ROPA, set [svc] = 'ivf' and [appt_svc] = 'ivf'. If it mentions surrogacy (subrogación, subrogação, gestación subrogada), set [svc] = 'surrogacy' and [appt_svc] = 'surrogacy'. If it names no service, change nothing."
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       }
     ],
     "faqs": [
@@ -10073,6 +10430,13 @@
           "name": "now",
           "required": true,
           "description": "Current date and time in the given timezone, ISO 8601 with offset. Example: 2026-08-28T18:18:28.935329-05:00. null on error.",
+          "type_expr": "str",
+          "examples": []
+        },
+        {
+          "name": "calendar",
+          "required": false,
+          "description": "The next 21 days starting today in the given timezone, as 'YYYY-MM-DD Weekday' entries separated by commas (e.g. '2026-10-27 Tuesday, 2026-10-28 Wednesday'). Use it to resolve weekday names and relative days ('Wednesday', 'tomorrow') to a calendar date. null on error.",
           "type_expr": "str",
           "examples": []
         },
