@@ -1683,7 +1683,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'."
+          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'; map a request to book an appointment, consultation or call without naming a service to 'book' (it is not a refusal)."
         ],
         "do": [],
         "trigger": [],
@@ -1698,7 +1698,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, none]"
+            "Literal[ivf, ropa, surrogacy, book, none]"
           ]
         ],
         "eval": "code",
@@ -1721,7 +1721,7 @@
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
-          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' using the approved service labels."
+          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' using the approved service labels. A request to book an appointment without naming a service is 'book', never 'none'."
         ],
         "trigger": [],
         "say": [],
@@ -1750,6 +1750,13 @@
             "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_TO_CL",
             "is_mechanical": true,
             "python_expression": "svc == 'surrogacy'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_SET_BOOK",
+            "condition_text": "IF [svc] == 'book' -> GO_TO: O__OP_SET_BOOK",
+            "is_mechanical": true,
+            "python_expression": "svc == 'book'",
             "reason": null
           },
           {
@@ -1797,6 +1804,33 @@
         "route": [
           {
             "target": "O__OP_TO_CL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SET_BOOK",
+        "node_type": "registration",
+        "goal": [
+          "The lead asked to book an appointment without naming a service: clear the service so scheduling asks for it, and start scheduling."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = NULL"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -9730,29 +9764,36 @@
       },
       {
         "node_id": "H_SCHEDULE",
-        "node_type": "decision",
+        "node_type": "message",
         "goal": [],
         "do": [],
         "trigger": [
           "the contact asks to book, schedule or set up an appointment, consultation or call without naming a service, instead of answering what was just asked",
           "I want to schedule an appointment",
           "I want to book an appointment",
-          "I want to book a consultation",
-          "I would like to book a call",
+          "I would like to book a consultation",
+          "I need an appointment",
           "can I schedule an appointment",
           "quiero agendar una cita",
           "quiero programar una cita",
           "quiero reservar una cita",
           "quiero agendar una asesoria",
           "quiero agendar una asesoría",
+          "necesito una cita",
+          "me gustaria agendar una cita",
+          "me gustaría agendar una cita",
           "agendame una cita",
           "agéndame una cita",
           "podemos agendar una cita",
           "quero agendar uma consulta",
           "quero marcar uma consulta",
-          "quero agendar uma consultoria"
+          "quero agendar uma consultoria",
+          "preciso de uma consulta",
+          "gostaria de agendar uma consulta"
         ],
-        "say": [],
+        "say": [
+          "Of course, let's schedule your appointment."
+        ],
         "say_verbatim": false,
         "execute": null,
         "store": [
@@ -9773,24 +9814,27 @@
       },
       {
         "node_id": "H_SCHEDULE_IVF",
-        "node_type": "decision",
+        "node_type": "message",
         "goal": [],
         "do": [],
         "trigger": [
           "the contact asks to book, schedule or set up an appointment, consultation or call for IVF or the ROPA method, instead of answering what was just asked",
           "I want to schedule an appointment for IVF",
           "I want to book an appointment for the ROPA method",
-          "schedule an appointment for IVF",
+          "I would like to book a consultation for IVF",
           "quiero agendar una cita de fiv",
-          "quiero agendar una cita de ropa",
           "quiero agendar una cita para fiv",
+          "quiero agendar una cita de ropa",
           "quiero agendar una cita para el método ropa",
           "quiero agendar una cita de fertilización in vitro",
+          "necesito una cita para fiv",
           "quero agendar uma consulta de fiv",
           "quero agendar uma consulta de ropa",
           "quero marcar uma consulta de fertilização in vitro"
         ],
-        "say": [],
+        "say": [
+          "Of course, let's schedule your appointment."
+        ],
         "say_verbatim": false,
         "execute": null,
         "store": [
@@ -9812,23 +9856,26 @@
       },
       {
         "node_id": "H_SCHEDULE_SUR",
-        "node_type": "decision",
+        "node_type": "message",
         "goal": [],
         "do": [],
         "trigger": [
           "the contact asks to book, schedule or set up an appointment, consultation or call for surrogacy, instead of answering what was just asked",
           "I want to schedule an appointment for surrogacy",
           "I want to book an appointment for gestational surrogacy",
-          "book an appointment for surrogacy",
+          "I would like to book a consultation for surrogacy",
           "quiero agendar una cita de subrogacion",
           "quiero agendar una cita de subrogación",
           "quiero agendar una cita para subrogación",
           "quiero agendar una cita de gestación subrogada",
+          "necesito una cita para subrogación",
           "quero agendar uma consulta de subrogação",
           "quero agendar uma consulta de barriga de aluguel",
           "quero marcar uma consulta de gestação de substituição"
         ],
-        "say": [],
+        "say": [
+          "Of course, let's schedule your appointment."
+        ],
         "say_verbatim": false,
         "execute": null,
         "store": [
