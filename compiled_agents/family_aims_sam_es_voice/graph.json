@@ -1427,7 +1427,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, egg donation, and ROPA to 'ivf'; map surrogacy and gestational surrogacy to 'surrogacy'."
+          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'."
         ],
         "do": [],
         "trigger": [],
@@ -1442,7 +1442,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, surrogacy]"
+            "Literal[ivf, ropa, surrogacy]"
           ]
         ],
         "eval": "code",
@@ -1476,6 +1476,13 @@
         "eval": "code",
         "route": [
           {
+            "target": "O__OP_SET_IVF",
+            "condition_text": "IF [svc] == 'ropa' -> GO_TO: O__OP_SET_IVF",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ropa'",
+            "reason": null
+          },
+          {
             "target": "O__OP_TO_CL",
             "condition_text": "IF [svc] IS NOT NULL -> GO_TO: O__OP_TO_CL",
             "is_mechanical": true,
@@ -1499,6 +1506,33 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_SET_IVF",
+        "node_type": "registration",
+        "goal": [
+          "The lead wants the ROPA method: it is an IVF path."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = 'ivf'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_CL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_TO_CL",
@@ -1650,8 +1684,7 @@
           "Resolve the active service from [svc] or the user's latest message."
         ],
         "do": [
-          "[cl__svc_try] = [cl__svc_try] + 1",
-          "If [svc] is NULL, infer 'surrogacy' from subrogación or surrogacy language, and infer 'ivf' from FIV, IVF, método ROPA, or fertilización in vitro language."
+          "[cl__svc_try] = [cl__svc_try] + 1"
         ],
         "trigger": [],
         "say": [],
@@ -1697,7 +1730,8 @@
         "node_id": "CL__CL_ASK_NAT",
         "node_type": "question",
         "goal": [
-          "Ask for the lead's nationality."
+          "Ask for the lead's nationality.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase, never the demonym: 'colombiana' -> COL, 'estadounidense' or 'americano' -> USA, 'mexicana' -> MEX, 'venezolano' -> VEN, 'argentina' -> ARG, 'española' -> ESP. If the text is not a real nationality or country (for example 'marciana'), leave the slot empty: never guess a country from a similar-sounding word."
         ],
         "do": [],
         "trigger": [],
@@ -1777,7 +1811,7 @@
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
-          "Send nationalities = the country name or ISO 3166-1 alpha-3 code for [cl__nat].",
+          "Send nationalities = [cl__nat] (already an ISO 3166-1 alpha-3 code).",
           "Do not decide eligibility before capturing the real tool response."
         ],
         "trigger": [],
@@ -2076,7 +2110,8 @@
         "node_id": "CL__CL_ASK_ALT",
         "node_type": "question",
         "goal": [
-          "Capture the alternate nationality."
+          "Capture the alternate nationality.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase, never the demonym: 'colombiana' -> COL, 'estadounidense' or 'americano' -> USA, 'mexicana' -> MEX, 'venezolano' -> VEN, 'argentina' -> ARG, 'española' -> ESP. If the text is not a real nationality or country (for example 'marciana'), leave the slot empty: never guess a country from a similar-sounding word."
         ],
         "do": [],
         "trigger": [],
@@ -2839,7 +2874,8 @@
         "node_id": "CL__CL_ASK_EMB_C",
         "node_type": "question",
         "goal": [
-          "Ask which country the embryos were formed in."
+          "Ask which country the embryos were formed in.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase (Mexico -> MEX, Georgia -> GEO, United States -> USA). If the text is not a real country, leave the slot empty."
         ],
         "do": [],
         "trigger": [],
@@ -2919,7 +2955,7 @@
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
-          "Send nationalities = the country name or ISO 3166-1 alpha-3 code for [cl__emb_country].",
+          "Send nationalities = [cl__emb_country] (already an ISO 3166-1 alpha-3 code).",
           "Use the result only as the approved Colombia entry-list gate for this flow."
         ],
         "trigger": [],
