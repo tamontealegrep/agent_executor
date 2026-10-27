@@ -956,7 +956,14 @@ Build a `say`-rendering function.
             "a version of that\", no label, no quotes around it, nothing before or "
             f"after it:\n\n{raw}"
         )
-        return _restore_contact_values(llm_client.complete(prompt, temperature=1.0) or raw, protected)
+        paraphrased = llm_client.complete(prompt, temperature=1.0) or raw
+        # The prompt forbids adding questions, but at temperature 1.0 a very short message
+        # ("Hasta luego.") sometimes comes back as a whole invented message (a scheduling
+        # offer with made-up dates, say). A rewording that adds a question or balloons past
+        # the original is discarded and the original text is sent.
+        if paraphrased.count("?") > raw.count("?") or len(paraphrased) > 2 * len(raw) + 60:
+            paraphrased = raw
+        return _restore_contact_values(paraphrased, protected)
 
     return render_say
 
