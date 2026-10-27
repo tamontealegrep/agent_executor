@@ -17,4 +17,5 @@ class TimeNowResponse(BaseModel):
     success: bool
     iana_timezone: str
     now: Optional[str] = None
+    calendar: Optional[str] = None
     errors: Optional[str] = None
