@@ -2015,7 +2015,8 @@
         "node_id": "CL__CL_ASK_NAT",
         "node_type": "question",
         "goal": [
-          "Ask for the lead's nationality."
+          "Ask for the lead's nationality.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase, never the demonym: 'colombiana' -> COL, 'estadounidense' or 'americano' -> USA, 'mexicana' -> MEX, 'venezolano' -> VEN, 'argentina' -> ARG, 'española' -> ESP. If the text is not a real nationality or country (for example 'marciana'), leave the slot empty: never guess a country from a similar-sounding word."
         ],
         "do": [],
         "trigger": [],
@@ -2095,7 +2096,7 @@
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
-          "Send nationalities = the country name or ISO 3166-1 alpha-3 code for [cl__nat].",
+          "Send nationalities = [cl__nat] (already an ISO 3166-1 alpha-3 code).",
           "Do not decide eligibility before capturing the real tool response."
         ],
         "trigger": [],
@@ -2401,7 +2402,8 @@
         "node_id": "CL__CL_ASK_ALT",
         "node_type": "question",
         "goal": [
-          "Capture the alternate nationality."
+          "Capture the alternate nationality.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase, never the demonym: 'colombiana' -> COL, 'estadounidense' or 'americano' -> USA, 'mexicana' -> MEX, 'venezolano' -> VEN, 'argentina' -> ARG, 'española' -> ESP. If the text is not a real nationality or country (for example 'marciana'), leave the slot empty: never guess a country from a similar-sounding word."
         ],
         "do": [],
         "trigger": [],
@@ -3206,7 +3208,8 @@
         "node_id": "CL__CL_ASK_EMB_C",
         "node_type": "question",
         "goal": [
-          "Ask which country the embryos were formed in."
+          "Ask which country the embryos were formed in.",
+          "Capture the country as its ISO 3166-1 alpha-3 code in uppercase (Mexico -> MEX, Georgia -> GEO, United States -> USA). If the text is not a real country, leave the slot empty."
         ],
         "do": [],
         "trigger": [],
@@ -3286,7 +3289,7 @@
         ],
         "do": [
           "TOOL CALL ONLY: call check_visa now.",
-          "Send nationalities = the country name or ISO 3166-1 alpha-3 code for [cl__emb_country].",
+          "Send nationalities = [cl__emb_country] (already an ISO 3166-1 alpha-3 code).",
           "Use the result only as the approved Colombia entry-list gate for this flow."
         ],
         "trigger": [],
