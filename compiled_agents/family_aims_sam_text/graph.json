@@ -1358,13 +1358,15 @@
         "store": [
           "[o__svc_try] = 0",
           "[svc] = NULL",
+          "[ropa] = NULL",
+          "[o__lang_gate_done] = NULL",
           "[preferred_language] = the full language name (English, Spanish, or Portuguese) that matches {{contact.language}}, or English if it is missing"
         ],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_LANG_GATE",
+            "target": "O__OP_GATE_ONCE",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -1372,6 +1374,39 @@
           }
         ],
         "fallback": []
+      },
+      {
+        "node_id": "O__OP_GATE_ONCE",
+        "node_type": "decision",
+        "goal": [
+          "Run the first-message language check only once."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_FIRST_INTENT",
+            "condition_text": "IF [o__lang_gate_done] == 'yes' -> GO_TO: O__OP_FIRST_INTENT",
+            "is_mechanical": true,
+            "python_expression": "o__lang_gate_done == 'yes'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_LANG_GATE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
       },
       {
         "node_id": "O__OP_LANG_GATE",
@@ -1395,25 +1430,101 @@
         "eval": "llm",
         "route": [
           {
-            "target": "LM__LM_S",
-            "condition_text": "IF latest user message is clearly Spanish AND [preferred_language] != 'Spanish' -> GO_TO: LM__LM_S",
+            "target": "O__OP_TO_LM",
+            "condition_text": "IF the latest user message is written in Spanish (for example 'Hola, quiero información') AND the current conversation language (preferred_language in the known slot values) is not Spanish -> GO_TO: O__OP_TO_LM",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
           },
           {
-            "target": "LM__LM_S",
-            "condition_text": "IF latest user message is clearly Portuguese AND [preferred_language] != 'Portuguese' -> GO_TO: LM__LM_S",
+            "target": "O__OP_TO_LM",
+            "condition_text": "IF the latest user message is written in Portuguese (for example 'Olá, gostaria de informações') AND the current conversation language (preferred_language in the known slot values) is not Portuguese -> GO_TO: O__OP_TO_LM",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
           },
           {
-            "target": "LM__LM_S",
-            "condition_text": "IF latest user message is clearly English AND [preferred_language] != 'English' -> GO_TO: LM__LM_S",
+            "target": "O__OP_TO_LM",
+            "condition_text": "IF the latest user message is written in English (for example 'Hi, I would like information' or 'Hello') AND the current conversation language (preferred_language in the known slot values) is not English -> GO_TO: O__OP_TO_LM",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "O__OP_FIRST_INTENT",
+            "condition_text": null,
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_TO_LM",
+        "node_type": "registration",
+        "goal": [
+          "Set where language management must return to (the language gate), then switch the language."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__lang_gate_done] = 'yes'",
+          "[current_state] = 'O__OP_GATE_ONCE'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "LM__LM_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FIRST_INTENT",
+        "node_type": "decision",
+        "goal": [
+          "Check whether the very first inbound message already expresses an intent that must be handled before greeting."
+        ],
+        "do": [
+          "Look only at the latest user message (if any). If there is no user message yet (outbound flow), or it is only a greeting, a question, or a service request, continue to the greeting."
+        ],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "llm",
+        "route": [
+          {
+            "target": "O__OP_FI_SUR",
+            "condition_text": "IF the latest user message says the person wants to become or work as a surrogate or gestational carrier (quiero ser gestante, madre sustituta, barriga de aluguel) -> GO_TO: O__OP_FI_SUR",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "O__OP_FI_NOINT",
+            "condition_text": "IF the latest user message says they are not interested, do not want to continue, or do not want to be written to or contacted again -> GO_TO: O__OP_FI_NOINT",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+          },
+          {
+            "target": "O__OP_FI_WRONG",
+            "condition_text": "IF the latest user message says the number or the contact is not theirs, or that it was not them (no fui yo, número equivocado, wrong number, it wasn't me) -> GO_TO: O__OP_FI_WRONG",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: unterminated string literal (detected at line 1) (<unknown>, line 1)"
           },
           {
             "target": "O__OP_GREET",
@@ -1421,6 +1532,87 @@
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FI_SUR",
+        "node_type": "message",
+        "goal": [
+          "Close politely: this line does not handle gestational carrier applications."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Thank you for letting us know. At this time, this line does not handle surrogate applications. We appreciate your interest and for now, we will close the conversation."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_SURROGATE_CANDIDATE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FI_NOINT",
+        "node_type": "message",
+        "goal": [
+          "Close politely when the user says they are not interested or do not want to be contacted."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I understand. I am here to help if you change your mind later. Have a great day!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_USER_NOT_INTERESTED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FI_WRONG",
+        "node_type": "message",
+        "goal": [
+          "Apologize and close when the number is not the user's."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I'm sorry for the inconvenience, and thank you for letting us know. We will review our records. Have a great day!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_WRONG_NUMBER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
           }
         ],
         "fallback": []
@@ -1457,7 +1649,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, egg donation, and ROPA to 'ivf'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'."
+          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map no interest or refusal to 'none'."
         ],
         "do": [],
         "trigger": [],
@@ -1495,8 +1687,7 @@
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
-          "If [svc] is still NULL, infer it from the user's latest message using the approved service labels.",
-          "If [svc] == 'ropa', set [ropa] = 'yes' and [svc] = 'ivf'; otherwise set [ropa] = NULL."
+          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' using the approved service labels."
         ],
         "trigger": [],
         "say": [],
@@ -1506,6 +1697,13 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "O__OP_SET_ROPA",
+            "condition_text": "IF [svc] == 'ropa' -> GO_TO: O__OP_SET_ROPA",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ropa'",
+            "reason": null
+          },
           {
             "target": "O__OP_TO_CL",
             "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_TO_CL",
@@ -1544,6 +1742,34 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_SET_ROPA",
+        "node_type": "registration",
+        "goal": [
+          "The lead wants the ROPA method: it is an IVF path, flagged as ROPA."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[ropa] = 'yes'",
+          "[svc] = 'ivf'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_CL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_TO_CL",
@@ -1743,8 +1969,7 @@
           "Resolve the active service from [svc] or the user's latest message."
         ],
         "do": [
-          "[cl__svc_try] = [cl__svc_try] + 1",
-          "If [svc] is NULL, infer 'surrogacy' from subrogación or surrogacy language, and infer 'ivf' from FIV, IVF, método ROPA, or fertilización in vitro language."
+          "[cl__svc_try] = [cl__svc_try] + 1"
         ],
         "trigger": [],
         "say": [],
@@ -5746,7 +5971,7 @@
           },
           {
             "target": "LM__LM_SET_EN",
-            "condition_text": "IF the latest user message clearly requests English or is clearly written in English without saying they do not speak English -> GO_TO: LM__LM_SET_EN",
+            "condition_text": "IF the latest user message clearly requests English or is written in English (for example 'Hi, I would like information') without saying they do not speak English -> GO_TO: LM__LM_SET_EN",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
