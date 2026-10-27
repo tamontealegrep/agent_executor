@@ -618,6 +618,9 @@ def _format_date_human(date_parts: _DateParts, language_code: str | None) -> str
     return f"{day_number} de {month_name} de {year}"
 
 
+_ANY_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
 def _captured_string_values(slots: dict[str, Any]) -> list[str]:
     """
 Non-empty string values of `slots`, excluding compile-time constants.
@@ -686,9 +689,11 @@ Does an already-captured slot name one of `candidate_dates`?
         by_day_number.setdefault(str(int(parts[2])), set()).add(parts)
 
     for value in values:
+        # Anything already written as an ISO date or timestamp is handled
+        # above; its loose numbers (a `calendar`, a `now` anchor) name nothing.
+        if _ANY_ISO_DATE_RE.search(value):
+            continue
         numbers = {n for n in _STANDALONE_NUMBER_RE.findall(value) if n in by_day_number}
-        # A value that points at several of the dates on offer lists dates
-        # (a `calendar`); it does not name one.
         if len(numbers) != 1:
             continue
         matches = by_day_number[next(iter(numbers))]
