@@ -199,6 +199,36 @@ async def search_conversation_async(
     return None
 
 
+async def search_conversation_channel_async(
+    contact_id: str,
+    location_id: str,
+    config: GhlClientConfig,
+    logger: Optional[logging.Logger] = None,
+) -> Optional[str]:
+    """
+    Channel (normalized, e.g. 'WHATSAPP') of the contact's most recent conversation, read from its
+    lastMessageType, or None when there is no conversation or its last message is not on a
+    channel a reply can be sent through.
+    """
+    active_logger = logger or logging.getLogger(__name__)
+    url = (
+        f"{config.base_url}/conversations/search?locationId={location_id}"
+        f"&contactId={contact_id}&sort=desc&limit=1"
+    )
+    async with httpx.AsyncClient(timeout=config.conversation_search_timeout_seconds) as client:
+        try:
+            response = await client.get(url, headers=get_ghl_headers(config))
+            response.raise_for_status()
+            conversations = response.json().get("conversations", [])
+        except Exception as exc:
+            active_logger.error("Error looking up the conversation channel: %s", exc)
+            return None
+    if not conversations:
+        return None
+    channel = GHL_INBOUND_TYPE_MAP.get(conversations[0].get("lastMessageType"))
+    return channel if normalize_channel(channel) in config.channel_type_map else None
+
+
 async def send_ghl_message_async(
     contact_id: str,
     message: str,
