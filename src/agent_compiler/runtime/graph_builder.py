@@ -698,6 +698,23 @@ def _coerce_list(value: Any) -> Any:
 _EMPTY_WORDS = frozenset({"null", "none", "n/a", "undefined", ""})
 
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
+
+
+def _clean_email(value: str) -> str | None:
+    """The email in lowercase, or None when what was typed is not an address ("juan@")."""
+    email = value.strip().lower()
+    return email if _EMAIL_RE.match(email) else None
+
+
+def _clean_phone(value: str) -> str | None:
+    """The phone without spaces or punctuation (a leading 00 written as +), or None when it cannot be a number."""
+    phone = re.sub(r"[\s().-]", "", value)
+    if phone.startswith("00"):
+        phone = "+" + phone[2:]
+    return phone if re.fullmatch(r"\+?\d{8,15}", phone) else None
+
+
 def _blank_word_to_none(value: Any) -> Any:
     """A model clearing a slot sometimes writes the word "null"; kept as text it would read as a value."""
     if isinstance(value, str) and value.strip().lower() in _EMPTY_WORDS:
@@ -740,6 +757,10 @@ Best-effort coercion of a value against its declared type_expr.
         # "null" instead of leaving it empty; stored as text it would pass for a real
         # email, time or name. A Literal keeps its own members ('none' can be one).
         return None
+    if isinstance(value, str) and type_expr.strip() == "email":
+        return _clean_email(value)
+    if isinstance(value, str) and type_expr.strip() == "phone_number":
+        return _clean_phone(value)
     if _list_item_members(type_expr) is not None:
         return _coerce_list(value)
     parsed = classify_type_expr(type_expr)

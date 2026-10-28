@@ -7836,8 +7836,8 @@
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
           },
           {
-            "target": "SC__SC_ASK_D",
-            "condition_text": "IF [sc__day] IS NULL -> GO_TO: SC__SC_ASK_D",
+            "target": "SC__SC_DAY_NA",
+            "condition_text": "IF [sc__day] IS NULL -> GO_TO: SC__SC_DAY_NA",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
@@ -7845,13 +7845,40 @@
         ],
         "fallback": [
           {
-            "target": "SC__SC_ASK_D",
+            "target": "SC__SC_DAY_NA",
             "condition_text": null,
             "is_mechanical": false,
             "python_expression": null,
             "reason": "eval='llm' forces an LLM-evaluated edge"
           }
         ]
+      },
+      {
+        "node_id": "SC__SC_DAY_NA",
+        "node_type": "message",
+        "goal": [
+          "Tell the contact the day they asked for is not available and ask again which day they want."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I'm sorry, that date is not available."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_ASK_D",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "SC__SC_HOURS",
@@ -9562,6 +9589,38 @@
         "fallback": []
       },
       {
+        "node_id": "H_DECLINE_APPT",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact says they no longer want the appointment being offered or arranged in this conversation, or gives up scheduling it, while still open to talking (never a request to cancel an appointment already booked, never a refusal of the whole service)",
+          "mejor no agendo",
+          "no quiero la cita",
+          "olvídalo, no quiero agendar",
+          "better not to schedule",
+          "I don't want the appointment",
+          "melhor não agendar",
+          "não quero a consulta"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "OB__OB_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "H_LANG_CHANGE",
         "node_type": "decision",
         "goal": [],
@@ -9662,6 +9721,7 @@
         ],
         "do": [],
         "trigger": [
+          "the contact wants to cancel, reschedule or look up an appointment that was already booked earlier (never when they only decline, change or give up the appointment being arranged in this conversation, such as 'mejor no agendo' or a new time at the summary)",
           "I want to cancel my appointment",
           "I need to reschedule",
           "can I change my appointment time",
