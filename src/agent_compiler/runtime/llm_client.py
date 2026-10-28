@@ -11,6 +11,7 @@ Isolates every LLM call the runtime makes behind one seam.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -118,16 +119,19 @@ The only two LLM operations the runtime needs.
         ...
 
 
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+
+
 class OpenAILLMClient:
     """
 Default `LLMClient` backed by the OpenAI Chat Completions API.
 """
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini") -> None:
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         from openai import OpenAI  # local import — importing this module never requires an API key
 
         self._client = OpenAI(api_key=api_key)
-        self._model = model
+        self._model = model or os.environ.get("OPENAI_MODEL", "").strip() or DEFAULT_OPENAI_MODEL
 
     def complete(self, prompt: str, *, temperature: float = 0.0) -> str:
         response = self._client.chat.completions.create(
