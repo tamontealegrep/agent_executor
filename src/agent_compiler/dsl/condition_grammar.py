@@ -43,6 +43,7 @@ from typing import Literal
 NAMED_PREDICATES: dict[str, re.Pattern[str]] = {
     "numeric_string_without_spaces_or_punctuation": re.compile(r"^[0-9]+$"),
     "iana_timezone_format": re.compile(r"^[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+(?:/[A-Z][A-Za-z_]+)?$"),
+    "scheduling_state_id": re.compile(r"^SC__.+$"),
 }
 
 NAMED_PREDICATE_DESCRIPTIONS: dict[str, str] = {
@@ -60,6 +61,12 @@ NAMED_PREDICATE_DESCRIPTIONS: dict[str, str] = {
         "'Europe/Lisbon', 'Asia/Jakarta', 'America/Argentina/Buenos_Aires', "
         "'America/Indiana/Indianapolis'. Not valid: 'EST', 'COT', 'UTC-5', "
         "'america/bogota', 'GMT+1'."
+    ),
+    "scheduling_state_id": (
+        "The id of a state that belongs to the scheduling subflow: it starts "
+        "with 'SC__' followed by at least one more character. Valid: "
+        "'SC__SC_ASK_E', 'SC__SC_DEC_OK'. Not valid: 'AH__AH_ASK', 'O__OP_S', "
+        "'SC__', ''."
     ),
 }
 """Human-readable, precise definition of every `NAMED_PREDICATES` entry

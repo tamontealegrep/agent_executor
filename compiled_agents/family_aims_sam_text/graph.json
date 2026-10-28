@@ -6389,7 +6389,74 @@
         "eval": "code",
         "route": [
           {
+            "target": "AH__AH_CHECK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_CHECK",
+        "node_type": "decision",
+        "goal": [
+          "Keep the lead in the scheduling flow when the question came up in the middle of it, instead of offering to schedule again."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_SC_NOTE",
+            "condition_text": "IF [ah__resume_state] MATCHES scheduling_state_id -> GO_TO: AH__AH_SC_NOTE",
+            "is_mechanical": true,
+            "python_expression": "_matches(ah__resume_state, 'scheduling_state_id')",
+            "reason": null
+          },
+          {
             "target": "AH__AH_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "AH__AH_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "AH__AH_SC_NOTE",
+        "node_type": "message",
+        "goal": [
+          "Say a human advisor is the right person for this question, without offering to schedule because the lead is already scheduling."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Our human advisors are the best people to explain that in detail, including prices and the specifics of your case. You will be able to ask them during your appointment."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_RESUME",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
