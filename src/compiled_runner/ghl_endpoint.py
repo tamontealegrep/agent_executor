@@ -92,6 +92,15 @@ Everything that differs from one compiled agent's GHL endpoint to another.
     wins; a dict is looked up by the conversation's language (falls back to
     the built-in ES/EN/PT default). The graph is not invoked, so the pending
     question stays pending."""
+    turn_lock_timeout_seconds: float = field(
+        default_factory=lambda: float(os.getenv("GHL_TURN_LOCK_TIMEOUT_SECONDS", "60"))
+    )
+    """Longest a flushed turn waits for the previous turn of the same conversation to finish before
+    running anyway. Turns of one conversation run one at a time, so a message that arrives while the
+    agent is still answering (a slow availability check, say) is answered after it, from the state
+    that turn left, instead of racing it on the same checkpoint. The limit only exists so a hung turn
+    cannot block the conversation forever. Same default for every agent; override per agent here or
+    for all with GHL_TURN_LOCK_TIMEOUT_SECONDS."""
 
 
 _DEFAULT_CLOSING_MESSAGES: dict[str, str] = {
@@ -389,6 +398,7 @@ Build a self-contained router for one compiled agent's GHL webhook.
 
     processing_messages: set[str] = set()
     pending_turns: dict[str, _PendingTurn] = {}
+    turn_locks: dict[str, asyncio.Lock] = {}
 
     # Not a locally-scoped subclass: with `from __future__ import
     # annotations`, FastAPI resolves a parameter's type hint by name from
@@ -446,13 +456,32 @@ Build a self-contained router for one compiled agent's GHL webhook.
     async def _debounced_flush(thread_id: str) -> None:
         try:
             await asyncio.sleep(cfg.debounce_seconds)
+            # The turn stays pending while it waits for the conversation's previous turn:
+            # a message that arrives meanwhile is merged into it (and restarts this flush).
+            lock = turn_locks.setdefault(thread_id, asyncio.Lock())
+            holds_lock = False
+            try:
+                await asyncio.wait_for(lock.acquire(), timeout=cfg.turn_lock_timeout_seconds)
+                holds_lock = True
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "[%s] Previous turn still running after %ss; running this one anyway.",
+                    thread_id,
+                    cfg.turn_lock_timeout_seconds,
+                )
         except asyncio.CancelledError:
             return  # a newer message reset the timer -- this flush is stale
 
-        turn = pending_turns.pop(thread_id, None)
-        if turn is None:
-            return
-        await _run_turn(thread_id, turn)
+        try:
+            turn = pending_turns.pop(thread_id, None)
+            if turn is None:
+                return
+            await _run_turn(thread_id, turn)
+        finally:
+            if holds_lock:
+                lock.release()
+            if not lock.locked() and thread_id not in pending_turns and turn_locks.get(thread_id) is lock:
+                turn_locks.pop(thread_id, None)
 
     async def _run_turn(thread_id: str, turn: _PendingTurn) -> None:
         request = turn.last_request
