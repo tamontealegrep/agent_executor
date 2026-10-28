@@ -6447,7 +6447,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Our human advisors are the best people to explain that in detail, including prices and the specifics of your case. You will be able to ask them during your appointment."
+          "Our human advisors are the best people to explain that in detail. You will be able to ask them during your appointment."
         ],
         "say_verbatim": false,
         "execute": null,
