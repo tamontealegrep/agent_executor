@@ -10135,6 +10135,29 @@
         "resume_to": "[current_state]"
       },
       {
+        "faq_id": "F_ADOPTION",
+        "match": [
+          "do you do adoptions",
+          "do you offer adoption",
+          "adoption",
+          "can I adopt",
+          "hacen adopciones",
+          "realizan adopciones",
+          "adopcion",
+          "adopción",
+          "puedo adoptar",
+          "fazem adoções",
+          "vocês fazem adoção",
+          "adoção",
+          "posso adotar"
+        ],
+        "say": [
+          "Thank you so much for asking. We don't offer adoptions, as our work focuses on fertility treatments and surrogacy. We completely understand that every path to building a family is special, and if you'd like, I can tell you about the options we do offer."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
         "faq_id": "F_SW_MX",
         "match": [
           "single woman",
