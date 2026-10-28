@@ -26,6 +26,8 @@ from langgraph.types import Command
 from compiled_runner import ghl_endpoint
 from compiled_runner.ghl_endpoint import CompiledAgentGhlConfig, build_compiled_agent_router
 
+_FAKE_GHL_CONFIG = SimpleNamespace(channel_type_map={"WHATSAPP": "WhatsApp", "LIVE_CHAT": "Live_Chat"})
+
 
 class FakeGraph:
     """
@@ -102,7 +104,7 @@ def _build_router(
         allowed_phones=allowed_phones,
         debounce_seconds=debounce_seconds,
         enforce_phone_whitelist=enforce_phone_whitelist,
-        ghl_client_config=lambda: object(),
+        ghl_client_config=lambda: _FAKE_GHL_CONFIG,
         redirect_widget_to_whatsapp=redirect_widget_to_whatsapp,
     )
     router = build_compiled_agent_router(cfg)
@@ -125,7 +127,7 @@ def test_non_allowlisted_phone_is_ignored_without_touching_the_graph(monkeypatch
         path="/test_agent",
         allowed_phones=frozenset({"+573215616921"}),
         debounce_seconds=0.05,
-        ghl_client_config=lambda: object(),
+        ghl_client_config=lambda: _FAKE_GHL_CONFIG,
     )
     app = FastAPI()
     app.include_router(build_compiled_agent_router(cfg))
@@ -289,7 +291,7 @@ def test_empty_message_mid_conversation_replies_with_the_fixed_text_and_skips_th
 
 def test_unsupported_media_text_uses_language_then_spanish_default_and_overrides():
     cfg = CompiledAgentGhlConfig(
-        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object()
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: _FAKE_GHL_CONFIG
     )
     defaults = ghl_endpoint._DEFAULT_UNSUPPORTED_MEDIA_MESSAGES
     assert ghl_endpoint._unsupported_media_text(cfg, "pt") == defaults["pt"]
@@ -297,12 +299,12 @@ def test_unsupported_media_text_uses_language_then_spanish_default_and_overrides
     assert ghl_endpoint._unsupported_media_text(cfg, "Klingon") == defaults["es"]
     assert ghl_endpoint._unsupported_media_text(cfg, None) == defaults["es"]
     cfg_str = CompiledAgentGhlConfig(
-        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object(),
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: _FAKE_GHL_CONFIG,
         unsupported_media_message="solo texto",
     )
     assert ghl_endpoint._unsupported_media_text(cfg_str, "en") == "solo texto"
     cfg_dict = CompiledAgentGhlConfig(
-        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: object(),
+        slug="a", path="/a", allowed_phones=frozenset(), debounce_seconds=0.05, ghl_client_config=lambda: _FAKE_GHL_CONFIG,
         unsupported_media_message={"es": "x", "en": "y"},
     )
     assert ghl_endpoint._unsupported_media_text(cfg_dict, "en") == "y"
@@ -467,7 +469,7 @@ def _cfg(**overrides):
         path="/test_agent",
         allowed_phones=frozenset({"+573215616921"}),
         debounce_seconds=0.05,
-        ghl_client_config=lambda: object(),
+        ghl_client_config=lambda: _FAKE_GHL_CONFIG,
     )
     defaults.update(overrides)
     return CompiledAgentGhlConfig(**defaults)
@@ -730,3 +732,68 @@ def test_strip_reset_marker_leaves_a_normal_message_untouched():
     message, reset = ghl_endpoint._strip_reset_marker("Hola, como estas")
     assert reset is False
     assert message == "Hola, como estas"
+
+
+# --- reply channel when the payload carries none (the contact's first message ever)
+
+
+def _channel_request(channel=None, contact=None):
+    from agents.helpers.ghl_request import GhlAgentRequest
+
+    return GhlAgentRequest.model_validate(
+        {"contactId": "c1", "locationId": "loc1", "channel": channel, "contact": contact or {}}
+    )
+
+
+def _channel_config():
+    from agents.helpers.ghl import default_ghl_client_config
+
+    return default_ghl_client_config()
+
+
+def _resolve(request, remembered=None, found=None):
+    import logging
+
+    calls = []
+
+    async def fake_lookup(contact_id, location_id, config, logger=None):
+        calls.append((contact_id, location_id))
+        return found
+
+    original = ghl_endpoint.search_conversation_channel_async
+    ghl_endpoint.search_conversation_channel_async = fake_lookup
+    try:
+        channel = asyncio.run(ghl_endpoint.resolve_reply_channel(request, remembered, _channel_config(), logging.getLogger("t")))
+    finally:
+        ghl_endpoint.search_conversation_channel_async = original
+    return channel, calls
+
+
+def test_channel_from_the_payload_is_kept_without_asking_ghl():
+    channel, calls = _resolve(_channel_request("WHATSAPP"), found="SMS")
+    assert (channel, calls) == ("WHATSAPP", [])
+
+
+def test_remembered_channel_is_used_when_the_payload_has_none():
+    channel, calls = _resolve(_channel_request(None), remembered="WHATSAPP", found="SMS")
+    assert (channel, calls) == ("WHATSAPP", [])
+
+
+def test_conversation_channel_from_ghl_is_used_when_nothing_else_is_known():
+    channel, calls = _resolve(_channel_request(None), found="WHATSAPP")
+    assert channel == "WHATSAPP"
+    assert calls == [("c1", "loc1")]
+
+
+def test_whatsapp_attribution_is_the_last_resort():
+    contact = {"lastAttributionSource": {"medium": "whatsapp"}}
+    assert _resolve(_channel_request(None, contact))[0] == "WHATSAPP"
+
+
+def test_a_non_whatsapp_attribution_medium_is_not_taken_as_the_channel():
+    contact = {"lastAttributionSource": {"medium": "email"}, "attributionSource": {"medium": "cpc"}}
+    assert _resolve(_channel_request(None, contact))[0] is None
+
+
+def test_unknown_everywhere_keeps_the_payload_value_so_the_default_applies():
+    assert _resolve(_channel_request(None))[0] is None

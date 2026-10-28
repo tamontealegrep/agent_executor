@@ -27,7 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from agent_compiler.runtime.graph_builder import fresh_state
 import httpx
 from agent_compiler.runtime.session_resolver import resolve_session
-from agents.helpers.ghl import GhlClientConfig, send_ghl_message_async
+from agents.helpers.ghl import GhlClientConfig, search_conversation_channel_async, send_ghl_message_async
 from agents.helpers.text import normalize_channel
 from agents.helpers.ghl_request import GhlAgentRequest
 from agents.helpers.runner import derive_execution_id
@@ -379,6 +379,36 @@ async def _closing_sweep_loop(cfg: CompiledAgentGhlConfig) -> None:
         await asyncio.sleep(interval_seconds)
 
 
+async def resolve_reply_channel(
+    request: GhlAgentRequest,
+    remembered: "str | None",
+    config: GhlClientConfig,
+    logger: logging.Logger,
+) -> "str | None":
+    """
+    The channel a reply goes out through. A payload without message.type (the one a workflow
+    sends when the contact is created by their first message) carries no channel, and a reply
+    with none falls to the default Live_Chat. Order: the payload, the last channel seen on this
+    thread, the contact's conversation in GHL, then a WhatsApp attribution medium. When none is
+    usable the payload's own value is returned and the default applies.
+    """
+
+    def usable(channel: "str | None") -> bool:
+        return normalize_channel(channel) in config.channel_type_map
+
+    channel = request.channel
+    if not usable(channel):
+        channel = remembered
+    if not usable(channel):
+        channel = await search_conversation_channel_async(request.contact_id, request.location_id, config, logger)
+    if not usable(channel):
+        contact = request.contact or {}
+        sources = (contact.get("lastAttributionSource"), contact.get("attributionSource"))
+        if any(isinstance(src, dict) and normalize_channel(src.get("medium")) == "WHATSAPP" for src in sources):
+            channel = "WHATSAPP"
+    return channel if usable(channel) else request.channel
+
+
 def build_compiled_agent_router(cfg: CompiledAgentGhlConfig) -> APIRouter:
     """
 Build a self-contained router for one compiled agent's GHL webhook.
@@ -399,6 +429,15 @@ Build a self-contained router for one compiled agent's GHL webhook.
     processing_messages: set[str] = set()
     pending_turns: dict[str, _PendingTurn] = {}
     turn_locks: dict[str, asyncio.Lock] = {}
+    known_channels: dict[str, str] = {}
+
+    async def _resolve_channel(request: GhlAgentRequest, thread_id: str, execution_id: str) -> "str | None":
+        channel = await resolve_reply_channel(request, known_channels.get(thread_id), cfg.ghl_client_config(), logger)
+        if normalize_channel(channel) and normalize_channel(request.channel) != normalize_channel(channel):
+            logger.info("[%s] Payload had no usable channel (%r); replying through %s.", execution_id, request.channel, channel)
+        if normalize_channel(channel) in cfg.ghl_client_config().channel_type_map:
+            known_channels[thread_id] = channel
+        return channel
 
     # Not a locally-scoped subclass: with `from __future__ import
     # annotations`, FastAPI resolves a parameter's type hint by name from
@@ -550,6 +589,7 @@ Build a self-contained router for one compiled agent's GHL webhook.
                 buffer.extend(interrupts[0].value.get("prompt", []))
 
             final_state = graph.get_state(config).values
+            channel = await _resolve_channel(request, thread_id, execution_id)
             upsert_conversation(
                 thread_id=thread_id,
                 agent_slug=cfg.slug,
@@ -560,14 +600,14 @@ Build a self-contained router for one compiled agent's GHL webhook.
                 current_state=final_state.get("current_state"),
                 last_user_message=final_state.get("last_user_message"),
                 history=final_state.get("history"),
-                channel=request.channel,
+                channel=channel,
             )
 
             reply_text = "\n\n".join(buffer).strip()
             if reply_text:
                 # If message came from widget and the agent is configured,
                 # respond via WhatsApp (2026-09-30). Accept common synonyms.
-                reply_channel = request.channel
+                reply_channel = channel
                 if cfg.redirect_widget_to_whatsapp:
                     ch = normalize_channel(reply_channel)
                     if ch in {"LIVE_CHAT", "WEBCHAT", "TYPE_WEBCHAT"}:
