@@ -7689,8 +7689,7 @@
         "node_id": "SC__SC_ASK_D",
         "node_type": "question",
         "goal": [
-          "Capture the day the contact chooses as [sc__day] in YYYY-MM-DD, resolving weekday names and relative days only with the dates and weekdays in [sc__calendar]: a weekday ('miércoles', 'Wednesday', 'quarta') is the date in [sc__calendar] with that weekday that is one of the start_local dates of [sc__available_slots], or the first date in [sc__calendar] after today with that weekday if none is offered; 'hoy' / 'today' is the first entry of [sc__calendar] and 'mañana' / 'tomorrow' the second, exactly, even if that date is not offered (never replace it with an offered date); a day number alone is the first entry of [sc__calendar] with that day number; a day and month takes the earliest year that is not in the past. If the reply is not a real date (for example February 31) or names no day, leave [sc__day] empty.",
-          "Also capture [sc__day_label]: that date written in the contact's language as weekday, day and month (for example 'miércoles 28 de octubre'), taking the weekday from the same entry of [sc__calendar], never computing it yourself. Leave it empty when [sc__day] is empty."
+          "Capture in [sc__day] the day the contact chooses, exactly as they wrote it ('el viernes', 'Nov 5', 'dia 3', 'mañana'). Do not convert it: the next step turns it into a calendar date. If the reply names no day, leave [sc__day] empty."
         ],
         "do": [],
         "trigger": [],
@@ -7700,23 +7699,18 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[sc__day] = [sc__day]",
-          "[sc__day_label] = [sc__day_label]"
+          "[sc__day] = [sc__day]"
         ],
         "capture": [
           [
             "sc__day",
-            "free_text"
-          ],
-          [
-            "sc__day_label",
             "free_text"
           ]
         ],
         "eval": "code",
         "route": [
           {
-            "target": "SC__SC_DEC_D",
+            "target": "SC__SC_NORM_D",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7785,18 +7779,17 @@
         "node_id": "SC__SC_NORM_D",
         "node_type": "registration",
         "goal": [
-          "Convert the day the contact chose into a calendar date."
+          "Convert the day the contact chose into a calendar date and the label shown to them. The conversion is mechanical, from [sc__calendar] and the dates in [sc__available_slots]; [sc__day] becomes empty when it names no real date."
         ],
-        "do": [
-          "Only [sc__day] and [sc__day_label] may change here; never modify [sc__calendar] or [sc__now].",
-          "Using only [sc__calendar] (the real dates and weekdays from today on), rewrite [sc__day] as a calendar date in YYYY-MM-DD. A weekday name ('miércoles', 'Wednesday', 'quarta') is the date in [sc__calendar] with that weekday that is one of the start_local dates of [sc__available_slots]; if none of the offered dates falls on that weekday, the first date in [sc__calendar] after today with that weekday. 'today' / 'hoy' is the first entry of [sc__calendar]; 'tomorrow' / 'mañana' is the second; a day number alone ('el 28') is the first entry of [sc__calendar] with that day number; a day and month without a year takes the earliest year that is not in the past. If [sc__day] is already a valid YYYY-MM-DD date keep it. If [sc__day] is not a real date (for example February 31) or cannot be resolved to one, set [sc__day] to NULL.",
-          "When [sc__day] is not NULL, also set [sc__day_label] to that date written in the contact's language as weekday, day and month (for example 'miércoles 28 de octubre'); otherwise set [sc__day_label] to NULL."
-        ],
+        "do": [],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
         "execute": null,
-        "store": [],
+        "store": [
+          "[sc__day] = RESOLVE_DAY [sc__day] IN [sc__calendar] AMONG [sc__available_slots]",
+          "[sc__day_label] = DAY_LABEL [sc__day]"
+        ],
         "capture": [],
         "eval": "code",
         "route": [
