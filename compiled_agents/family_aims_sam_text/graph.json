@@ -1683,7 +1683,7 @@
         "node_type": "question",
         "goal": [
           "Ask if the lead wants IVF or surrogacy and capture it as [svc].",
-          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map an explicit refusal or lack of interest to 'none' (a question about the process is not a refusal: leave [svc] empty); map a request to book an appointment, consultation or call without naming a service to 'book' (it is not a refusal)."
+          "Map IVF, conventional fertility, and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map an explicit refusal or lack of interest to 'none' (a question about the process is not a refusal: leave [svc] empty); map a bare yes or no, or any reply that does not choose a service, to 'unclear' (it is not a refusal); map a request to book an appointment, consultation or call without naming a service to 'book' (it is not a refusal)."
         ],
         "do": [],
         "trigger": [],
@@ -1698,7 +1698,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, book, none]"
+            "Literal[ivf, ropa, surrogacy, book, unclear, none]"
           ]
         ],
         "eval": "code",
@@ -1721,7 +1721,7 @@
         ],
         "do": [
           "[o__svc_try] = [o__svc_try] + 1",
-          "If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' (only for an explicit refusal) using the approved service labels; a question that chooses no service leaves it empty. A request to book an appointment without naming a service is 'book', never 'none'."
+          "Never change [svc] when it already holds a value (including 'unclear'). If [svc] is still NULL, infer it from the user's latest message: 'ropa' for any mention of the ROPA method, otherwise 'ivf', 'surrogacy' or 'none' (only for an explicit refusal) using the approved service labels; a question that chooses no service leaves it empty. A request to book an appointment without naming a service is 'book', never 'none'."
         ],
         "trigger": [],
         "say": [],
@@ -1767,6 +1767,13 @@
             "reason": null
           },
           {
+            "target": "O__OP_CLR",
+            "condition_text": "IF [svc] == 'unclear' AND [o__svc_try] < <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_CLR",
+            "is_mechanical": true,
+            "python_expression": "svc == 'unclear' and o__svc_try < MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
             "target": "O__OP_TO_OB",
             "condition_text": "IF [o__svc_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_TO_OB",
             "is_mechanical": true,
@@ -1783,6 +1790,33 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_CLR",
+        "node_type": "registration",
+        "goal": [
+          "The reply did not choose a service: forget it and ask again."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = NULL"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_SET_ROPA",
@@ -4659,7 +4693,15 @@
             "reason": null
           }
         ],
-        "fallback": []
+        "fallback": [
+          {
+            "target": "VI__VI_MENU_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
       },
       {
         "node_id": "VI__VI_SET_ROPA",
@@ -6572,6 +6614,7 @@
           "[sc__fresh_available_slots] = NULL",
           "[sc__day] = NULL",
           "[sc__slot] = NULL",
+          "[sc__start_date] = NULL",
           "[sc__now] = NULL",
           "[sc__calendar] = NULL",
           "[sc__day_label] = NULL",
@@ -7887,7 +7930,7 @@
         ],
         "do": [
           "[sc__slot_try] = [sc__slot_try] + 1",
-          "Map [sc__slot] to the exact object in [sc__available_slots]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co and end_co."
+          "Map [sc__slot] to the exact object in [sc__available_slots] whose start_local is on the date [sc__day]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co and end_co."
         ],
         "trigger": [],
         "say": [],
@@ -7921,7 +7964,7 @@
         ],
         "fallback": [
           {
-            "target": "SC__SC_MORE",
+            "target": "SC__SC_ASK_S",
             "condition_text": null,
             "is_mechanical": false,
             "python_expression": null,
@@ -7936,7 +7979,8 @@
           "Choose the availability tool that re-verifies the chosen time according to the active commercial service."
         ],
         "do": [
-          "[sc__fresh_available_slots] = NULL"
+          "[sc__fresh_available_slots] = NULL",
+          "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"
         ],
         "trigger": [],
         "say": [],
@@ -8070,6 +8114,81 @@
         ]
       },
       {
+        "node_id": "SC__SC_CLR",
+        "node_type": "registration",
+        "goal": [
+          "Start a new availability search from a clean slate: the day, time and booking result of the previous attempt must not leak into the new day list."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[sc__available_slots] = NULL",
+          "[sc__fresh_available_slots] = NULL",
+          "[sc__day] = NULL",
+          "[sc__day_label] = NULL",
+          "[sc__slot] = NULL",
+          "[sc__start_date] = NULL",
+          "[sc__success] = NULL",
+          "[sc__reason] = NULL",
+          "[sc__fix] = NULL",
+          "[sc__ok] = NULL",
+          "[sc__retry_ok] = NULL",
+          "[sc__day_try] = 0",
+          "[sc__slot_try] = 0",
+          "[sc__ok_try] = 0",
+          "[sc__book_try] = 0",
+          "[sc__time_try] = 0",
+          "[sc__day_now_try] = 0"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_T",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_CLR_D",
+        "node_type": "registration",
+        "goal": [
+          "Offer the days again from the same availability: forget the day and time of the previous pick so the list shows days, not the times of one day."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[sc__day] = NULL",
+          "[sc__day_label] = NULL",
+          "[sc__slot] = NULL",
+          "[sc__start_date] = NULL",
+          "[sc__day_try] = 0",
+          "[sc__slot_try] = 0"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DAYS",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "SC__SC_TAKEN",
         "node_type": "message",
         "goal": [
@@ -8087,7 +8206,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "SC__SC_DEC_T",
+            "target": "SC__SC_CLR",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -8112,8 +8231,8 @@
         "eval": "llm",
         "route": [
           {
-            "target": "SC__SC_DAYS",
-            "condition_text": "IF unoffered objects remain in [sc__available_slots] -> GO_TO: SC__SC_DAYS",
+            "target": "SC__SC_CLR_D",
+            "condition_text": "IF unoffered objects remain in [sc__available_slots] -> GO_TO: SC__SC_CLR_D",
             "is_mechanical": false,
             "python_expression": null,
             "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
@@ -8533,7 +8652,7 @@
         "do": [
           "[sc__book_try] = [sc__book_try] + 1",
           "TOOL CALL ONLY: call book_appointment now.",
-          "start_date = the literal start_co field of the object in [sc__available_slots] chosen in [sc__slot], without converting, rounding, or reformatting.",
+          "start_date = [sc__start_date]",
           "duration = <APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
           "contact_name = [sc__c_name], contact_email = [sc__c_email], contact_phone = [sc__c_phone].",
           "It is FORBIDDEN to write to the contact, confirm the appointment, run FAQs or handlers, or route before capturing [sc__success].",
@@ -8591,7 +8710,7 @@
         "do": [
           "[sc__book_try] = [sc__book_try] + 1",
           "TOOL CALL ONLY: call book_appointment now.",
-          "start_date = the literal start_co field of the object in [sc__available_slots] chosen in [sc__slot], without converting, rounding, or reformatting.",
+          "start_date = [sc__start_date]",
           "duration = <APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
           "contact_name = [sc__c_name], contact_email = [sc__c_email], contact_phone = [sc__c_phone].",
           "It is FORBIDDEN to write to the contact, confirm the appointment, run FAQs or handlers, or route before capturing [sc__success].",
@@ -8662,8 +8781,8 @@
             "reason": null
           },
           {
-            "target": "SC__SC_DEC_T",
-            "condition_text": "IF [sc__reason] == 'past_date' OR [sc__reason] == 'invalid_start_date' -> GO_TO: SC__SC_DEC_T",
+            "target": "SC__SC_CLR",
+            "condition_text": "IF [sc__reason] == 'past_date' OR [sc__reason] == 'invalid_start_date' -> GO_TO: SC__SC_CLR",
             "is_mechanical": true,
             "python_expression": "sc__reason == 'past_date' or sc__reason == 'invalid_start_date'",
             "reason": null
@@ -8702,7 +8821,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "I'm sorry, it was not possible to create the appointment at this time. Would you like us to try with another availability option?"
+          "I'm sorry, it was not possible to create the appointment at this time."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -8779,8 +8898,8 @@
             "reason": null
           },
           {
-            "target": "SC__SC_DEC_T",
-            "condition_text": "IF [sc__retry_ok] == 'yes' -> GO_TO: SC__SC_DEC_T",
+            "target": "SC__SC_CLR",
+            "condition_text": "IF [sc__retry_ok] == 'yes' -> GO_TO: SC__SC_CLR",
             "is_mechanical": true,
             "python_expression": "sc__retry_ok == 'yes'",
             "reason": null
