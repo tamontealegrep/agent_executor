@@ -125,6 +125,10 @@ _STORE_SLOT_REF_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_SELF_ARITH_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*([+-])\s*(\d+)$")
 _QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
 _STORE_MATCH_IN_RE = re.compile(r"^match in <([A-Z_][A-Z0-9_]*)>\s*\|\s*(?:'([^']*)'|\"([^\"]*)\")$")
+_STORE_PICK_RE = re.compile(
+    r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
+    r"\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
+)
 
 
 def _fold(text: str) -> str:
@@ -217,7 +221,41 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
             slots[name] = matched
         return
 
+    pick = _STORE_PICK_RE.match(rhs)
+    if pick:
+        items, field, day, time = (slots.get(pick.group(1)), pick.group(2), slots.get(pick.group(3)), slots.get(pick.group(4)))
+        slots[name] = _pick_appointment_field(items, field, day, time)
+        return
+
     slots[name] = _llm_compute_store_value(llm_client, name, rhs, ctx)
+
+
+def _pick_appointment_field(items: Any, field: str, day: Any, time: Any) -> Any:
+    """
+    `field` of the one appointment in `items` that starts on `day` at `time` in its own `start_local`.
+
+    The contact picks a day and a time in their own timezone, while the booking tool needs the
+    matching `start_co` instant: the offset between the two is exactly what a model gets wrong
+    (a 21:00 pick came back as the 20:00 slot). Matching both the date and the time of
+    `start_local` is mechanical. None unless exactly one appointment matches.
+    """
+    if not isinstance(items, list) or not isinstance(day, str) or not isinstance(time, str):
+        return None
+    day_parts = _date_parts(day)
+    time_match = re.search(r"(\d{1,2}):(\d{2})", time)
+    if day_parts is None or time_match is None:
+        return None
+    wanted_time = f"{int(time_match.group(1)):02d}:{time_match.group(2)}"
+    matches = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        start = item.get("start_local")
+        if isinstance(start, str) and _date_parts(start) == day_parts and _time_part(start) == wanted_time:
+            matches.append(item)
+    if len(matches) != 1:
+        return None
+    return matches[0].get(field)
 
 
 def _llm_compute_store_value(llm_client: LLMClient, slot_name: str, instruction: str, ctx: LLMContext) -> Any:
@@ -506,6 +544,9 @@ def _coerce_list(value: Any) -> Any:
     return [part.strip() for part in text.strip("[]").replace('"', "").split(",") if part.strip()]
 
 
+_EMPTY_WORDS = frozenset({"null", "none", "n/a", "undefined", ""})
+
+
 def _coerce_value(value: Any, type_expr: str) -> Any:
     """
 Best-effort coercion of a value against its declared type_expr.
@@ -531,6 +572,15 @@ Best-effort coercion of a value against its declared type_expr.
         The result.
 """
     if value is None:
+        return None
+    if (
+        isinstance(value, str)
+        and value.strip().lower() in _EMPTY_WORDS
+        and not type_expr.strip().startswith("Literal")
+    ):
+        # A model asked for a value the reply does not contain sometimes writes the word
+        # "null" instead of leaving it empty; stored as text it would pass for a real
+        # email, time or name. A Literal keeps its own members ('none' can be one).
         return None
     if _list_item_members(type_expr) is not None:
         return _coerce_list(value)
@@ -880,6 +930,22 @@ def _sync_language_change(
         logger.warning("language sync to CRM failed; continuing", exc_info=True)
 
 
+def _drop_added_questions(candidate: str, original: str) -> str:
+    """
+    `candidate` without the closing question lines a rewording tacked on to `original`.
+
+    Right before a question node a model likes to end a list with its own "which one
+    do you prefer?"; the real question is asked next, so the extra line is cut instead of
+    throwing away the whole translated message.
+    """
+    candidate = (candidate or "").rstrip()
+    lines = candidate.split("\n")
+    while lines and candidate.count("?") > original.count("?") and "?" in lines[-1]:
+        lines = lines[:-1]
+        candidate = "\n".join(lines).rstrip()
+    return candidate
+
+
 def _make_render_say(
     llm_client: LLMClient,
 ) -> Callable[[str, list[str], bool, str | None, dict[str, Any], list[str] | None], str]:
@@ -969,13 +1035,17 @@ Build a `say`-rendering function.
             "a version of that\", no label, no quotes around it, nothing before or "
             f"after it:\n\n{raw}"
         )
-        paraphrased = llm_client.complete(prompt, temperature=1.0) or raw
         # The prompt forbids adding questions, but at temperature 1.0 a very short message
         # ("Hasta luego.") sometimes comes back as a whole invented message (a scheduling
         # offer with made-up dates, say). A rewording that adds a question or balloons past
-        # the original is discarded and the original text is sent.
-        if paraphrased.count("?") > raw.count("?") or len(paraphrased) > 2 * len(raw) + 60:
-            paraphrased = raw
+        # the original is discarded. The original text is in the template's language, not
+        # the contact's, so a discarded rewording is retried once before falling back to it.
+        paraphrased = raw
+        for temperature in (1.0, 0.0):
+            candidate = _drop_added_questions(llm_client.complete(prompt, temperature=temperature), raw)
+            if candidate and candidate.count("?") <= raw.count("?") and len(candidate) <= 2 * len(raw) + 60:
+                paraphrased = candidate
+                break
         return _restore_contact_values(paraphrased, protected)
 
     return render_say
