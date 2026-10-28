@@ -86,6 +86,8 @@ from agent_compiler.runtime.global_router import (
     UNANSWERED_QUESTION_ACK,
     handle_global_router_match,
     has_unanswered_side_question,
+    match_side_question,
+    _looks_like_question,
     match_global_router,
 )
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
@@ -383,7 +385,7 @@ def _llm_compute_store_value(llm_client: LLMClient, slot_name: str, instruction:
         f"Compute the new value of `{slot_name}` per this instruction: {instruction!r}\n"
         "Reply with just the resulting value, nothing else."
     )
-    return llm_client.complete(prompt)
+    return _blank_word_to_none(llm_client.complete(prompt))
 
 
 _BRACKET_REF_RE = re.compile(r"\[([a-zA-Z_][a-zA-Z0-9_]*)\]")
@@ -531,7 +533,7 @@ Resolve DO/STORE lines shaped as conditional prose ("If X, update Y") — a
     for name in target_slots:
         entry = response.get(name) or {}
         if entry.get("applies"):
-            ctx.slots[name] = entry.get("value")
+            ctx.slots[name] = _blank_word_to_none(entry.get("value"))
 
 
 def _coerce_constant(value: str) -> Any:
@@ -601,6 +603,16 @@ def _capture_json_schema(capture: list[tuple[str, str]]) -> dict[str, Any]:
 
 
 _ANSWERS_FIELD = "answers_the_question"
+_BARE_REPLY_WORDS = frozenset(
+    "si no sim nao yes yeah yep nope claro ok okay vale dale listo bueno bien correcto exacto afirmativo negativo "
+    "por supuesto favor gracias de acuerdo obvio seguro porfa please sure certo pode quero tambien tambem".split()
+)
+
+
+def _is_bare_yes_no(reply: str) -> bool:
+    """True for a reply that is only a yes, a no or an acknowledgement ("sí", "claro, por favor")."""
+    words = re.findall(r"[a-z]+", _fold(reply or ""))
+    return 0 < len(words) <= 4 and all(word in _BARE_REPLY_WORDS for word in words)
 
 
 def _llm_extract_capture(
@@ -658,7 +670,10 @@ Ask the model to extract the declared capture slots from the user's reply.
             "another piece of information."
         )
     extracted = llm_client.extract_structured(prompt, schema)
-    if capture and extracted.pop(_ANSWERS_FIELD, True) is False:
+    answers = extracted.pop(_ANSWERS_FIELD, True)
+    # A plain yes/no does answer a closed question, however the model judged it, but never a name or a place.
+    closed = all(type_expr.strip().startswith(("Literal", "bool")) for _, type_expr in capture)
+    if capture and answers is False and not (closed and _is_bare_yes_no(ctx.last_user_message)):
         return {}
     return extracted
 
@@ -681,6 +696,13 @@ def _coerce_list(value: Any) -> Any:
 
 
 _EMPTY_WORDS = frozenset({"null", "none", "n/a", "undefined", ""})
+
+
+def _blank_word_to_none(value: Any) -> Any:
+    """A model clearing a slot sometimes writes the word "null"; kept as text it would read as a value."""
+    if isinstance(value, str) and value.strip().lower() in _EMPTY_WORDS:
+        return None
+    return value
 
 
 def _coerce_value(value: Any, type_expr: str) -> Any:
@@ -1040,6 +1062,7 @@ def _restore_contact_values(text: str, protected: dict[str, str]) -> str:
 logger = logging.getLogger(__name__)
 
 _ADVISOR_HANDLER_ID = "H_ADVISOR_Q"
+_LANGUAGE_CHANGE_HANDLER_ID = "H_LANG_CHANGE"
 
 
 def _sync_language_change(
@@ -1780,7 +1803,14 @@ Build one LangGraph node function for `node`.
                 match = match_global_router(llm_client, router, router_ctx)
                 _sync_language_change(previous_language, slots, contact, tool_executors)
                 side_question = match is None and has_unanswered_side_question(llm_client, router_ctx)
-                if side_question:
+                if match is None and (side_question or _looks_like_question(reply)):
+                    # The first pass can take a question for a plain answer ("how long does it take?"
+                    # to a yes/no question), so a reply that asks something still gets matched against
+                    # the specific FAQs and handlers before the generic advisor fallback.
+                    match = match_side_question(
+                        llm_client, router, router_ctx, frozenset({_ADVISOR_HANDLER_ID, _LANGUAGE_CHANGE_HANDLER_ID})
+                    )
+                if side_question and match is None:
                     advisor_handler = next(
                         (h for h in router.handlers if h.node_id == _ADVISOR_HANDLER_ID), None
                     )
@@ -1822,13 +1852,17 @@ Build one LangGraph node function for `node`.
                         },
                         goto=goto_target,
                     )
-                # else: resume where we were — loop back and re-ask.
-                language_name = _language_name_from_slots(slots)
-                say_language = None if node.node_id.startswith("LM__") else language_name
-                rendered_say = render_say(
-                    node.node_id, node.say, node.say_verbatim, say_language, slots, say_policies,
-                    user_message=reply,
-                    contact=contact,
+                # else: resume where we were. The node is entered again instead of looping on a second
+                # interrupt() here: every resume re-executes the node from the top, so with a loop the
+                # answer just given (an FAQ, say) was replayed and sent a second time with the next reply.
+                return Command(
+                    update={
+                        "slots": slots,
+                        "current_state": node.node_id,
+                        "last_user_message": reply,
+                        "history": history,
+                    },
+                    goto=node.node_id,
                 )
 
             ctx = LLMContext(

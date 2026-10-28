@@ -365,6 +365,30 @@ def match_global_router(
     return _match_candidate(llm_client, candidates, ctx, lines)
 
 
+def match_side_question(
+    llm_client: LLMClient,
+    router: GlobalRouterDefinition,
+    ctx: LLMContext,
+    exclude_ids: frozenset[str] = frozenset(),
+) -> RouterMatch | None:
+    """
+    The FAQ or handler that answers a question tucked into a reply, if one does.
+
+    Stage 1 sometimes calls such a reply a plain answer ("what documents do I need?" to a yes/no
+    question), so the question would reach the generic advisor fallback even when a specific FAQ
+    covers it. `exclude_ids` holds the fallback itself, which must not match here.
+    """
+    candidates = [
+        candidate
+        for candidate in _candidates(router)
+        if getattr(candidate[1], "node_id", None) not in exclude_ids
+        and getattr(candidate[1], "faq_id", None) not in exclude_ids
+    ]
+    if not candidates:
+        return None
+    return _match_candidate(llm_client, candidates, ctx, _candidate_lines(candidates))
+
+
 def handle_global_router_match(
     match: RouterMatch,
     ctx: LLMContext,
