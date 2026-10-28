@@ -8512,7 +8512,9 @@
           "[sc__reason] = NULL",
           "[sc__fix] = NULL",
           "[sc__ok] = NULL",
-          "[sc__ok_try] = 0"
+          "[sc__ok_try] = 0",
+          "[sc__day_label] = DAY_LABEL [sc__day]",
+          "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"
         ],
         "capture": [],
         "eval": "code",
@@ -8582,6 +8584,13 @@
             "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_DAY_NOW",
             "is_mechanical": true,
             "python_expression": "sc__slot is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_DEC_CHK",
+            "condition_text": "IF [sc__start_date] IS NOT NULL -> GO_TO: SC__SC_DEC_CHK",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is not None",
             "reason": null
           }
         ],
