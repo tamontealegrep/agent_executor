@@ -69,6 +69,7 @@ from __future__ import annotations
 
 import json
 import logging
+import datetime
 import re
 import unicodedata
 from collections.abc import Callable
@@ -125,6 +126,10 @@ _STORE_SLOT_REF_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_SELF_ARITH_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s*([+-])\s*(\d+)$")
 _QUOTED_RE = re.compile(r"^'(.*)'$|^\"(.*)\"$")
 _STORE_MATCH_IN_RE = re.compile(r"^match in <([A-Z_][A-Z0-9_]*)>\s*\|\s*(?:'([^']*)'|\"([^\"]*)\")$")
+_STORE_RESOLVE_DAY_RE = re.compile(
+    r"^RESOLVE_DAY\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+IN\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
+)
+_STORE_DAY_LABEL_RE = re.compile(r"^DAY_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
     r"\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
@@ -221,6 +226,17 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
             slots[name] = matched
         return
 
+    resolve_day = _STORE_RESOLVE_DAY_RE.match(rhs)
+    if resolve_day:
+        reply, calendar, offered = (slots.get(resolve_day.group(i)) for i in (1, 2, 3))
+        slots[name] = _resolve_day_reference(reply, calendar, offered)
+        return
+
+    day_label = _STORE_DAY_LABEL_RE.match(rhs)
+    if day_label:
+        slots[name] = _day_label(slots.get(day_label.group(1)), slots.get("preferred_language"))
+        return
+
     pick = _STORE_PICK_RE.match(rhs)
     if pick:
         items, field, day, time = (slots.get(pick.group(1)), pick.group(2), slots.get(pick.group(3)), slots.get(pick.group(4)))
@@ -228,6 +244,107 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
         return
 
     slots[name] = _llm_compute_store_value(llm_client, name, rhs, ctx)
+
+
+_WEEKDAY_WORDS = {
+    0: ("lunes", "monday", "segunda"),
+    1: ("martes", "tuesday", "terca"),
+    2: ("miercoles", "wednesday", "quarta"),
+    3: ("jueves", "thursday", "quinta"),
+    4: ("viernes", "friday", "sexta"),
+    5: ("sabado", "saturday"),
+    6: ("domingo", "sunday"),
+}
+_WEEKDAY_BY_WORD = {word: index for index, words in _WEEKDAY_WORDS.items() for word in words}
+_WEEKDAY_NAMES = {
+    "es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "pt": ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"],
+}
+def _month_by_word() -> dict[str, int]:
+    """Month number by accent-folded month name or its first three letters, in every language."""
+    by_word = {_fold(name): index + 1 for names in _MONTH_NAMES.values() for index, name in enumerate(names)}
+    by_word.update({word[:3]: number for word, number in list(by_word.items())})
+    return by_word
+
+
+_LANGUAGE_CODE_BY_NAME = {"spanish": "es", "english": "en", "portuguese": "pt"}
+
+
+def _resolve_day_reference(reply: Any, calendar: Any, offered: Any) -> str | None:
+    """
+    The YYYY-MM-DD date a contact means by `reply` ("el viernes", "Nov 5", "dia 3", "tomorrow"), or None.
+
+    A model asked to turn a weekday into a date picked the wrong one often enough to book the wrong
+    day (a "Friday" came back as a Wednesday), so this is mechanical. `calendar` is the
+    'YYYY-MM-DD Weekday' list starting today; `offered` the appointments being offered. A weekday
+    means the soonest offered date with it, else the first calendar date after today; a day number
+    alone, the first calendar date with that number; day and month, the earliest year not in the past.
+    """
+    if not isinstance(reply, str) or not isinstance(calendar, str):
+        return None
+    dates = [datetime.date(int(y), int(m), int(d)) for y, m, d in re.findall(r"(\d{4})-(\d{2})-(\d{2})", calendar)]
+    if not dates:
+        return None
+    iso = re.search(r"(\d{4})-(\d{2})-(\d{2})", reply)
+    if iso:
+        return iso.group(0)
+    text = _fold(reply)
+    words = re.findall(r"[a-z]+", text)
+    if "pasado" in words and "manana" in words or "depois" in words and "amanha" in words or ("after" in words and "tomorrow" in words):
+        return dates[2].isoformat() if len(dates) > 2 else None
+    if {"hoy", "today", "hoje"} & set(words):
+        return dates[0].isoformat()
+    if {"manana", "tomorrow", "amanha"} & set(words) and len(dates) > 1:
+        return dates[1].isoformat()
+
+    numbers = [int(n) for n in re.findall(r"(?<![\d:])\b(\d{1,2})(?![\d:])", text) if 1 <= int(n) <= 31]
+    month_by_word = _month_by_word()
+    months = [month_by_word[w] for w in words if w in month_by_word]
+    if numbers:
+        day = numbers[0]
+        if months:
+            for year in (dates[0].year, dates[0].year + 1):
+                try:
+                    candidate = datetime.date(year, months[0], day)
+                except ValueError:
+                    return None
+                if candidate >= dates[0]:
+                    return candidate.isoformat()
+            return None
+        return next((d.isoformat() for d in dates if d.day == day), None)
+
+    weekdays = {_WEEKDAY_BY_WORD[w] for w in words if w in _WEEKDAY_BY_WORD}
+    if len(weekdays) != 1:
+        return None
+    weekday = weekdays.pop()
+    offered_dates = sorted(
+        {
+            datetime.date(int(y), int(m), int(d))
+            for item in (offered if isinstance(offered, list) else [])
+            if isinstance(item, dict)
+            for y, m, d in [_date_parts(_appointment_datetime(item) or "") or ("0", "0", "0")]
+            if y != "0"
+        }
+    )
+    match = next((d for d in offered_dates if d.weekday() == weekday), None)
+    if match is None:
+        match = next((d for d in dates[1:] if d.weekday() == weekday), None)
+    return match.isoformat() if match else None
+
+
+def _day_label(day: Any, language: Any) -> str | None:
+    """`day` (YYYY-MM-DD) written as weekday, day and month in the conversation's language."""
+    parts = _date_parts(day) if isinstance(day, str) else None
+    if parts is None:
+        return None
+    date = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+    code = _LANGUAGE_CODE_BY_NAME.get(str(language or "").strip().lower(), "es")
+    weekday = _WEEKDAY_NAMES[code][date.weekday()]
+    month = _MONTH_NAMES[code][date.month - 1]
+    if code == "en":
+        return f"{weekday}, {month} {date.day}"
+    return f"{weekday} {date.day} de {month}"
 
 
 def _pick_appointment_field(items: Any, field: str, day: Any, time: Any) -> Any:
@@ -483,6 +600,9 @@ def _capture_json_schema(capture: list[tuple[str, str]]) -> dict[str, Any]:
     }
 
 
+_ANSWERS_FIELD = "answers_the_question"
+
+
 def _llm_extract_capture(
     llm_client: LLMClient,
     capture: list[tuple[str, str]],
@@ -524,7 +644,23 @@ Ask the model to extract the declared capture slots from the user's reply.
         "Extract the fields defined by the provided schema, following the "
         "normalization instructions above. Use null for anything not clearly stated."
     )
-    return llm_client.extract_structured(prompt, _capture_json_schema(capture))
+    schema = _capture_json_schema(capture)
+    if capture:
+        # A reply about something else used to be filed anyway: under the nearest option of a closed
+        # list ("I'm 30" to "are you interested?" became maybe) or as an invented value ("yes" to "how
+        # many children?" became 1, to "when was your last birth?" today's date). The model says first
+        # whether the reply answers the question at all.
+        schema["properties"][_ANSWERS_FIELD] = {"type": "boolean"}
+        schema["required"].append(_ANSWERS_FIELD)
+        prompt += (
+            f"{chr(10)}{chr(10)}Also set {_ANSWERS_FIELD}: true only if the reply actually answers the question "
+            "just asked, even briefly or indirectly; false if it talks about something else or gives "
+            "another piece of information."
+        )
+    extracted = llm_client.extract_structured(prompt, schema)
+    if capture and extracted.pop(_ANSWERS_FIELD, True) is False:
+        return {}
+    return extracted
 
 
 def _coerce_list(value: Any) -> Any:
@@ -930,6 +1066,19 @@ def _sync_language_change(
         logger.warning("language sync to CRM failed; continuing", exc_info=True)
 
 
+_FIGURE_RE = re.compile(r"\d{1,2}:\d{2}|\d{3,}")
+
+
+def _keeps_figures(original: str, candidate: str) -> bool:
+    """
+    True when every time (HH:MM) and long number of `original` is still written in `candidate`.
+
+    A rewording once turned the 04:00 of an appointment summary into 16:00. Times, phone numbers
+    and the like are facts the contact acts on, so a rewording that changes one is discarded.
+    """
+    return set(_FIGURE_RE.findall(original)) <= set(_FIGURE_RE.findall(candidate))
+
+
 def _drop_added_questions(candidate: str, original: str) -> str:
     """
     `candidate` without the closing question lines a rewording tacked on to `original`.
@@ -1043,7 +1192,12 @@ Build a `say`-rendering function.
         paraphrased = raw
         for temperature in (1.0, 0.0):
             candidate = _drop_added_questions(llm_client.complete(prompt, temperature=temperature), raw)
-            if candidate and candidate.count("?") <= raw.count("?") and len(candidate) <= 2 * len(raw) + 60:
+            if (
+                candidate
+                and candidate.count("?") <= raw.count("?")
+                and len(candidate) <= 2 * len(raw) + 60
+                and _keeps_figures(raw, candidate)
+            ):
                 paraphrased = candidate
                 break
         return _restore_contact_values(paraphrased, protected)
