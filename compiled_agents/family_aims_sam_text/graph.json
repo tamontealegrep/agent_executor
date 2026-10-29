@@ -6371,19 +6371,15 @@
         "node_id": "AH__AH_INIT",
         "node_type": "registration",
         "goal": [
-          "Remember where to return and reset the offer counter."
+          "Remember where to return."
         ],
-        "do": [
-          "[ah__wants_try] = 0"
-        ],
+        "do": [],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[ah__resume_state] = [current_state]",
-          "[ah__wants_advisor] = NULL",
-          "[ah__wants_try] = 0"
+          "[ah__resume_state] = [current_state]"
         ],
         "capture": [],
         "eval": "code",
@@ -6469,8 +6465,7 @@
         "node_id": "AH__AH_ASK",
         "node_type": "question",
         "goal": [
-          "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one.",
-          "Capture 'yes' only if the lead accepts scheduling a conversation with an advisor. Capture 'no' for any other reply that does not accept it: a refusal, 'not now', 'I will think about it', or any sign that they are not interested in talking to an advisor, however it is worded."
+          "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one."
         ],
         "do": [],
         "trigger": [],
@@ -6480,12 +6475,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "ah__wants_advisor",
-            "Literal[yes, no]"
-          ]
-        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -6502,7 +6492,7 @@
         "node_id": "AH__AH_DEC",
         "node_type": "decision",
         "goal": [
-          "Send the lead to scheduling only if they clearly accepted. Any other reply is a decline, however it is worded or even if it could not be classified: accept it kindly and close, never ask the offer again and never go back to the question that was interrupted."
+          "Close kindly only if the lead clearly declined, never going back to the question that was interrupted. Any other reply, even a vague one, counts as accepting and goes to scheduling."
         ],
         "do": [],
         "trigger": [],
@@ -6511,30 +6501,30 @@
         "execute": null,
         "store": [],
         "capture": [],
-        "eval": "code",
+        "eval": "llm",
         "route": [
           {
-            "target": "AH__AH_TO_SCHEDULING",
-            "condition_text": "IF [ah__wants_advisor] == 'yes' -> GO_TO: AH__AH_TO_SCHEDULING",
-            "is_mechanical": true,
-            "python_expression": "ah__wants_advisor == 'yes'",
-            "reason": null
+            "target": "AH__AH_DECLINED",
+            "condition_text": "IF the latest user message clearly refuses the offer or shows no interest in it (for example 'no gracias', 'ahora no', 'maybe later', 'I will look elsewhere'), even when it is polite or mixed with thanks -> GO_TO: AH__AH_DECLINED",
+            "is_mechanical": false,
+            "python_expression": null,
+            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
           },
           {
-            "target": "AH__AH_DECLINED",
+            "target": "AH__AH_TO_SCHEDULING",
             "condition_text": null,
-            "is_mechanical": true,
+            "is_mechanical": false,
             "python_expression": null,
-            "reason": null
+            "reason": "eval='llm' forces an LLM-evaluated edge"
           }
         ],
         "fallback": [
           {
-            "target": "AH__AH_DECLINED",
+            "target": "AH__AH_TO_SCHEDULING",
             "condition_text": null,
-            "is_mechanical": true,
+            "is_mechanical": false,
             "python_expression": null,
-            "reason": null
+            "reason": "eval='llm' forces an LLM-evaluated edge"
           }
         ]
       },
