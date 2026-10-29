@@ -482,10 +482,18 @@ def test_closing_message_text_uses_language_specific_default():
     assert ghl_endpoint._closing_message_text(cfg, "pt").startswith("Obrigado")
 
 
-def test_closing_message_text_falls_back_to_spanish_for_unknown_or_missing_language():
+def test_closing_message_text_accepts_language_names_as_stored_in_the_slot():
     cfg = _cfg()
-    assert ghl_endpoint._closing_message_text(cfg, None).startswith("Gracias")
-    assert ghl_endpoint._closing_message_text(cfg, "fr").startswith("Gracias")
+    assert ghl_endpoint._closing_message_text(cfg, "Spanish").startswith("Gracias")
+    assert ghl_endpoint._closing_message_text(cfg, "English").startswith("Thank you")
+    assert ghl_endpoint._closing_message_text(cfg, "Portuguese").startswith("Obrigado")
+
+
+def test_closing_message_text_falls_back_to_english_for_unknown_or_missing_language():
+    cfg = _cfg()
+    assert ghl_endpoint._closing_message_text(cfg, None).startswith("Thank you")
+    assert ghl_endpoint._closing_message_text(cfg, "").startswith("Thank you")
+    assert ghl_endpoint._closing_message_text(cfg, "fr").startswith("Thank you")
 
 
 def test_closing_message_text_string_override_ignores_language():
@@ -496,7 +504,7 @@ def test_closing_message_text_string_override_ignores_language():
 def test_closing_message_text_dict_override_is_looked_up_by_language():
     cfg = _cfg(closing_message={"es": "Hola custom", "en": "Hi custom"})
     assert ghl_endpoint._closing_message_text(cfg, "en") == "Hi custom"
-    assert ghl_endpoint._closing_message_text(cfg, "fr") == "Hola custom"  # falls back to es
+    assert ghl_endpoint._closing_message_text(cfg, "fr") == "Hi custom"  # falls back to en
 
 
 def test_run_closing_sweep_once_sends_each_claimed_candidate(monkeypatch):

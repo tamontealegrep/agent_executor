@@ -77,7 +77,8 @@ Everything that differs from one compiled agent's GHL endpoint to another.
     closing_message: "str | dict[str, str] | None" = None
     """Override for the text sent by the closing sweep. A plain string
     always wins; a dict is looked up by the thread's preferred_language
-    (falls back to the built-in ES/EN/PT default). None uses the built-in
+    (stored as "English"/"Spanish"/"Portuguese" or as a code; English when
+    the language is unknown or missing). None uses the built-in
     default entirely -- deliberately generic ("puede ser de cualquiera"),
     since the sweep's only job is to get *something* out before Meta's 24h
     window closes, not to carry flow-specific content."""
@@ -114,8 +115,9 @@ def _closing_message_text(cfg: CompiledAgentGhlConfig, preferred_language: "str 
     if isinstance(cfg.closing_message, str):
         return cfg.closing_message
     messages = cfg.closing_message if isinstance(cfg.closing_message, dict) else _DEFAULT_CLOSING_MESSAGES
-    lang = (preferred_language or "es").lower()
-    return messages.get(lang) or messages.get("es") or next(iter(messages.values()))
+    raw = (preferred_language or "en").strip().lower()
+    code = _LANGUAGE_CODES.get(raw, raw)
+    return messages.get(code) or messages.get("en") or next(iter(messages.values()))
 
 
 _DEFAULT_UNSUPPORTED_MEDIA_MESSAGES: dict[str, str] = {
