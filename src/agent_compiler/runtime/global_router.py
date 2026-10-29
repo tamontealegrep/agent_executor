@@ -224,7 +224,7 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
         "genuine interrupt takes more than a couple of words to express, unless it "
         "IS itself, word for word, one of the trigger phrases listed.\n\n"
         "The exception is an explicit request to do something other than answer: to book or "
-        "schedule an appointment, to talk to a human, to apply as the surrogate, to cancel or "
+        "schedule an appointment, to talk to a human, to cancel or "
         "change an appointment, to stop the conversation or to switch language. That is always "
         "an interrupt, however short, even when it names a treatment the pending question also "
         "asks about (\"quiero agendar una cita de fiv\" does not answer a question about "
