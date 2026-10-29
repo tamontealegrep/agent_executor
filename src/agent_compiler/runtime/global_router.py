@@ -8,6 +8,7 @@ Global router for FAQs and handlers during question interrupts.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
@@ -41,6 +42,35 @@ def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None
     if value.lower() in _LANGUAGE_NAMES_BY_CODE:
         return _LANGUAGE_NAMES_BY_CODE[value.lower()]
     return value if value in _SUPPORTED_LANGUAGE_NAMES else fallback
+
+
+_BARE_REPLY_WORDS = frozenset(
+    "si no sim nao yes yeah yep nope claro ok okay vale dale listo bueno bien correcto exacto afirmativo negativo "
+    "por supuesto favor gracias de acuerdo obvio seguro porfa please sure certo pode quero tambien tambem".split()
+)
+
+
+def _fold(text: str) -> str:
+    """Accent- and case-insensitive comparison key."""
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(c for c in decomposed if unicodedata.category(c) != "Mn").casefold().strip()
+
+
+def is_bare_yes_no(reply: str) -> bool:
+    """True for a reply that is only a yes, a no or an acknowledgement ("sí", "claro, por favor")."""
+    words = re.findall(r"[a-z]+", _fold(reply or ""))
+    return 0 < len(words) <= 4 and all(word in _BARE_REPLY_WORDS for word in words)
+
+
+def _is_trigger_phrase(reply: str, candidates: list[RouterMatch]) -> bool:
+    """True when `reply` is, word for word, one of the trigger phrases of a handler or FAQ."""
+    wanted = " ".join(re.findall(r"[a-z]+", _fold(reply or "")))
+    for kind, node in candidates:
+        phrases = node.trigger if kind == "handler" else node.match
+        for phrase in [phrases] if isinstance(phrases, str) else phrases or []:
+            if isinstance(phrase, str) and " ".join(re.findall(r"[a-z]+", _fold(phrase))) == wanted:
+                return True
+    return False
 
 
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
@@ -342,6 +372,11 @@ def match_global_router(
                 fallback=[],
             )
             return ("handler", ask)
+
+    # A lone yes, no or "ok" answers the pending question: the stage 1 prompt already tells the
+    # model to call it a continuation, so the call is skipped unless the reply is itself a trigger phrase.
+    if is_bare_yes_no(ctx.last_user_message) and not _is_trigger_phrase(ctx.last_user_message, candidates):
+        return None
 
     # 2. Fall back to LLM classification
     decision = _classify_reply(llm_client, ctx, lines, None if language_resolved else language_handler)

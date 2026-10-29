@@ -86,6 +86,7 @@ from agent_compiler.runtime.global_router import (
     UNANSWERED_QUESTION_ACK,
     handle_global_router_match,
     has_unanswered_side_question,
+    is_bare_yes_no as _is_bare_yes_no,
     match_side_question,
     _looks_like_question,
     match_global_router,
@@ -603,18 +604,6 @@ def _capture_json_schema(capture: list[tuple[str, str]]) -> dict[str, Any]:
 
 
 _ANSWERS_FIELD = "answers_the_question"
-_BARE_REPLY_WORDS = frozenset(
-    "si no sim nao yes yeah yep nope claro ok okay vale dale listo bueno bien correcto exacto afirmativo negativo "
-    "por supuesto favor gracias de acuerdo obvio seguro porfa please sure certo pode quero tambien tambem".split()
-)
-
-
-def _is_bare_yes_no(reply: str) -> bool:
-    """True for a reply that is only a yes, a no or an acknowledgement ("sí", "claro, por favor")."""
-    words = re.findall(r"[a-z]+", _fold(reply or ""))
-    return 0 < len(words) <= 4 and all(word in _BARE_REPLY_WORDS for word in words)
-
-
 def _llm_extract_capture(
     llm_client: LLMClient,
     capture: list[tuple[str, str]],
