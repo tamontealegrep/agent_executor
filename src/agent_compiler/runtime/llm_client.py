@@ -16,6 +16,25 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 
+LARGE_SLOT_CHARS = 2000
+"""A slot whose JSON is longer than this is left out of a prompt that never names it.
+
+The availability lists hold hundreds of slot objects and were copied into every decision
+prompt, which put 50-100k input tokens on the last turns of a scheduling conversation."""
+
+
+def _slots_for_prompt(slots: dict[str, Any], referenced: str) -> dict[str, Any]:
+    shown: dict[str, Any] = {}
+    for name, value in slots.items():
+        text = json.dumps(value, default=str)
+        if len(text) > LARGE_SLOT_CHARS and name not in referenced:
+            size = f"{len(value)} items" if isinstance(value, (list, dict)) else f"{len(text)} characters"
+            shown[name] = f"<set, {size}, left out of this prompt because it does not use it>"
+        else:
+            shown[name] = value
+    return shown
+
+
 @dataclass(frozen=True)
 class LLMContext:
     """
@@ -74,10 +93,14 @@ The context every runtime LLM decision call is given, normalized (2026-09-17).
     policies: list[str] = field(default_factory=list)
     contact: dict[str, Any] = field(default_factory=dict)
 
-    def block(self) -> str:
+    def block(self, mentions: str = "") -> str:
         """
         Render the context pieces every decision prompt includes the same way.
+
+        `mentions` is the rest of the prompt's own text (conditions, instructions) so a large
+        slot it names is still shown whole; any other large slot is summarized.
         """
+        referenced = "\n".join([mentions, *self.goal, *self.do, self.pending_question])
         history_block = f"Recent conversation:\n{chr(10).join(self.history)}\n\n" if self.history else ""
         contact_block = (
             f"Contact info already on file for this session (from the CRM): "
@@ -93,7 +116,7 @@ The context every runtime LLM decision call is given, normalized (2026-09-17).
         return (
             f"{history_block}"
             f"{contact_block}"
-            f"Known slot values: {json.dumps(self.slots, default=str)}\n\n"
+            f"Known slot values: {json.dumps(_slots_for_prompt(self.slots, referenced), default=str)}\n\n"
             f"The user's latest message: {self.last_user_message!r}\n\n"
         )
 

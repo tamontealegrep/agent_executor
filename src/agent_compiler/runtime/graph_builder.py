@@ -380,7 +380,7 @@ def _pick_appointment_field(items: Any, field: str, day: Any, time: Any) -> Any:
 def _llm_compute_store_value(llm_client: LLMClient, slot_name: str, instruction: str, ctx: LLMContext) -> Any:
     policy_block = f"House rules:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
     prompt = (
-        f"{ctx.block()}"
+        f"{ctx.block(instruction)}"
         f"{policy_block}"
         f"Compute the new value of `{slot_name}` per this instruction: {instruction!r}\n"
         "Reply with just the resulting value, nothing else."
@@ -515,7 +515,7 @@ Resolve DO/STORE lines shaped as conditional prose ("If X, update Y") — a
         "memory slots, based on the user's latest message.\n\n"
         f"This step's purpose:\n{context_lines}\n\n"
         f"Instructions:\n{instructions}\n\n"
-        f"{ctx.block()}"
+        f"{ctx.block(instructions)}"
         f"{policy_block}"
         f"For each of these slots — {', '.join(target_slots)} — decide independently "
         "whether an instruction above clearly applies to THAT slot specifically, given "
@@ -1360,7 +1360,7 @@ Ask the model which (if any) of the non-mechanical route conditions applies.
         "Given the conversation state below, which of these numbered conditions "
         "is true right now? Reply with just the number, or NONE if none apply.\n\n"
         f"This decision's own instructions:\n{context_lines}\n\n"
-        f"{ctx.block()}"
+        f"{ctx.block(numbered)}"
         f"{policy_block}"
         f"Conditions:\n{numbered}"
     )
@@ -1538,7 +1538,7 @@ One batched call deriving every still-missing required input's value.
     policy_block = f"House rules for this tool call:\n{chr(10).join(ctx.policies)}\n\n" if ctx.policies else ""
     prompt = (
         "You are filling in the arguments for a tool call in a conversational agent.\n\n"
-        f"{ctx.block()}"
+        f"{ctx.block(specs)}"
         f"Instructions for this tool call (from the agent's DO field):\n{chr(10).join(ctx.do)}\n\n"
         f"What each requested argument actually expects (from the tool's own contract):\n{specs}\n\n"
         f"{policy_block}"

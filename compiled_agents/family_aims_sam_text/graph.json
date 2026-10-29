@@ -726,7 +726,7 @@
         "node_id": "AM__AM_RESCHED_PICK",
         "node_type": "question",
         "goal": [
-          "Ask for a new slot."
+          "Ask for a new slot, chosen from [am__available_slots]."
         ],
         "do": [],
         "trigger": [],
@@ -7987,7 +7987,7 @@
         "node_id": "SC__SC_ASK_S",
         "node_type": "question",
         "goal": [
-          "Capture the time the contact chooses."
+          "Capture the time the contact chooses from the times offered for [sc__day] in [sc__available_slots]."
         ],
         "do": [],
         "trigger": [],
