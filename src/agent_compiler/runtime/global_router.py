@@ -223,6 +223,12 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
         "(a lone \"sí\"/\"no\"/\"ok\"/\"claro\") is almost always a continuation too — a "
         "genuine interrupt takes more than a couple of words to express, unless it "
         "IS itself, word for word, one of the trigger phrases listed.\n\n"
+        "The exception is an explicit request to do something other than answer: to book or "
+        "schedule an appointment, to talk to a human, to apply as the surrogate, to cancel or "
+        "change an appointment, to stop the conversation or to switch language. That is always "
+        "an interrupt, however short, even when it names a treatment the pending question also "
+        "asks about (\"quiero agendar una cita de fiv\" does not answer a question about "
+        "which service they want).\n\n"
         f"Reply with just {response_options}."
     )
     decision = llm_client.complete(prompt).strip().upper()
@@ -271,6 +277,12 @@ Stage 2: pick the matching handler/FAQ, if any.
         f"Candidates:\n{candidate_lines}\n\n"
         "Only match when the reply is clearly, unambiguously one of these — reply "
         "NONE rather than force a match if none genuinely fits.\n\n"
+        "Choose by the subject of the reply, not by words it shares with a candidate: a "
+        "question about how long or how much time something takes is about duration, not "
+        "price, and a question asking what something is or how it works is an explanation, "
+        "not a request to book. A candidate whose phrases include a \"(never ...)\" clause "
+        "is ruled out for what that clause names. When several candidates fit, prefer the "
+        "most specific one.\n\n"
         "Reply with just the number, or NONE if none apply."
     )
     text = llm_client.complete(prompt)
