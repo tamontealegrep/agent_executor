@@ -8086,6 +8086,20 @@
         "eval": "code",
         "route": [
           {
+            "target": "SC__SC_CLR_D",
+            "condition_text": "IF [sc__start_date] IS NULL AND [sc__slot_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_CLR_D",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is None and sc__slot_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_BAD_TIME",
+            "condition_text": "IF [sc__start_date] IS NULL -> GO_TO: SC__SC_BAD_TIME",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is None",
+            "reason": null
+          },
+          {
             "target": "SC__SC_CHK_I",
             "condition_text": "IF [appt_svc] == 'ivf' -> GO_TO: SC__SC_CHK_I",
             "is_mechanical": true,
@@ -8109,6 +8123,33 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "SC__SC_BAD_TIME",
+        "node_type": "message",
+        "goal": [
+          "Tell the contact that exact time is not in the list and show the times again so they can choose one."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "I could not match that to one of the available times. Please choose one from the list."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_HOURS",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "SC__SC_CHK_I",
@@ -8601,8 +8642,8 @@
         ],
         "do": [
           "If the contact gives a new name, phone, or email, set [sc__c_name], [sc__c_phone], or [sc__c_email] to it. If they only say they want to change one of them, set it to NULL.",
-          "If the contact gives a new time, set [sc__slot] to it. If they only say they want to change the time, set [sc__slot] to NULL.",
-          "If the contact gives a new day, set [sc__day] to it and [sc__slot] to NULL. If they only say they want to change the day, set [sc__day] and [sc__slot] to NULL.",
+          "If the contact gives a new time, set [sc__slot] to it written as 24-hour HH:MM (3 pm is 15:00). If they only say they want to change the time, set [sc__slot] to NULL.",
+          "If the contact gives a new day, set [sc__day] to it written as YYYY-MM-DD and [sc__slot] to NULL. If they only say they want to change the day, set [sc__day] and [sc__slot] to NULL.",
           "If the contact changes their country or city, set [user_timezone], [sc__day], [sc__slot], and [sc__available_slots] to NULL."
         ],
         "trigger": [],
@@ -8722,6 +8763,13 @@
         "eval": "code",
         "route": [
           {
+            "target": "SC__SC_CLR_D",
+            "condition_text": "IF [sc__start_date] IS NULL -> GO_TO: SC__SC_CLR_D",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is None",
+            "reason": null
+          },
+          {
             "target": "SC__SC_BOOK_I",
             "condition_text": "IF [appt_svc] == 'ivf' -> GO_TO: SC__SC_BOOK_I",
             "is_mechanical": true,
@@ -8780,6 +8828,13 @@
         "eval": "code",
         "route": [
           {
+            "target": "SC__SC_CLR_D",
+            "condition_text": "IF [sc__start_date] IS NULL -> GO_TO: SC__SC_CLR_D",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is None",
+            "reason": null
+          },
+          {
             "target": "SC__SC_DEC_BOOK",
             "condition_text": "IF [sc__success] IS NOT NULL -> GO_TO: SC__SC_DEC_BOOK",
             "is_mechanical": true,
@@ -8837,6 +8892,13 @@
         ],
         "eval": "code",
         "route": [
+          {
+            "target": "SC__SC_CLR_D",
+            "condition_text": "IF [sc__start_date] IS NULL -> GO_TO: SC__SC_CLR_D",
+            "is_mechanical": true,
+            "python_expression": "sc__start_date is None",
+            "reason": null
+          },
           {
             "target": "SC__SC_DEC_BOOK",
             "condition_text": "IF [sc__success] IS NOT NULL -> GO_TO: SC__SC_DEC_BOOK",

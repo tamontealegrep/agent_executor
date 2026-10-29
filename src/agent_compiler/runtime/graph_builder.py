@@ -715,6 +715,22 @@ def _clean_phone(value: str) -> str | None:
     return phone if re.fullmatch(r"\+?\d{8,15}", phone) else None
 
 
+_SLOT_TIME_RE = re.compile(r"(?<!\d)(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap])?\.?m?\.?(?![a-z\d])", re.IGNORECASE)
+
+
+def _clean_slot_time(value: str) -> str:
+    """The time inside what was captured ("9:40 am", a full timestamp) as 24-hour HH:MM; the text itself when it holds none."""
+    match = _SLOT_TIME_RE.search(value)
+    if match is None:
+        return value
+    hour, minute, meridiem = int(match.group(1)), match.group(2), (match.group(3) or "").lower()
+    if meridiem == "p" and hour < 12:
+        hour += 12
+    elif meridiem == "a" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}" if hour < 24 else value
+
+
 def _blank_word_to_none(value: Any) -> Any:
     """A model clearing a slot sometimes writes the word "null"; kept as text it would read as a value."""
     if isinstance(value, str) and value.strip().lower() in _EMPTY_WORDS:
@@ -761,6 +777,8 @@ Best-effort coercion of a value against its declared type_expr.
         return _clean_email(value)
     if isinstance(value, str) and type_expr.strip() == "phone_number":
         return _clean_phone(value)
+    if isinstance(value, str) and type_expr.strip() == "appointment_slot_selection":
+        return _clean_slot_time(value)
     if _list_item_members(type_expr) is not None:
         return _coerce_list(value)
     parsed = classify_type_expr(type_expr)
@@ -1608,6 +1626,11 @@ Resolve every declared tool input's value for one tool call.
     }
 
 
+def _missing_required_inputs(contract_inputs: list[ToolContractField], inputs: dict[str, Any]) -> list[str]:
+    """Names of the required tool inputs that have no value (absent or null) in `inputs`."""
+    return [f.name for f in contract_inputs if f.required and inputs.get(f.name) is None]
+
+
 def _resolve_target(
     node: GraphNode,
     ctx: LLMContext,
@@ -1924,9 +1947,17 @@ Build one LangGraph node function for `node`.
         elif node.node_type == "action" and node.execute:
             executor = tool_executors.get(node.execute)
             if executor is not None:
-                inputs = _bind_tool_inputs(tool_input_fields.get(node.execute, []), ctx, llm_client)
+                input_fields = tool_input_fields.get(node.execute, [])
+                inputs = _bind_tool_inputs(input_fields, ctx, llm_client)
+                missing = _missing_required_inputs(input_fields, inputs)
                 try:
-                    result = executor(**inputs)
+                    if missing:
+                        # The backend would reject the call (HTTP 422 on a null); the flow's own routes
+                        # handle the empty result, like a tool that failed.
+                        logger.warning("tool %s skipped in %s: missing %s", node.execute, node.node_id, missing)
+                        result = {}
+                    else:
+                        result = executor(**inputs)
                 except ToolExecutionError:
                     # A tool that captures nothing (a CRM sync, say) has no result to route on:
                     # its failure must not end the conversation, so the flow just moves on.
