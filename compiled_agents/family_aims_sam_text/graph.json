@@ -6470,7 +6470,7 @@
         "node_type": "question",
         "goal": [
           "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one.",
-          "Capture 'yes' if the lead accepts scheduling; 'no' if they decline or prefer to keep going with the current conversation."
+          "Capture 'yes' only if the lead accepts scheduling a conversation with an advisor. Capture 'no' for any other reply that does not accept it: a refusal, a thank-you, 'not now', 'I will think about it', or any sign that they are not interested in talking to an advisor, however it is worded."
         ],
         "do": [],
         "trigger": [],
@@ -6502,11 +6502,9 @@
         "node_id": "AH__AH_DEC",
         "node_type": "decision",
         "goal": [
-          "Send the lead to scheduling if they accepted, or back to the interrupted question if not."
+          "Send the lead to scheduling only if they clearly accepted. Any other reply is a decline, however it is worded or even if it could not be classified: accept it kindly and close, never ask the offer again and never go back to the question that was interrupted."
         ],
-        "do": [
-          "[ah__wants_try] = [ah__wants_try] + 1"
-        ],
+        "do": [],
         "trigger": [],
         "say": [],
         "say_verbatim": false,
@@ -6523,29 +6521,49 @@
             "reason": null
           },
           {
-            "target": "AH__AH_RESUME",
-            "condition_text": "IF [ah__wants_advisor] == 'no' -> GO_TO: AH__AH_RESUME",
+            "target": "AH__AH_DECLINED",
+            "condition_text": null,
             "is_mechanical": true,
-            "python_expression": "ah__wants_advisor == 'no'",
-            "reason": null
-          },
-          {
-            "target": "AH__AH_RESUME",
-            "condition_text": "IF [ah__wants_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: AH__AH_RESUME",
-            "is_mechanical": true,
-            "python_expression": "ah__wants_try >= MAX_RETRY_ATTEMPTS",
+            "python_expression": null,
             "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "AH__AH_ASK",
+            "target": "AH__AH_DECLINED",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "AH__AH_DECLINED",
+        "node_type": "message",
+        "goal": [
+          "Accept the lead's decision kindly and close the conversation without asking anything else."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [
+          "No problem, thank you for your time. If you change your mind or have any other question, I am here to help. Have a great day!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_USER_NOT_INTERESTED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "AH__AH_TO_SCHEDULING",
