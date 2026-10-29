@@ -9503,6 +9503,7 @@
         "goal": [],
         "do": [],
         "trigger": [
+          "the contact says they themselves want to be a surrogate, to carry a pregnancy for another family or to apply to work as a gestante (never someone who wants surrogacy for their own family)",
           "I want to be a surrogate",
           "I want to be a surrogate mother",
           "I want to apply as a surrogate",
@@ -9541,94 +9542,12 @@
         "fallback": []
       },
       {
-        "node_id": "H_SUR",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "I want surrogacy",
-          "I want gestational surrogacy",
-          "I am interested in surrogacy",
-          "quiero subrogacion",
-          "quiero subrogación",
-          "quiero gestacion subrogada",
-          "quiero gestación subrogada",
-          "estoy interesado en subrogacion",
-          "estoy interesado en subrogación",
-          "quero subrogação",
-          "quero gestação de substituição",
-          "estou interessado em subrogação"
-        ],
-        "say": [
-          "Perfect."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [
-          "[svc] = 'surrogacy'"
-        ],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "CL__CL_ASK_NAT",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_IVF",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "I want IVF",
-          "I am interested in IVF",
-          "I want in vitro fertilization",
-          "I want ROPA method",
-          "quiero fiv",
-          "estoy interesado en fiv",
-          "quiero fertilizacion in vitro",
-          "quiero fertilización in vitro",
-          "quiero metodo ropa",
-          "quiero método ropa",
-          "quero fiv",
-          "estou interessado em fiv",
-          "quero fertilização in vitro",
-          "quero metodo ropa",
-          "quero método ropa"
-        ],
-        "say": [
-          "Perfect."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [
-          "[svc] = 'ivf'"
-        ],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "CL__CL_ASK_GO",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
         "node_id": "H_NO_INT",
         "node_type": "message",
         "goal": [],
         "do": [],
         "trigger": [
+          "the contact says they are not interested in the services at all or do not want to continue the conversation (never when they only decline the appointment, never a question)",
           "I am not interested",
           "I don't want to continue",
           "no me interesa",
@@ -9697,6 +9616,7 @@
           "If the latest user message clearly requests to speak English or says they do not speak Spanish/Portuguese (e.g., 'I don't speak Spanish', 'speak in English', 'in English please'), set [preferred_language] = 'English' now before speaking."
         ],
         "trigger": [
+          "the contact explicitly asks to switch the language of the conversation, or says they do not speak or understand the current language (never a plain 'I did not understand' about the content, which is H_REPEAT)",
           "prefiero que me hables en español",
           "prefiero que me hables en ingles",
           "prefiero que me hables en portugués",
@@ -9758,10 +9678,7 @@
           "mudar para espanhol",
           "change language",
           "cambiar idioma",
-          "mudar idioma",
-          "i dont understand",
-          "no entiendo",
-          "não entendo"
+          "mudar idioma"
         ],
         "say": [],
         "say_verbatim": false,
@@ -9842,121 +9759,12 @@
         "fallback": []
       },
       {
-        "node_id": "H_REPEAT",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "can you repeat that",
-          "I did not understand",
-          "I don't understand",
-          "what did you mean",
-          "puedes repetir eso",
-          "no entendi",
-          "no entendí",
-          "que quisiste decir",
-          "qué quisiste decir",
-          "pode repetir",
-          "não entendi",
-          "o que você quis dizer"
-        ],
-        "say": [
-          "Sure, I'll repeat it for you."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "[current_state]",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_ADVISOR_Q",
-        "node_type": "decision",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "a question about the treatment process, legal aspects, medical details or program specifics that a human advisor should answer, only when no FAQ or other handler covers it (never for questions about requirements, documents, duration, prices, guarantees or the advisor)"
-        ],
-        "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "AH__AH_S",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_PRICE",
-        "node_type": "decision",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "a question about the price, cost, value or budget of a treatment or program, instead of answering what was just asked",
-          "how much does it cost",
-          "what is the price",
-          "what are the prices",
-          "how much is the process",
-          "what is the budget",
-          "cuanto cuesta",
-          "cuánto cuesta",
-          "cuál es el precio",
-          "cuáles son los precios",
-          "cuanto vale el proceso",
-          "cuánto vale el proceso",
-          "precio",
-          "costos",
-          "valor del proceso",
-          "presupuesto",
-          "quanto custa",
-          "qual é o preço",
-          "quais são os preços",
-          "quanto vale o processo",
-          "custos",
-          "valor do processo",
-          "orçamento"
-        ],
-        "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "AH__AH_S",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
         "node_id": "H_TALK_TO_HUMAN",
         "node_type": "decision",
         "goal": [],
         "do": [],
         "trigger": [
+          "the contact asks to be put in touch with, or to talk to, a human advisor or a real person (never a question asking whether they are talking to a person or a bot, or who is writing)",
           "talk to a human",
           "talk to an agent",
           "talk to a person",
@@ -9990,56 +9798,6 @@
           "falar com agente"
         ],
         "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [
-          "[appt_svc] = [svc]"
-        ],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "SC__SC_S",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_SCHEDULE",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "the contact asks to book, schedule or set up an appointment, consultation or call without naming a service, instead of answering what was just asked",
-          "I want to schedule an appointment",
-          "I want to book an appointment",
-          "I would like to book a consultation",
-          "I need an appointment",
-          "can I schedule an appointment",
-          "quiero agendar una cita",
-          "quiero programar una cita",
-          "quiero reservar una cita",
-          "quiero agendar una asesoria",
-          "quiero agendar una asesoría",
-          "necesito una cita",
-          "me gustaria agendar una cita",
-          "me gustaría agendar una cita",
-          "agendame una cita",
-          "agéndame una cita",
-          "podemos agendar una cita",
-          "quero agendar uma consulta",
-          "quero marcar uma consulta",
-          "quero agendar uma consultoria",
-          "preciso de uma consulta",
-          "gostaria de agendar uma consulta"
-        ],
-        "say": [
-          "Of course, let's schedule your appointment."
-        ],
         "say_verbatim": false,
         "execute": null,
         "store": [
@@ -10140,6 +9898,259 @@
           }
         ],
         "fallback": []
+      },
+      {
+        "node_id": "H_SCHEDULE",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact asks to book, schedule or set up an appointment, consultation or call without naming a service, instead of answering what was just asked",
+          "I want to schedule an appointment",
+          "I want to book an appointment",
+          "I would like to book a consultation",
+          "I need an appointment",
+          "can I schedule an appointment",
+          "quiero agendar una cita",
+          "quiero programar una cita",
+          "quiero reservar una cita",
+          "quiero agendar una asesoria",
+          "quiero agendar una asesoría",
+          "necesito una cita",
+          "me gustaria agendar una cita",
+          "me gustaría agendar una cita",
+          "agendame una cita",
+          "agéndame una cita",
+          "podemos agendar una cita",
+          "quero agendar uma consulta",
+          "quero marcar uma consulta",
+          "quero agendar uma consultoria",
+          "preciso de uma consulta",
+          "gostaria de agendar uma consulta"
+        ],
+        "say": [
+          "Of course, let's schedule your appointment."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_SUR",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact says they want gestational surrogacy for their own family (never someone who wants to be the surrogate, never a request to book an appointment, never a question asking what surrogacy is or how it works)",
+          "I want surrogacy",
+          "I want gestational surrogacy",
+          "I am interested in surrogacy",
+          "quiero subrogacion",
+          "quiero subrogación",
+          "quiero gestacion subrogada",
+          "quiero gestación subrogada",
+          "estoy interesado en subrogacion",
+          "estoy interesado en subrogación",
+          "quero subrogação",
+          "quero gestação de substituição",
+          "estou interessado em subrogação"
+        ],
+        "say": [
+          "Perfect."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = 'surrogacy'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_ASK_NAT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_IVF",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact says they want IVF or the ROPA method for themselves (never a request to book an appointment, never a question asking what IVF or ROPA is or how it works)",
+          "I want IVF",
+          "I am interested in IVF",
+          "I want in vitro fertilization",
+          "I want ROPA method",
+          "quiero fiv",
+          "estoy interesado en fiv",
+          "quiero fertilizacion in vitro",
+          "quiero fertilización in vitro",
+          "quiero metodo ropa",
+          "quiero método ropa",
+          "quero fiv",
+          "estou interessado em fiv",
+          "quero fertilização in vitro",
+          "quero metodo ropa",
+          "quero método ropa"
+        ],
+        "say": [
+          "Perfect."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = 'ivf'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "CL__CL_ASK_GO",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_PRICE",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "a question about the price, cost, value or budget of a treatment or program, instead of answering what was just asked (never a question about duration or time, documents, guarantees or what a treatment is)",
+          "how much does it cost",
+          "what is the price",
+          "what are the prices",
+          "how much is the process",
+          "what is the budget",
+          "cuanto cuesta",
+          "cuánto cuesta",
+          "cuál es el precio",
+          "cuáles son los precios",
+          "cuanto vale el proceso",
+          "cuánto vale el proceso",
+          "precio",
+          "costos",
+          "valor del proceso",
+          "presupuesto",
+          "cuanto cobran",
+          "cuánto cobran",
+          "cuanto sale",
+          "cuánto sale",
+          "tarifas",
+          "cuanto me saldria",
+          "cuánto me saldría",
+          "quanto custa",
+          "qual é o preço",
+          "quais são os preços",
+          "quanto vale o processo",
+          "custos",
+          "valor do processo",
+          "orçamento"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_REPEAT",
+        "node_type": "message",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "the contact did not understand the last message and asks to repeat or rephrase it (never a request to switch the language)",
+          "can you repeat that",
+          "I did not understand",
+          "I don't understand",
+          "what did you mean",
+          "puedes repetir eso",
+          "no entendi",
+          "no entendí",
+          "que quisiste decir",
+          "qué quisiste decir",
+          "pode repetir",
+          "não entendi",
+          "o que você quis dizer"
+        ],
+        "say": [
+          "Sure, I'll repeat it for you."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "[current_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "H_ADVISOR_Q",
+        "node_type": "decision",
+        "goal": [],
+        "do": [],
+        "trigger": [
+          "a question about the treatment process, legal aspects, medical details or program specifics that a human advisor should answer, only when no FAQ or other handler covers it (never for questions about requirements, documents, duration, prices, guarantees, the advisor, what IVF, ROPA or surrogacy are, or a request to talk to a human)"
+        ],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       }
     ],
     "faqs": [
@@ -10150,163 +10161,6 @@
         ],
         "say": [
           "I cannot fulfill that request. I am an AI assistant. Can I help you with anything else?"
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_LGBTQ",
-        "match": [
-          "gay couple",
-          "same-sex couple",
-          "do you accept same-sex couples",
-          "homoparental",
-          "lgbt",
-          "pareja gay",
-          "pareja del mismo sexo",
-          "aceptan parejas del mismo sexo",
-          "pareja homoparental",
-          "casal gay",
-          "casal do mesmo sexo",
-          "aceitam casais do mesmo sexo",
-          "casal homoafetivo"
-        ],
-        "say": [
-          "Yes. We accompany same-sex couples within the programs approved by Family Aims."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_SOLO",
-        "match": [
-          "single father",
-          "single mother",
-          "single person",
-          "can I do it alone",
-          "padre soltero",
-          "madre soltera",
-          "persona soltera",
-          "puedo hacerlo solo",
-          "puedo hacerlo sola",
-          "pai solteiro",
-          "mãe solteira",
-          "pessoa solteira",
-          "posso fazer sozinho",
-          "posso fazer sozinha"
-        ],
-        "say": [
-          "Yes. Family Aims accompanies both couples and some individual profiles, such as single fathers or single mothers, depending on the program and the most suitable country."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_ADOPTION",
-        "match": [
-          "do you do adoptions",
-          "do you offer adoption",
-          "adoption",
-          "can I adopt",
-          "hacen adopciones",
-          "realizan adopciones",
-          "adopcion",
-          "adopción",
-          "puedo adoptar",
-          "fazem adoções",
-          "vocês fazem adoção",
-          "adoção",
-          "posso adotar"
-        ],
-        "say": [
-          "Thank you so much for asking. We don't offer adoptions, as our work focuses on fertility treatments and surrogacy. We completely understand that every path to building a family is special, and if you'd like, I can tell you about the options we do offer."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_SW_MX",
-        "match": [
-          "single woman",
-          "I am a single woman",
-          "double donation",
-          "mujer soltera",
-          "soy una mujer soltera",
-          "doble donacion",
-          "doble donación",
-          "mulher solteira",
-          "sou uma mulher solteira",
-          "doação dupla"
-        ],
-        "say": [
-          "For single women, the destination that best fits is Mexico, where it is possible to accompany that process."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_VISA",
-        "match": [
-          "do I need a visa",
-          "can I enter Colombia",
-          "Colombia visa",
-          "passport eligible",
-          "necesito visa",
-          "puedo entrar a colombia",
-          "visa para colombia",
-          "pasaporte elegible",
-          "requiere visa",
-          "preciso de visto",
-          "posso entrar na colômbia",
-          "visto para a colômbia",
-          "passaporte elegível"
-        ],
-        "say": [
-          "Migration eligibility for surrogacy in Colombia is reviewed based on the reported nationality and, in some cases, whether you have a valid USA or Schengen visa."
-        ],
-        "say_verbatim": false,
-        "resume_to": null
-      },
-      {
-        "faq_id": "F_FOREIGN",
-        "match": [
-          "I live outside Colombia",
-          "I am a foreigner",
-          "I live abroad",
-          "I am outside Colombia",
-          "vivo fuera de colombia",
-          "soy extranjero",
-          "vivo en el exterior",
-          "estoy fuera de colombia",
-          "moro fora da colômbia",
-          "sou estrangeiro",
-          "moro no exterior",
-          "estou fora da colômbia"
-        ],
-        "say": [
-          "Yes. We accompany both international patients and local residents, always within the conditions approved for each program."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_REQ_DOCS",
-        "match": [
-          "any question about the initial requirements, documents or what is needed to start (never an answer to the question the agent just asked, even if it is only a question)",
-          "what documents do you need",
-          "initial requirements",
-          "what do I need to start",
-          "que documentos necesitan",
-          "qué documentos necesitan",
-          "requisitos iniciales",
-          "que necesito para empezar",
-          "qué necesito para empezar",
-          "quais documentos precisam",
-          "requisitos iniciais",
-          "o que preciso para começar"
-        ],
-        "say": [
-          "To start, we first need to place your case in the correct program. Specific documents are reviewed with you during the advisory session."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -10337,24 +10191,447 @@
         "resume_to": "[current_state]"
       },
       {
+        "faq_id": "F_TIME",
+        "match": [
+          "any question about how long or how much time the process or treatment takes (never an answer to the question the agent just asked, even if it is only a question; never about prices)",
+          "how long does surrogacy last",
+          "process time",
+          "treatment duration",
+          "how long does IVF take",
+          "stimulation time",
+          "surrogacy timeline",
+          "how long will it take",
+          "how long does the whole process take",
+          "process duration",
+          "cuanto dura la subrogacion",
+          "cuánto dura la subrogación",
+          "tiempo del proceso",
+          "duracion del tratamiento",
+          "duración del tratamiento",
+          "cuanto tarda la fiv",
+          "cuánto tarda la fiv",
+          "tiempo de estimulacion",
+          "tiempo de estimulación",
+          "cronograma de subrogacion",
+          "cronograma de subrogación",
+          "duracion del proceso",
+          "cuanto se demora",
+          "cuánto se demora",
+          "cuanto demora",
+          "cuánto demora",
+          "cuanto tarda el proceso",
+          "cuánto tarda el proceso",
+          "duración del proceso",
+          "quanto tempo dura a subrogação",
+          "tempo do processo",
+          "duração do tratamento",
+          "quanto tempo leva a fiv",
+          "tempo de estimulação",
+          "cronograma da subrogação",
+          "duração do processo",
+          "quanto demora",
+          "quanto tempo leva"
+        ],
+        "say": [
+          "The estimated duration of the process depends on the treatment:",
+          "- Surrogacy: approximately 24 months.",
+          "- IVF (stimulation in Colombia): between 20 and 30 days, including extraction.",
+          "- IVF (if already stimulated): between 10 and 15 days.",
+          "In IVF treatments, the second phase is the embryo transfer."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_REQ_DOCS",
+        "match": [
+          "any question about the initial requirements, documents or what is needed to start (never an answer to the question the agent just asked, even if it is only a question)",
+          "what documents do you need",
+          "initial requirements",
+          "what do I need to start",
+          "que documentos necesitan",
+          "qué documentos necesitan",
+          "requisitos iniciales",
+          "que necesito para empezar",
+          "qué necesito para empezar",
+          "quais documentos precisam",
+          "requisitos iniciais",
+          "o que preciso para começar"
+        ],
+        "say": [
+          "To start, we first need to place your case in the correct program. Specific documents are reviewed with you during the advisory session."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_NEXT_STEPS",
+        "match": [
+          "what steps should I follow",
+          "how do I start",
+          "what comes next after this",
+          "what are the next steps",
+          "que pasos debo seguir",
+          "qué pasos debo seguir",
+          "como empiezo",
+          "cómo empiezo",
+          "que sigue despues de esto",
+          "qué sigue después de esto",
+          "cuales son los proximos pasos",
+          "cuáles son los próximos pasos",
+          "quais passos devo seguir",
+          "como começo",
+          "o que vem depois disso",
+          "quais são os próximos passos"
+        ],
+        "say": [
+          "The next steps are simple: you talk to your advisor about your specific situation, they resolve all your specific doubts, and then you define together how to proceed — that's why it's so important to schedule that first talk."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_LGBTQ",
+        "match": [
+          "gay couple",
+          "same-sex couple",
+          "do you accept same-sex couples",
+          "homoparental",
+          "lgbt",
+          "pareja gay",
+          "pareja del mismo sexo",
+          "aceptan parejas del mismo sexo",
+          "pareja homoparental",
+          "casal gay",
+          "casal do mesmo sexo",
+          "aceitam casais do mesmo sexo",
+          "casal homoafetivo"
+        ],
+        "say": [
+          "Yes. We accompany same-sex couples within the programs approved by Family Aims."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_SOLO",
+        "match": [
+          "a single father, single mother or single person asking whether they can do the process without a partner (a woman asking which country suits her is F_SW_MX)",
+          "single father",
+          "single mother",
+          "single person",
+          "can I do it alone",
+          "padre soltero",
+          "madre soltera",
+          "persona soltera",
+          "puedo hacerlo solo",
+          "puedo hacerlo sola",
+          "pai solteiro",
+          "mãe solteira",
+          "pessoa solteira",
+          "posso fazer sozinho",
+          "posso fazer sozinha"
+        ],
+        "say": [
+          "Yes. Family Aims accompanies both couples and some individual profiles, such as single fathers or single mothers, depending on the program and the most suitable country."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_SW_MX",
+        "match": [
+          "a single woman or a woman without a partner asking which country or destination fits her",
+          "single woman",
+          "I am a single woman",
+          "double donation",
+          "mujer soltera",
+          "soy una mujer soltera",
+          "doble donacion",
+          "doble donación",
+          "mulher solteira",
+          "sou uma mulher solteira",
+          "doação dupla"
+        ],
+        "say": [
+          "For single women, the destination that best fits is Mexico, where it is possible to accompany that process."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_FOREIGN",
+        "match": [
+          "I live outside Colombia",
+          "I am a foreigner",
+          "I live abroad",
+          "I am outside Colombia",
+          "vivo fuera de colombia",
+          "soy extranjero",
+          "vivo en el exterior",
+          "estoy fuera de colombia",
+          "moro fora da colômbia",
+          "sou estrangeiro",
+          "moro no exterior",
+          "estou fora da colômbia"
+        ],
+        "say": [
+          "Yes. We accompany both international patients and local residents, always within the conditions approved for each program."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_VISA",
+        "match": [
+          "do I need a visa",
+          "can I enter Colombia",
+          "Colombia visa",
+          "passport eligible",
+          "necesito visa",
+          "puedo entrar a colombia",
+          "visa para colombia",
+          "pasaporte elegible",
+          "requiere visa",
+          "preciso de visto",
+          "posso entrar na colômbia",
+          "visto para a colômbia",
+          "passaporte elegível"
+        ],
+        "say": [
+          "Migration eligibility for surrogacy in Colombia is reviewed based on the reported nationality and, in some cases, whether you have a valid USA or Schengen visa."
+        ],
+        "say_verbatim": false,
+        "resume_to": null
+      },
+      {
+        "faq_id": "F_ADOPTION",
+        "match": [
+          "do you do adoptions",
+          "do you offer adoption",
+          "adoption",
+          "can I adopt",
+          "hacen adopciones",
+          "realizan adopciones",
+          "adopcion",
+          "adopción",
+          "puedo adoptar",
+          "fazem adoções",
+          "vocês fazem adoção",
+          "adoção",
+          "posso adotar"
+        ],
+        "say": [
+          "Thank you so much for asking. We don't offer adoptions, as our work focuses on fertility treatments and surrogacy. We completely understand that every path to building a family is special, and if you'd like, I can tell you about the options we do offer."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_FIV",
+        "match": [
+          "any question asking what in vitro fertilization is, how it works or what the procedure involves (never the ROPA method, never about duration or price)",
+          "what is IVF",
+          "what is in vitro fertilization",
+          "explain in vitro fertilization",
+          "how does IVF work",
+          "how is IVF done",
+          "what does the IVF procedure involve",
+          "que es fiv",
+          "qué es fiv",
+          "que es la fiv",
+          "qué es la fiv",
+          "fertilizacion in vitro",
+          "fertilización in vitro",
+          "explicame fiv",
+          "explícame fiv",
+          "explicame la fiv",
+          "explícame la fiv",
+          "como funciona la fiv",
+          "cómo funciona la fiv",
+          "en que consiste la fiv",
+          "en qué consiste la fertilización in vitro",
+          "procedimiento de fiv",
+          "cómo es el procedimiento de fiv",
+          "o que é fiv",
+          "o que e fiv",
+          "o que é fertilização in vitro",
+          "o que e fertilizacao in vitro",
+          "fertilização in vitro",
+          "fertilizacao in vitro",
+          "explique fiv",
+          "como funciona a fiv",
+          "em que consiste a fiv"
+        ],
+        "say": [
+          "In vitro fertilization is an assisted reproduction technique in which eggs and sperm are joined in the laboratory to form embryos.\n\nDepending on the case, it can be performed with own or donated genetic material."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_ROPA",
+        "match": [
+          "any question asking what the ROPA method is or how it works, only when the ROPA method is named (never general IVF)",
+          "what is the ROPA method",
+          "explain ROPA",
+          "ROPA method",
+          "metodo ropa",
+          "método ropa",
+          "que es el metodo ropa",
+          "qué es el método ropa",
+          "aclarame el metodo ropa",
+          "aclárame el método ropa",
+          "explicame el metodo ropa",
+          "explícame el método ropa",
+          "método ropa",
+          "metodo ropa",
+          "o que é o método ropa",
+          "o que e o metodo ropa",
+          "explique o método ropa"
+        ],
+        "say": [
+          "The ROPA method is an assisted reproduction treatment for female couples where one partner provides the eggs and the other carries the pregnancy, allowing both to participate biologically in the process."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_SUR",
+        "match": [
+          "any question asking what surrogacy is or how it works (never someone who wants to be the surrogate, never about price or duration)",
+          "what is surrogacy",
+          "explain gestational surrogacy",
+          "gestational surrogacy",
+          "surrogacy in Colombia",
+          "surrogacy in Mexico",
+          "how does surrogacy work",
+          "que es la subrogacion",
+          "qué es la subrogación",
+          "gestacion subrogada",
+          "gestación subrogada",
+          "como funciona la subrogacion",
+          "cómo funciona la subrogación",
+          "o que é a subrogação",
+          "o que e a subrogacao",
+          "gestação de substituição",
+          "gestacao de substituicao",
+          "como funciona a subrogação",
+          "como funciona a subrogacao"
+        ],
+        "say": [
+          "Surrogacy is an assisted reproduction process in which a surrogate carries the pregnancy for the person or couple who wishes to form their family. The exact path depends on the case and the suitable country."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_PRIV",
+        "match": [
+          "my data",
+          "privacy",
+          "how do you handle my information",
+          "mis datos",
+          "privacidad",
+          "como manejan mi informacion",
+          "cómo manejan mi información",
+          "meus dados",
+          "privacidade",
+          "como tratam minhas informações",
+          "como tratam minhas informacoes"
+        ],
+        "say": [
+          "Your data is handled confidentially according to <DATA_LAW_REFERENCE> in Colombia and is used only to manage your care."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
         "faq_id": "F_ADVISOR",
         "match": [
+          "the contact asks whether they are talking to a bot, an AI or a real person, or who will help them (never a request to be transferred to a human)",
           "who helps me",
-          "human advisor",
-          "real person",
-          "human specialist",
+          "are you a bot",
+          "are you a robot",
+          "am I talking to a person or a bot",
+          "am I talking to a real person",
+          "are you human",
           "quien me ayuda",
           "quién me ayuda",
-          "asesor humano",
-          "persona real",
-          "especialista humano",
+          "eres un robot",
+          "eres un bot",
+          "hablo con una persona o con un bot",
+          "estoy hablando con una persona real",
+          "eres una persona real",
+          "eres humano",
           "quem me ajuda",
-          "assessor humano",
-          "pessoa real",
+          "você é um robô",
+          "estou falando com uma pessoa ou um robô",
+          "você é uma pessoa real",
+          "você é humano",
           "especialista humano"
         ],
         "say": [
           "I am an AI assistant that helps with initial orientation and scheduling. Personalized advisory is led by a human specialist from the commercial team."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_WHO",
+        "match": [
+          "who are you",
+          "who is writing to me",
+          "who is contacting me",
+          "who am I talking to",
+          "quien eres",
+          "quién eres",
+          "quien me escribe",
+          "quién me escribe",
+          "quien me contacta",
+          "quién me contacta",
+          "con quien hablo",
+          "con quién hablo",
+          "quem é você",
+          "quem esta me escrevendo",
+          "quem está me escrevendo",
+          "quem esta me contactando",
+          "quem está me contactando",
+          "com quem falo"
+        ],
+        "say": [
+          "I am <AGENT_NAME>, an AI assistant for <COMPANY_NAME>. I am here to guide the initial conversation and help you define the next step with the commercial team."
+        ],
+        "say_verbatim": false,
+        "resume_to": "[current_state]"
+      },
+      {
+        "faq_id": "F_WHY",
+        "match": [
+          "why are you writing to me",
+          "why am I being contacted",
+          "what is the reason for the message",
+          "how did you get my number",
+          "how did you get my data",
+          "por que me escribes",
+          "por qué me escribes",
+          "por que me contactan",
+          "por qué me contactan",
+          "cual es el motivo del mensaje",
+          "cuál es el motivo del mensaje",
+          "por que tienen mi numero",
+          "por qué tienen mi número",
+          "como consiguieron mis datos",
+          "cómo consiguieron mis datos",
+          "por que você está me escrevendo",
+          "por que voce esta me escrevendo",
+          "por que estão me contactando",
+          "por que estao me contactando",
+          "qual o motivo da mensagem",
+          "como conseguiram meu numero"
+        ],
+        "say": [
+          "I am writing to you because we received your information and we know you are interested in learning more about our fertility treatments."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
@@ -10384,180 +10661,6 @@
         "resume_to": "[current_state]"
       },
       {
-        "faq_id": "F_WHO",
-        "match": [
-          "who are you",
-          "who is writing to me",
-          "who is contacting me",
-          "quien eres",
-          "quién eres",
-          "quien me escribe",
-          "quién me escribe",
-          "quien me contacta",
-          "quién me contacta",
-          "quem é você",
-          "quem esta me escrevendo",
-          "quem está me escrevendo",
-          "quem esta me contactando",
-          "quem está me contactando"
-        ],
-        "say": [
-          "I am <AGENT_NAME>, an AI assistant for <COMPANY_NAME>. I am here to guide the initial conversation and help you define the next step with the commercial team."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_WHY",
-        "match": [
-          "why are you writing to me",
-          "why am I being contacted",
-          "what is the reason for the message",
-          "por que me escribes",
-          "por qué me escribes",
-          "por que me contactan",
-          "por qué me contactan",
-          "cual es el motivo del mensaje",
-          "cuál es el motivo del mensaje",
-          "por que você está me escrevendo",
-          "por que voce esta me escrevendo",
-          "por que estão me contactando",
-          "por que estao me contactando",
-          "qual o motivo da mensagem"
-        ],
-        "say": [
-          "I am writing to you because we received your information and we know you are interested in learning more about our fertility treatments."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_FIV",
-        "match": [
-          "what is IVF",
-          "what is in vitro fertilization",
-          "explain in vitro fertilization",
-          "que es fiv",
-          "qué es fiv",
-          "que es la fiv",
-          "qué es la fiv",
-          "fertilizacion in vitro",
-          "fertilización in vitro",
-          "explicame fiv",
-          "explícame fiv",
-          "explicame la fiv",
-          "explícame la fiv",
-          "o que é fiv",
-          "o que e fiv",
-          "o que é fertilização in vitro",
-          "o que e fertilizacao in vitro",
-          "fertilização in vitro",
-          "fertilizacao in vitro",
-          "explique fiv"
-        ],
-        "say": [
-          "In vitro fertilization is an assisted reproduction technique in which eggs and sperm are joined in the laboratory to form embryos.\n\nDepending on the case, it can be performed with own or donated genetic material."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_ROPA",
-        "match": [
-          "what is the ROPA method",
-          "explain ROPA",
-          "ROPA method",
-          "metodo ropa",
-          "método ropa",
-          "que es el metodo ropa",
-          "qué es el método ropa",
-          "aclarame el metodo ropa",
-          "aclárame el método ropa",
-          "explicame el metodo ropa",
-          "explícame el método ropa",
-          "método ropa",
-          "metodo ropa",
-          "o que é o método ropa",
-          "o que e o metodo ropa",
-          "explique o método ropa"
-        ],
-        "say": [
-          "The ROPA method is an assisted reproduction treatment for female couples where one partner provides the eggs and the other carries the pregnancy, allowing both to participate biologically in the process."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_SUR",
-        "match": [
-          "what is surrogacy",
-          "explain gestational surrogacy",
-          "gestational surrogacy",
-          "surrogacy in Colombia",
-          "surrogacy in Mexico",
-          "how does surrogacy work",
-          "que es la subrogacion",
-          "qué es la subrogación",
-          "gestacion subrogada",
-          "gestación subrogada",
-          "como funciona la subrogacion",
-          "cómo funciona la subrogación",
-          "o que é a subrogação",
-          "o que e a subrogacao",
-          "gestação de substituição",
-          "gestacao de substituicao",
-          "como funciona a subrogação",
-          "como funciona a subrogacao"
-        ],
-        "say": [
-          "Surrogacy is an assisted reproduction process in which a surrogate carries the pregnancy for the person or couple who wishes to form their family. The exact path depends on the case and the suitable country."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_TIME",
-        "match": [
-          "any question about how long or how much time the process or treatment takes (never an answer to the question the agent just asked, even if it is only a question)",
-          "how long does surrogacy last",
-          "process time",
-          "treatment duration",
-          "how long does IVF take",
-          "stimulation time",
-          "surrogacy timeline",
-          "process duration",
-          "cuanto dura la subrogacion",
-          "cuánto dura la subrogación",
-          "tiempo del proceso",
-          "duracion del tratamiento",
-          "duración del tratamiento",
-          "cuanto tarda la fiv",
-          "cuánto tarda la fiv",
-          "tiempo de estimulacion",
-          "tiempo de estimulación",
-          "cronograma de subrogacion",
-          "cronograma de subrogación",
-          "duracion del proceso",
-          "duración del proceso",
-          "quanto tempo dura a subrogação",
-          "tempo do processo",
-          "duração do tratamento",
-          "quanto tempo leva a fiv",
-          "tempo de estimulação",
-          "cronograma da subrogação",
-          "duração do processo"
-        ],
-        "say": [
-          "The estimated duration of the process depends on the treatment:",
-          "- Surrogacy: approximately 24 months.",
-          "- IVF (stimulation in Colombia): between 20 and 30 days, including extraction.",
-          "- IVF (if already stimulated): between 10 and 15 days.",
-          "In IVF treatments, the second phase is the embryo transfer."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
         "faq_id": "F_ERROR",
         "match": [
           "network error",
@@ -10577,53 +10680,6 @@
         ],
         "say": [
           "I apologize for the inconvenience. If you experience a network or technical error, please try refreshing the conversation. If the problem persists, our human team will contact you soon for support."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_PRIV",
-        "match": [
-          "my data",
-          "privacy",
-          "how do you handle my information",
-          "mis datos",
-          "privacidad",
-          "como manejan mi informacion",
-          "cómo manejan mi información",
-          "meus dados",
-          "privacidade",
-          "como tratam minhas informações",
-          "como tratam minhas informacoes"
-        ],
-        "say": [
-          "Your data is handled confidentially according to <DATA_LAW_REFERENCE> in Colombia and is used only to manage your care."
-        ],
-        "say_verbatim": false,
-        "resume_to": "[current_state]"
-      },
-      {
-        "faq_id": "F_NEXT_STEPS",
-        "match": [
-          "what steps should I follow",
-          "how do I start",
-          "what comes next after this",
-          "what are the next steps",
-          "que pasos debo seguir",
-          "qué pasos debo seguir",
-          "como empiezo",
-          "cómo empiezo",
-          "que sigue despues de esto",
-          "qué sigue después de esto",
-          "cuales son los proximos pasos",
-          "cuáles son los próximos pasos",
-          "quais passos devo seguir",
-          "como começo",
-          "o que vem depois disso",
-          "quais são os próximos passos"
-        ],
-        "say": [
-          "The next steps are simple: you talk to your advisor about your specific situation, they resolve all your specific doubts, and then you define together how to proceed — that's why it's so important to schedule that first talk."
         ],
         "say_verbatim": false,
         "resume_to": "[current_state]"
