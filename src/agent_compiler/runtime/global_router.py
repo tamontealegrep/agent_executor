@@ -184,7 +184,7 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
             "LANGUAGE PRIORITY & ALIGNMENT CHECK (HIGHEST PRIORITY):\n"
             "First, evaluate language alignment before classifying continuation or general interrupts:\n"
             f"1. Agent language written to user: {current_lang}\n"
-            f"2. User reply language or requested language in latest message: {ctx.last_user_message!r}\n"
+            "2. User reply language or requested language in the user's latest message (given below)\n"
             f"3. Are they the same language, or does [preferred_language] need to be updated?\n\n"
             "Rules for language update (in order of priority):\n"
             "Priority 1 - Explicit Request: If the user explicitly asks to switch language "
@@ -212,8 +212,6 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
         "reply continue answering it normally, in the context of the recent "
         "conversation — or does it match one of the global interrupts listed below "
         "(things the agent should handle regardless of what it just asked)?\n\n"
-        f"{ctx.block()}"
-        f"{question_context}"
         f"{language_priority}"
         f"Global interrupts:\n{candidate_lines}\n\n"
         "A reply that directly and plausibly answers the pending question is always "
@@ -229,6 +227,8 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
         "an interrupt, however short, even when it names a treatment the pending question also "
         "asks about (\"quiero agendar una cita de fiv\" does not answer a question about "
         "which service they want).\n\n"
+        f"{ctx.block()}"
+        f"{question_context}"
         f"Reply with just {response_options}."
     )
     decision = llm_client.complete(prompt).strip().upper()
@@ -272,8 +272,6 @@ Stage 2: pick the matching handler/FAQ, if any.
         "been judged to be something other than a normal answer to that question — "
         "which of these global interrupts (things the agent should handle regardless "
         "of what it just asked) does it actually match?\n\n"
-        f"{ctx.block()}"
-        f"{question_context}"
         f"Candidates:\n{candidate_lines}\n\n"
         "Only match when the reply is clearly, unambiguously one of these — reply "
         "NONE rather than force a match if none genuinely fits.\n\n"
@@ -283,6 +281,8 @@ Stage 2: pick the matching handler/FAQ, if any.
         "not a request to book. A candidate whose phrases include a \"(never ...)\" clause "
         "is ruled out for what that clause names. When several candidates fit, prefer the "
         "most specific one.\n\n"
+        f"{ctx.block()}"
+        f"{question_context}"
         "Reply with just the number, or NONE if none apply."
     )
     text = llm_client.complete(prompt)
