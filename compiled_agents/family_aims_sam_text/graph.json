@@ -6470,7 +6470,7 @@
         "node_type": "question",
         "goal": [
           "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one.",
-          "Capture 'yes' only if the lead accepts scheduling a conversation with an advisor. Capture 'no' for any other reply that does not accept it: a refusal, a thank-you, 'not now', 'I will think about it', or any sign that they are not interested in talking to an advisor, however it is worded."
+          "Capture 'yes' only if the lead accepts scheduling a conversation with an advisor. Capture 'no' for any other reply that does not accept it: a refusal, 'not now', 'I will think about it', or any sign that they are not interested in talking to an advisor, however it is worded."
         ],
         "do": [],
         "trigger": [],
