@@ -766,6 +766,7 @@
           "event_id = [am__app].event_id",
           "calendar_type = [am__app].calendar_type",
           "new_start_date = [am__new_slot].start_co",
+          "If [am__new_slot] is not itself an object, take new_start_date from the start_co of the matching object in [am__available_slots].",
           "iana_timezone = [user_timezone] ?? 'America/Bogota'",
           "language = [preferred_language] in uppercase ('EN', 'ES', or 'PT')"
         ],
@@ -8025,7 +8026,7 @@
         ],
         "do": [
           "[sc__slot_try] = [sc__slot_try] + 1",
-          "Map [sc__slot] to the exact object in [sc__available_slots] whose start_local is on the date [sc__day]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co and end_co."
+          "Map [sc__slot] to the exact object in [sc__available_slots] whose start_local is on the date [sc__day]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co."
         ],
         "trigger": [],
         "say": [],

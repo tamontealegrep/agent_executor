@@ -23,15 +23,30 @@ The availability lists hold hundreds of slot objects and were copied into every 
 prompt, which put 50-100k input tokens on the last turns of a scheduling conversation."""
 
 
+_SLOT_END_FIELDS = ("end_co", "end_local")
+
+
+def _without_slot_ends(value: Any) -> Any:
+    """A list of appointment slots without their end times (a slot ends a fixed duration after it starts)."""
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, dict) and "start_co" in item and "start_local" in item for item in value)
+    ):
+        return [{k: v for k, v in item.items() if k not in _SLOT_END_FIELDS} for item in value]
+    return value
+
+
 def _slots_for_prompt(slots: dict[str, Any], referenced: str) -> dict[str, Any]:
     shown: dict[str, Any] = {}
+    ends_named = any(field in referenced for field in _SLOT_END_FIELDS)
     for name, value in slots.items():
         text = json.dumps(value, default=str)
         if len(text) > LARGE_SLOT_CHARS and name not in referenced:
             size = f"{len(value)} items" if isinstance(value, (list, dict)) else f"{len(text)} characters"
             shown[name] = f"<set, {size}, left out of this prompt because it does not use it>"
         else:
-            shown[name] = value
+            shown[name] = value if ends_named else _without_slot_ends(value)
     return shown
 
 

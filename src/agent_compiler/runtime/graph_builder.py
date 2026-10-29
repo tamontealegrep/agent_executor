@@ -704,18 +704,32 @@ def _clean_phone(value: str) -> str | None:
     return phone if re.fullmatch(r"\+?\d{8,15}", phone) else None
 
 
-_SLOT_TIME_RE = re.compile(r"(?<!\d)(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap])?\.?m?\.?(?![a-z\d])", re.IGNORECASE)
+_SLOT_TIME_RE = re.compile(
+    r"(?<!\d)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*(?:([ap])\.?\s?m\b\.?|de la (ma[ñn]ana|tarde|noche)))?(?!\d)",
+    re.IGNORECASE,
+)
+_SLOT_HOUR_RE = re.compile(
+    r"(?<![\d:])(\d{1,2})\s*(?:([ap])\.?\s?m\b\.?|de la (ma[ñn]ana|tarde|noche))",
+    re.IGNORECASE,
+)
 
 
 def _clean_slot_time(value: str) -> str:
-    """The time inside what was captured ("9:40 am", a full timestamp) as 24-hour HH:MM; the text itself when it holds none."""
+    """The time inside what was captured ("9:40 am", "1:10 de la tarde", a full timestamp) as 24-hour HH:MM; the text itself when it holds none."""
     match = _SLOT_TIME_RE.search(value)
-    if match is None:
-        return value
-    hour, minute, meridiem = int(match.group(1)), match.group(2), (match.group(3) or "").lower()
-    if meridiem == "p" and hour < 12:
+    if match is not None:
+        hour, minute, meridiem, period = int(match.group(1)), match.group(2), match.group(3), match.group(4)
+    else:
+        match = _SLOT_HOUR_RE.search(value)
+        if match is None:
+            return value
+        hour, minute, meridiem, period = int(match.group(1)), "00", match.group(2), match.group(3)
+    word = (meridiem or (period or "")[:1]).lower()
+    if word in ("p", "t") and hour < 12:
         hour += 12
-    elif meridiem == "a" and hour == 12:
+    elif word == "n" and hour < 12:
+        hour = hour + 12 if hour >= 6 else hour
+    elif word == "a" and hour == 12:
         hour = 0
     return f"{hour:02d}:{minute}" if hour < 24 else value
 
