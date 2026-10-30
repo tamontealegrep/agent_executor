@@ -1355,7 +1355,7 @@ Swap each `{{contact.field}}` the contact has for an opaque `<CONTACT_FIELD>` to
 _PART_HEADINGS = frozenset(
         names[code].capitalize() for _, _, names in _PARTS_OF_DAY for code in names
 )
-_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐🗓└🌎]")
+_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐🗓├└🌎]")
 
 
 def _protect_lists(text: str, protected: dict[str, str]) -> str:

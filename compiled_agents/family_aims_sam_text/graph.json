@@ -8650,7 +8650,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Before creating the appointment, I confirm the summary:\n\n🗓️ [sc__day_full]\n└─ 🕐 [sc__slot] (24h)\n└─ 🌎 [sc__location_label]\n└─ 👤 [sc__c_name]\n└─ ✉️ [sc__c_email]\n└─ 📞 [sc__c_phone]"
+          "Before creating the appointment, I confirm the summary:\n\n🗓️ [sc__day_full]\n├─ 🕐 [sc__slot] (24h)\n├─ 🌎 [sc__location_label]\n├─ 👤 [sc__c_name]\n├─ ✉️ [sc__c_email]\n└─ 📞 [sc__c_phone]"
         ],
         "say_verbatim": false,
         "execute": null,
