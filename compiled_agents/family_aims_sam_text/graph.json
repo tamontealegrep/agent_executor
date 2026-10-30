@@ -8811,7 +8811,7 @@
         ],
         "do": [
           "If the contact gives a new name, phone, or email, set [sc__c_name], [sc__c_phone], or [sc__c_email] to it. If they only say they want to change one of them, set it to NULL.",
-          "If the contact gives a new time, set [sc__slot] to it written as 24-hour HH:MM (3 pm is 15:00). If they only say they want to change the time, set [sc__slot] to NULL.",
+          "If the contact gives a new time, set [sc__slot] to it written as 24-hour HH:MM when they give minutes or am/pm (3 pm is 15:00); a bare hour with no minutes and no am/pm (like 'a las 3') is copied as the number they wrote, never as am or pm. If they only say they want to change the time, set [sc__slot] to NULL.",
           "If the contact gives a new day, set [sc__day] to it written as YYYY-MM-DD and [sc__slot] to NULL. If they only say they want to change the day, set [sc__day] and [sc__slot] to NULL.",
           "If the contact changes their country or city, set [user_timezone], [sc__day], [sc__slot], and [sc__available_slots] to NULL."
         ],
@@ -8826,6 +8826,8 @@
           "[sc__ok] = NULL",
           "[sc__ok_try] = 0",
           "[sc__day_label] = DAY_LABEL [sc__day]",
+          "[sc__slot_raw] = [sc__slot]",
+          "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]",
           "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"
         ],
         "capture": [],
@@ -8889,6 +8891,13 @@
             "condition_text": "IF [sc__day] IS NULL -> GO_TO: SC__SC_DAYS",
             "is_mechanical": true,
             "python_expression": "sc__day is None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_BAD_TIME",
+            "condition_text": "IF [sc__slot] IS NULL AND [sc__slot_raw] IS NOT NULL -> GO_TO: SC__SC_BAD_TIME",
+            "is_mechanical": true,
+            "python_expression": "sc__slot is None and sc__slot_raw is not None",
             "reason": null
           },
           {
