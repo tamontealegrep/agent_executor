@@ -135,6 +135,7 @@ _STORE_RESOLVE_DAY_RE = re.compile(
 _STORE_RESOLVE_TIME_RE = re.compile(
     r"^RESOLVE_TIME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
 )
+_STORE_LOCATION_LABEL_RE = re.compile(r"^LOCATION_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -242,6 +243,13 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
     if resolve_time:
         reply, offered, day = (slots.get(resolve_time.group(i)) for i in (1, 2, 3))
         slots[name] = _resolve_time_reference(reply, offered, day)
+        return
+
+    location_label = _STORE_LOCATION_LABEL_RE.match(rhs)
+    if location_label:
+        slots[name] = _location_label(
+            llm_client, slots.get(location_label.group(1)), slots.get("user_timezone"), slots.get("preferred_language")
+        )
         return
 
     day_label = _STORE_DAY_LABEL_RE.match(rhs)
@@ -404,6 +412,28 @@ def _day_label(day: Any, language: Any) -> str | None:
     if code == "en":
         return f"{weekday}, {month} {date.day}"
     return f"{weekday} {date.day} de {month}"
+
+
+def _location_label(llm_client: LLMClient, location: Any, time_zone: Any, language: Any) -> str | None:
+    """
+    The country and city a contact wrote ("spian, sevila") as 'Country - City' in the conversation's language.
+
+    Only the names need a model: it fixes the spelling and gives each name in that language, which a
+    general instruction did not get right (an English conversation came back as 'España - Sevilla').
+    """
+    if not isinstance(location, str) or not location.strip():
+        return None
+    name = {"es": "Spanish", "en": "English", "pt": "Portuguese"}[_language_key(language) or "es"]
+    prompt = (
+        f"A contact wrote the country and city where they are as: {location.strip()!r} "
+        f"(their IANA time zone is {time_zone}).\n"
+        f"Write them as 'Country - City' in {name}: correct any spelling mistake and use the {name} name of the "
+        f"country and of the city, even if the contact wrote them in another language "
+        f"(for example Italy - Rome in English, Itália - Roma in Portuguese, Italia - Roma in Spanish).\n"
+        "Reply with only that text."
+    )
+    label = " ".join(llm_client.complete(prompt, temperature=0.0).strip().strip("\"'").split())
+    return label or None
 
 
 _MONTH_ABBREVIATIONS = {

@@ -7970,7 +7970,7 @@
           "[sc__day] = RESOLVE_DAY [sc__day] IN [sc__calendar] AMONG [sc__available_slots]",
           "[sc__day_label] = DAY_LABEL [sc__day]",
           "[sc__day_title] = DAY_TITLE [sc__day]",
-          "[sc__location_label] = The country and city in [sc__user_location] written as 'Country - City' in the language [preferred_language], with the spelling corrected and each name in that language (for example Italy - Rome in English, Itália - Roma in Portuguese, Italia - Roma in Spanish). If the location is unclear, use the country and city of [user_timezone]. Reply with only that text."
+          "[sc__location_label] = LOCATION_LABEL [sc__user_location]"
         ],
         "capture": [],
         "eval": "code",
@@ -8858,7 +8858,7 @@
           "[sc__ok_try] = 0",
           "[sc__day_label] = DAY_LABEL [sc__day]",
           "[sc__day_title] = DAY_TITLE [sc__day]",
-          "[sc__location_label] = The country and city in [sc__user_location] written as 'Country - City' in the language [preferred_language], with the spelling corrected and each name in that language (for example Italy - Rome in English, Itália - Roma in Portuguese, Italia - Roma in Spanish). If the location is unclear, use the country and city of [user_timezone]. Reply with only that text.",
+          "[sc__location_label] = LOCATION_LABEL [sc__user_location]",
           "[sc__slot_raw] = [sc__slot]",
           "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]",
           "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"
