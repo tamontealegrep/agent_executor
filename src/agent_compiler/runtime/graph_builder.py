@@ -136,7 +136,7 @@ _STORE_RESOLVE_TIME_RE = re.compile(
     r"^RESOLVE_TIME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
 )
 _STORE_LOCATION_LABEL_RE = re.compile(r"^LOCATION_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
-_STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
+_STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE|FULL)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
     r"\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
@@ -254,7 +254,7 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
 
     day_label = _STORE_DAY_LABEL_RE.match(rhs)
     if day_label:
-        build = _day_title if day_label.group(1) == "TITLE" else _day_label
+        build = {"LABEL": _day_label, "TITLE": _day_title, "FULL": _day_full}[day_label.group(1)]
         slots[name] = build(slots.get(day_label.group(2)), slots.get("preferred_language"))
         return
 
@@ -360,6 +360,7 @@ def _resolve_day_reference(reply: Any, calendar: Any, offered: Any) -> str | Non
     return match.isoformat() if match else None
 
 
+_UNPADDED_TIME_RE = re.compile(r"(?:[a-z ]*?)([1-9]):([0-5]\d)(?: ?h(?:rs?)?\.?)?")
 _BARE_HOUR_RE = re.compile(r"^\D*?(\d{1,2})\D*$")
 
 
@@ -387,6 +388,12 @@ def _resolve_time_reference(reply: Any, offered: Any, day: Any) -> str | None:
     text = _clean_slot_time(reply.strip())
     full = re.fullmatch(r"(\d{1,2}):(\d{2})", text)
     if full is not None:
+        unpadded = _UNPADDED_TIME_RE.fullmatch(_fold(reply).strip())
+        if unpadded is not None:
+            # "3:00" with no am or pm and no leading zero can be 03:00 or 15:00: only a single offered one counts.
+            hour, minutes = int(unpadded.group(1)), unpadded.group(2)
+            matches = [f"{h:02d}:{minutes}" for h in (hour, hour + 12) if f"{h:02d}:{minutes}" in times]
+            return matches[0] if len(matches) == 1 else None
         wanted = f"{int(full.group(1)):02d}:{full.group(2)}"
         return wanted if wanted in times else None
     bare = _BARE_HOUR_RE.match(text)
@@ -434,6 +441,12 @@ def _location_label(llm_client: LLMClient, location: Any, time_zone: Any, langua
     )
     label = " ".join(llm_client.complete(prompt, temperature=0.0).strip().strip("\"'").split())
     return label or None
+
+
+def _day_full(day: Any, language: Any) -> str | None:
+    """`day` (YYYY-MM-DD) as a heading with the weekday capitalized: 'Martes 10 de noviembre' / 'Tuesday, November 10'."""
+    label = _day_label(day, language)
+    return label[:1].upper() + label[1:] if label else None
 
 
 _MONTH_ABBREVIATIONS = {
@@ -1370,6 +1383,21 @@ def _protect_lists(text: str, protected: dict[str, str]) -> str:
     return "\n".join(out)
 
 
+def _protect_place(text: str, slots: dict[str, Any], protected: dict[str, str]) -> str:
+    """
+    `text` with the contact's country and city (`location_label`) swapped for a `<LIST_n>` token.
+
+    The label is written by code in the conversation's language ('Japan - Tokyo'); a rewording of the
+    sentence around it would otherwise translate or respell it.
+    """
+    place = slots.get("location_label")
+    if not isinstance(place, str) or not place or place not in text or place in protected.values():
+        return text
+    token = f"<LIST_{len(protected) + 1}>"
+    protected[token] = place
+    return text.replace(place, token)
+
+
 def _protect_figures(text: str, protected: dict[str, str]) -> str:
     """
     `text` with each time (HH:MM) and long number swapped for a `<NUM_n>` token.
@@ -1525,6 +1553,7 @@ Build a `say`-rendering function.
         if say_verbatim:
             return raw
         raw = _protect_lists(raw, protected)
+        raw = _protect_place(raw, slots, protected)
         raw = _protect_figures(raw, protected)
 
         language_name = _LANGUAGE_NAMES.get(language_code, language_code) if language_code else None

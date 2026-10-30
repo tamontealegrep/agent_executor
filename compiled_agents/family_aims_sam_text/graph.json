@@ -6772,6 +6772,7 @@
           "[sc__calendar] = NULL",
           "[sc__day_label] = NULL",
           "[sc__day_title] = NULL",
+          "[sc__day_full] = NULL",
           "[sc__success] = NULL",
           "[sc__reason] = NULL",
           "[sc__fix] = NULL",
@@ -7970,6 +7971,7 @@
           "[sc__day] = RESOLVE_DAY [sc__day] IN [sc__calendar] AMONG [sc__available_slots]",
           "[sc__day_label] = DAY_LABEL [sc__day]",
           "[sc__day_title] = DAY_TITLE [sc__day]",
+          "[sc__day_full] = DAY_FULL [sc__day]",
           "[sc__location_label] = LOCATION_LABEL [sc__user_location]"
         ],
         "capture": [],
@@ -8094,7 +8096,7 @@
         "node_id": "SC__SC_ASK_S",
         "node_type": "question",
         "goal": [
-          "Capture [sc__slot] as the time the contact chooses from the times offered for [sc__day] in [sc__available_slots]. Write it as HH:MM in 24-hour format when they give minutes, an am/pm or a part of the day. When they give only an hour with no minutes and no am/pm (like 'a las 3' or '10'), copy the number exactly as they wrote it: never decide am or pm for them.",
+          "Capture [sc__slot] as the time the contact chooses from the times offered for [sc__day] in [sc__available_slots]. Write it as HH:MM in 24-hour format only when they say am or pm, name a part of the day, or already write a 24-hour time (like '15:30' or '09:00'). When they give an hour with no am/pm and no part of the day (like 'a las 3', '3:00' or '10'), copy it exactly as they wrote it: never decide am or pm for them.",
           "Capture [sc__new_day] only when the contact names a different day (as they wrote it: 'el viernes', 'Nov 5', 'el 3', 'mañana') instead of a time; a bare time is never a day. Otherwise leave [sc__new_day] empty.",
           "Capture [sc__more_days] as yes only when the contact asks to see other dates or the available days again."
         ],
@@ -8462,6 +8464,7 @@
           "[sc__day] = NULL",
           "[sc__day_label] = NULL",
           "[sc__day_title] = NULL",
+          "[sc__day_full] = NULL",
           "[sc__slot] = NULL",
           "[sc__start_date] = NULL",
           "[sc__success] = NULL",
@@ -8504,6 +8507,7 @@
           "[sc__day] = NULL",
           "[sc__day_label] = NULL",
           "[sc__day_title] = NULL",
+          "[sc__day_full] = NULL",
           "[sc__slot] = NULL",
           "[sc__new_day] = NULL",
           "[sc__more_days] = NULL",
@@ -8646,7 +8650,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Before creating the appointment, I confirm the summary:\n\n- Day: [sc__day_label]\n- Time: [sc__slot] (24-hour format)\n- Name: [sc__c_name]\n- Phone: [sc__c_phone]\n- Email: [sc__c_email]"
+          "Before creating the appointment, I confirm the summary:\n\n🗓️ [sc__day_full]\n└─ 🕐 [sc__slot] (24h)\n└─ 🌎 [sc__location_label]\n└─ 👤 [sc__c_name]\n└─ ✉️ [sc__c_email]\n└─ 📞 [sc__c_phone]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -8858,6 +8862,7 @@
           "[sc__ok_try] = 0",
           "[sc__day_label] = DAY_LABEL [sc__day]",
           "[sc__day_title] = DAY_TITLE [sc__day]",
+          "[sc__day_full] = DAY_FULL [sc__day]",
           "[sc__location_label] = LOCATION_LABEL [sc__user_location]",
           "[sc__slot_raw] = [sc__slot]",
           "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]",
