@@ -439,7 +439,9 @@
         "do": [],
         "trigger": [],
         "say": [
-          "I found an appointment for [am__appointments][0].summary on [am__appointments][0].start_time. Is this the one you want to manage?"
+          "I found this appointment:",
+          "[am__appointments]",
+          "Is this the one you want to manage?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -507,7 +509,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "I found several appointments. Which one would you like to manage?",
+          "I found several appointments. Which one would you like to manage? (they are listed from soonest to latest)",
           "[am__appointments]"
         ],
         "say_verbatim": false,
@@ -579,7 +581,8 @@
         "do": [],
         "trigger": [],
         "say": [
-          "Are you sure you want to cancel your appointment on [am__app].start_time?"
+          "Are you sure you want to cancel this appointment?",
+          "[am__app]"
         ],
         "say_verbatim": false,
         "execute": null,

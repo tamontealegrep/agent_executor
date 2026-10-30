@@ -1040,6 +1040,36 @@ Format a `[slot]`-shaped list of appointment objects for display.
     return "\n".join(f"📅 {_format_date_human(d, language_code)}" for d in sorted(candidate_dates))
 
 
+def _is_booked_appointment(value: Any) -> bool:
+    """An appointment the contact already has (from find_appointment), as opposed to an offered slot."""
+    return isinstance(value, dict) and "event_id" in value and isinstance(value.get("start_time"), str)
+
+
+def _format_booked_appointments(items: list[dict[str, Any]], language_code: str | None) -> str:
+    """
+    The contact's booked appointments, soonest first, one line each (numbered when there are several).
+
+    Written by code so every list reads the same: a model asked to list them wrote a different
+    layout each time, and the raw record (JSON) showed up when it was interpolated whole.
+    """
+    code = language_code if language_code in _MONTH_NAMES else "es"
+    lines = []
+    for item in sorted(items, key=lambda i: i["start_time"]):
+        parts = _date_parts(item["start_time"])
+        if parts is None:
+            lines.append(item["start_time"])
+            continue
+        date = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+        weekday = _WEEKDAY_NAMES[code][date.weekday()]
+        month = _MONTH_NAMES[code][date.month - 1]
+        day = f"{weekday}, {month} {date.day}, {date.year}" if code == "en" else f"{weekday} {date.day} de {month} de {date.year}"
+        time = _time_part(item["start_time"])
+        lines.append(f"📅 {day}" + (f" 🕐 {time}" if time else ""))
+    if len(lines) > 1:
+        lines = [f"{number}. {line}" for number, line in enumerate(lines, 1)]
+    return "\n".join(lines)
+
+
 def _interpolate_slots(
     text: str, slots: dict[str, Any], language_code: str | None = None, contact: dict[str, Any] | None = None
 ) -> str:
@@ -1077,6 +1107,17 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
 """
 
     def _format_value(value: Any) -> str:
+        if isinstance(value, str) and value.lstrip().startswith("{"):
+            # A chosen appointment can arrive as its JSON text.
+            try:
+                parsed = json.loads(value)
+            except ValueError:
+                parsed = None
+            value = parsed if _is_booked_appointment(parsed) else value
+        if _is_booked_appointment(value):
+            return _format_booked_appointments([value], language_code)
+        if isinstance(value, list) and value and all(_is_booked_appointment(item) for item in value):
+            return _format_booked_appointments(value, language_code)
         if isinstance(value, list) and value and isinstance(value[0], dict):
             return _format_appointment_list(value, slots, language_code)
         return str(value)
