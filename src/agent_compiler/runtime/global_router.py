@@ -73,6 +73,23 @@ def _is_trigger_phrase(reply: str, candidates: list[RouterMatch]) -> bool:
     return False
 
 
+def router_for_state(router: GlobalRouterDefinition, state_id: str) -> GlobalRouterDefinition:
+    """
+    `router` without the handlers that are switched off at `state_id` (their `disabled_in`).
+
+    An entry is either a subflow id (`SC`, every state of that subflow) or one namespaced state id
+    (`SC__SC_HOURS`). A reply given inside the scheduling flow can then no longer restart it, while
+    the other handlers (a human, managing an appointment) keep working from there.
+    """
+
+    def disabled_here(handler: GraphNode) -> bool:
+        return any(state_id == entry or state_id.startswith(f"{entry}__") for entry in handler.disabled_in)
+
+    if not any(disabled_here(handler) for handler in router.handlers):
+        return router
+    return replace(router, handlers=[handler for handler in router.handlers if not disabled_here(handler)])
+
+
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
     return [("handler", h) for h in router.handlers] + [("faq", f) for f in router.faqs]
 

@@ -90,6 +90,7 @@ from agent_compiler.runtime.global_router import (
     match_side_question,
     _looks_like_question,
     match_global_router,
+    router_for_state,
 )
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
 from agent_compiler.runtime.tool_executor import ToolExecutionError, make_tool_executor
@@ -2185,6 +2186,7 @@ Build one LangGraph node function for `node`.
                 say_callback(rendered)
                 history = _append_history(history, f"agent: {rendered}")
 
+            active_router = router_for_state(router, node.node_id)
             while True:
                 reply = interrupt({"prompt": [rendered_say]})
                 history = _append_history(history, f"agent: {rendered_say}")
@@ -2198,7 +2200,7 @@ Build one LangGraph node function for `node`.
                     contact=contact,
                 )
                 previous_language = _language_name_from_slots(slots)
-                match = match_global_router(llm_client, router, router_ctx)
+                match = match_global_router(llm_client, active_router, router_ctx)
                 _sync_language_change(previous_language, slots, contact, tool_executors)
                 side_question = match is None and has_unanswered_side_question(llm_client, router_ctx)
                 if match is None and (side_question or _looks_like_question(reply)):
@@ -2206,11 +2208,11 @@ Build one LangGraph node function for `node`.
                     # to a yes/no question), so a reply that asks something still gets matched against
                     # the specific FAQs and handlers before the generic advisor fallback.
                     match = match_side_question(
-                        llm_client, router, router_ctx, frozenset({_ADVISOR_HANDLER_ID, _LANGUAGE_CHANGE_HANDLER_ID})
+                        llm_client, active_router, router_ctx, frozenset({_ADVISOR_HANDLER_ID, _LANGUAGE_CHANGE_HANDLER_ID})
                     )
                 if side_question and match is None:
                     advisor_handler = next(
-                        (h for h in router.handlers if h.node_id == _ADVISOR_HANDLER_ID), None
+                        (h for h in active_router.handlers if h.node_id == _ADVISOR_HANDLER_ID), None
                     )
                     if advisor_handler is not None:
                         match = ("handler", advisor_handler)

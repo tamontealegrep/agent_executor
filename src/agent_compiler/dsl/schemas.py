@@ -1015,6 +1015,7 @@ A global interrupt available from any active state.
 
     handler_id: str
     trigger: list[str] = Field(default_factory=list)
+    disabled_in: list[str] = Field(default_factory=list)
 
     @field_validator("handler_id")
     @classmethod
@@ -1025,6 +1026,12 @@ A global interrupt available from any active state.
     @classmethod
     def validate_trigger(cls, v: list[str]) -> list[str]:
         return validate_non_empty_lines(v, "handler.trigger", allow_empty=False)
+
+    @field_validator("disabled_in")
+    @classmethod
+    def validate_disabled_in(cls, v: list[str]) -> list[str]:
+        """Subflow ids (`SC`) or namespaced state ids (`SC__SC_HOURS`) where the handler is switched off."""
+        return validate_non_empty_lines(v, "handler.disabled_in", allow_empty=True)
 
 
 class HandlersFile(StrictModel):

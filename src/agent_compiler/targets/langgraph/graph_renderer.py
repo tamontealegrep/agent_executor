@@ -52,6 +52,7 @@ One node — a handler, state, or terminal_state.
     goal: list[str] = field(default_factory=list)
     do: list[str] = field(default_factory=list)
     trigger: list[str] = field(default_factory=list)
+    disabled_in: list[str] = field(default_factory=list)
     say: list[str] = field(default_factory=list)
     say_verbatim: bool = False
     execute: str | None = None
@@ -147,6 +148,7 @@ def _render_node(obj: FlowObjectBase, node_id: str) -> GraphNode:
         goal=list(obj.goal),
         do=list(obj.do),
         trigger=list(getattr(obj, "trigger", [])),
+        disabled_in=list(getattr(obj, "disabled_in", [])),
         say=list(obj.say),
         say_verbatim=obj.say_verbatim,
         execute=obj.execute,
