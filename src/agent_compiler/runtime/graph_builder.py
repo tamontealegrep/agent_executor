@@ -1032,12 +1032,58 @@ Format a `[slot]`-shaped list of appointment objects for display.
         else _find_selected_date(slots, candidate_dates)
     )
 
+    step = _slot_step_minutes(dated_items)
     if selected_date is not None:
         times = sorted({t for date_parts, t in dated_items if date_parts == selected_date and t})
         if times:
-            return "\n".join(f"🕐 {t}" for t in times)
+            return " / ".join(_time_ranges(times, step))
 
-    return "\n".join(f"📅 {_format_date_human(d, language_code)}" for d in sorted(candidate_dates))
+    lines = []
+    for date_parts in sorted(candidate_dates):
+        times = sorted({t for d, t in dated_items if d == date_parts and t})
+        day_parts = _parts_of_day(times, language_code)
+        lines.append(f"📅 {_format_date_human(date_parts, language_code)}" + (f" ({day_parts})" if day_parts else ""))
+    return "\n".join(lines)
+
+
+_PARTS_OF_DAY = (
+    (0, 6, {"es": "madrugada", "en": "early morning", "pt": "madrugada"}),
+    (6, 12, {"es": "mañana", "en": "morning", "pt": "manhã"}),
+    (12, 19, {"es": "tarde", "en": "afternoon", "pt": "tarde"}),
+    (19, 24, {"es": "noche", "en": "night", "pt": "noite"}),
+)
+
+
+def _minutes(time_text: str) -> int:
+    hours, minutes = time_text.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def _parts_of_day(times: list[str], language_code: str | None) -> str:
+    """The parts of the day (madrugada, mañana, tarde, noche) that have at least one of `times`, in order."""
+    code = language_code if language_code in _MONTH_NAMES else "es"
+    hours = {_minutes(t) // 60 for t in times}
+    return " - ".join(names[code] for start, end, names in _PARTS_OF_DAY if any(start <= h < end for h in hours))
+
+
+def _slot_step_minutes(dated_items: list[tuple[_DateParts, str | None]]) -> int:
+    """The spacing between consecutive offered times: the smallest gap seen on any day (30 when there is none)."""
+    gaps = []
+    for date_parts in {d for d, _ in dated_items}:
+        times = sorted({_minutes(t) for d, t in dated_items if d == date_parts and t})
+        gaps.extend(b - a for a, b in zip(times, times[1:]))
+    return min(gaps) if gaps else 30
+
+
+def _time_ranges(times: list[str], step: int) -> list[str]:
+    """`times` (sorted HH:MM) as single times and ranges of consecutive ones: '🕐 07:00', '🕐 09:00 - 11:30'."""
+    runs: list[list[str]] = []
+    for t in times:
+        if runs and _minutes(t) - _minutes(runs[-1][-1]) == step:
+            runs[-1].append(t)
+        else:
+            runs.append([t])
+    return [f"🕐 {run[0]}" if len(run) == 1 else f"🕐 {run[0]} - {run[-1]}" for run in runs]
 
 
 def _is_booked_appointment(value: Any) -> bool:
@@ -1159,6 +1205,34 @@ Swap each `{{contact.field}}` the contact has for an opaque `<CONTACT_FIELD>` to
         return token
 
     return _CONTACT_PLACEHOLDER_RE.sub(repl, text)
+
+
+_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐]")
+
+
+def _protect_lists(text: str, protected: dict[str, str]) -> str:
+    """
+    `text` with each block of date/time lines (the 📅 and 🕐 lists code wrote) swapped for a `<LIST_n>` token.
+
+    The paraphrasing model translated and reshuffled the parts of the day ("(por la tarde)",
+    "por la mañana y por la tarde") and merged ranges, so the same list read differently every
+    time; the list is code-made data and goes back in untouched.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    block: list[str] = []
+    for line in lines + [None]:
+        if line is not None and _LIST_LINE_RE.match(line.lstrip(" |")):
+            block.append(line)
+            continue
+        if block:
+            token = f"<LIST_{len(protected) + 1}>"
+            protected[token] = "\n".join(block)
+            out.append(token)
+            block = []
+        if line is not None:
+            out.append(line)
+    return "\n".join(out)
 
 
 def _restore_contact_values(text: str, protected: dict[str, str]) -> str:
@@ -1297,6 +1371,7 @@ Build a `say`-rendering function.
         raw = _interpolate_slots(text, slots, language_code, contact)
         if say_verbatim:
             return raw
+        raw = _protect_lists(raw, protected)
 
         language_name = _LANGUAGE_NAMES.get(language_code, language_code) if language_code else None
         in_language = f" in {language_name}" if language_name else ""
@@ -1328,6 +1403,7 @@ Build a `say`-rendering function.
                 and candidate.count("?") <= raw.count("?")
                 and len(candidate) <= 2 * len(raw) + 60
                 and _keeps_figures(raw, candidate)
+                and all(token in candidate for token in protected if token.startswith("<LIST_"))
             ):
                 paraphrased = candidate
                 break
