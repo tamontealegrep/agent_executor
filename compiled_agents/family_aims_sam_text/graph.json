@@ -6771,6 +6771,7 @@
           "[sc__now] = NULL",
           "[sc__calendar] = NULL",
           "[sc__day_label] = NULL",
+          "[sc__day_title] = NULL",
           "[sc__success] = NULL",
           "[sc__reason] = NULL",
           "[sc__fix] = NULL",
@@ -7941,7 +7942,8 @@
         "execute": null,
         "store": [
           "[sc__day] = RESOLVE_DAY [sc__day] IN [sc__calendar] AMONG [sc__available_slots]",
-          "[sc__day_label] = DAY_LABEL [sc__day]"
+          "[sc__day_label] = DAY_LABEL [sc__day]",
+          "[sc__day_title] = DAY_TITLE [sc__day]"
         ],
         "capture": [],
         "eval": "code",
@@ -8043,7 +8045,7 @@
         "do": [],
         "trigger": [],
         "say": [
-          "For [sc__day_label], these are the available times for your <APPOINTMENT_DURATION_MINUTES>-minute appointment (24-hour format):\n\n[sc__available_slots]"
+          "[sc__day_title]\nVirtual appointment of <APPOINTMENT_DURATION_MINUTES> min\n\n[sc__available_slots]"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -8432,6 +8434,7 @@
           "[sc__fresh_available_slots] = NULL",
           "[sc__day] = NULL",
           "[sc__day_label] = NULL",
+          "[sc__day_title] = NULL",
           "[sc__slot] = NULL",
           "[sc__start_date] = NULL",
           "[sc__success] = NULL",
@@ -8473,6 +8476,7 @@
         "store": [
           "[sc__day] = NULL",
           "[sc__day_label] = NULL",
+          "[sc__day_title] = NULL",
           "[sc__slot] = NULL",
           "[sc__new_day] = NULL",
           "[sc__more_days] = NULL",
@@ -8826,6 +8830,7 @@
           "[sc__ok] = NULL",
           "[sc__ok_try] = 0",
           "[sc__day_label] = DAY_LABEL [sc__day]",
+          "[sc__day_title] = DAY_TITLE [sc__day]",
           "[sc__slot_raw] = [sc__slot]",
           "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]",
           "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"

@@ -135,7 +135,7 @@ _STORE_RESOLVE_DAY_RE = re.compile(
 _STORE_RESOLVE_TIME_RE = re.compile(
     r"^RESOLVE_TIME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
 )
-_STORE_DAY_LABEL_RE = re.compile(r"^DAY_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
+_STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
     r"\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
@@ -246,7 +246,8 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
 
     day_label = _STORE_DAY_LABEL_RE.match(rhs)
     if day_label:
-        slots[name] = _day_label(slots.get(day_label.group(1)), slots.get("preferred_language"))
+        label = _day_label(slots.get(day_label.group(2)), slots.get("preferred_language"))
+        slots[name] = label[:1].upper() + label[1:] if label and day_label.group(1) == "TITLE" else label
         return
 
     pick = _STORE_PICK_RE.match(rhs)
@@ -1085,14 +1086,21 @@ Format a `[slot]`-shaped list of appointment objects for display.
     if selected_date is not None:
         times = sorted({t for date_parts, t in dated_items if date_parts == selected_date and t})
         if times:
-            return " / ".join(_time_ranges(times, step))
+            return _times_by_part_of_day(times, step, language_code)
 
     lines = []
     for date_parts in sorted(candidate_dates):
         times = sorted({t for d, t in dated_items if d == date_parts and t})
         day_parts = _parts_of_day(times, language_code)
-        lines.append(f"📅 {_format_date_human(date_parts, language_code)}" + (f" ({day_parts})" if day_parts else ""))
+        lines.append(f"🗓️ {_date_title(date_parts, language_code)}" + (f"\n └─ {day_parts}" if day_parts else ""))
     return "\n".join(lines)
+
+
+def _date_title(date_parts: _DateParts, language_code: str | None) -> str:
+    """'Martes 3 de noviembre' / 'Tuesday, November 3': the weekday and day, no year."""
+    code = language_code if language_code in _MONTH_NAMES else "es"
+    label = _day_label("-".join(date_parts), {"es": "spanish", "en": "english", "pt": "portuguese"}[code]) or ""
+    return label[:1].upper() + label[1:]
 
 
 _PARTS_OF_DAY = (
@@ -1112,7 +1120,9 @@ def _parts_of_day(times: list[str], language_code: str | None) -> str:
     """The parts of the day (madrugada, mañana, tarde, noche) that have at least one of `times`, in order."""
     code = language_code if language_code in _MONTH_NAMES else "es"
     hours = {_minutes(t) // 60 for t in times}
-    return " - ".join(names[code] for start, end, names in _PARTS_OF_DAY if any(start <= h < end for h in hours))
+    return " · ".join(
+        names[code].capitalize() for start, end, names in _PARTS_OF_DAY if any(start <= h < end for h in hours)
+    )
 
 
 def _slot_step_minutes(dated_items: list[tuple[_DateParts, str | None]]) -> int:
@@ -1124,15 +1134,30 @@ def _slot_step_minutes(dated_items: list[tuple[_DateParts, str | None]]) -> int:
     return min(gaps) if gaps else 30
 
 
-def _time_ranges(times: list[str], step: int) -> list[str]:
-    """`times` (sorted HH:MM) as single times and ranges of consecutive ones: '🕐 07:00', '🕐 09:00 - 11:30'."""
+_RANGE_WORDS = {"es": "a", "en": "to", "pt": "a"}
+
+
+def _times_by_part_of_day(times: list[str], step: int, language_code: str | None) -> str:
+    """The times of one day under a heading per part of the day, a blank line between the parts."""
+    code = language_code if language_code in _MONTH_NAMES else "es"
+    blocks = []
+    for start, end, names in _PARTS_OF_DAY:
+        part = [t for t in times if start <= _minutes(t) // 60 < end]
+        if part:
+            blocks.append("\n".join([names[code].capitalize(), *_time_ranges(part, step, language_code)]))
+    return "\n\n".join(blocks)
+
+
+def _time_ranges(times: list[str], step: int, language_code: str | None = None) -> list[str]:
+    """`times` (sorted HH:MM) as single times and ranges of consecutive ones: '🕐 07:00', '🕐 09:00 a 11:30'."""
+    word = _RANGE_WORDS.get(language_code or "es", "a")
     runs: list[list[str]] = []
     for t in times:
         if runs and _minutes(t) - _minutes(runs[-1][-1]) == step:
             runs[-1].append(t)
         else:
             runs.append([t])
-    return [f"🕐 {run[0]}" if len(run) == 1 else f"🕐 {run[0]} - {run[-1]}" for run in runs]
+    return [f"🕐 {run[0]}" if len(run) == 1 else f"🕐 {run[0]} {word} {run[-1]}" for run in runs]
 
 
 def _is_booked_appointment(value: Any) -> bool:
@@ -1256,7 +1281,10 @@ Swap each `{{contact.field}}` the contact has for an opaque `<CONTACT_FIELD>` to
     return _CONTACT_PLACEHOLDER_RE.sub(repl, text)
 
 
-_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐]")
+_PART_HEADINGS = frozenset(
+        names[code].capitalize() for _, _, names in _PARTS_OF_DAY for code in names
+)
+_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐🗓└]")
 
 
 def _protect_lists(text: str, protected: dict[str, str]) -> str:
@@ -1271,7 +1299,7 @@ def _protect_lists(text: str, protected: dict[str, str]) -> str:
     out: list[str] = []
     block: list[str] = []
     for line in lines + [None]:
-        if line is not None and _LIST_LINE_RE.match(line.lstrip(" |")):
+        if line is not None and (_LIST_LINE_RE.match(line.lstrip(" |")) or line in _PART_HEADINGS):
             block.append(line)
             continue
         if block:
