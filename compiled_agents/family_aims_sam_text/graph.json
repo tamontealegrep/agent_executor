@@ -8065,7 +8065,7 @@
         "node_id": "SC__SC_ASK_S",
         "node_type": "question",
         "goal": [
-          "Capture [sc__slot] as the time the contact chooses from the times offered for [sc__day] in [sc__available_slots].",
+          "Capture [sc__slot] as the time the contact chooses from the times offered for [sc__day] in [sc__available_slots]. Write it as HH:MM in 24-hour format when they give minutes, an am/pm or a part of the day. When they give only an hour with no minutes and no am/pm (like 'a las 3' or '10'), copy the number exactly as they wrote it: never decide am or pm for them.",
           "Capture [sc__new_day] only when the contact names a different day (as they wrote it: 'el viernes', 'Nov 5', 'el 3', 'mañana') instead of a time; a bare time is never a day. Otherwise leave [sc__new_day] empty.",
           "Capture [sc__more_days] as yes only when the contact asks to see other dates or the available days again."
         ],
@@ -8110,7 +8110,7 @@
             "reason": null
           },
           {
-            "target": "SC__SC_DEC_S",
+            "target": "SC__SC_RES_T",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -8119,13 +8119,40 @@
         ],
         "fallback": [
           {
-            "target": "SC__SC_DEC_S",
+            "target": "SC__SC_RES_T",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "SC__SC_RES_T",
+        "node_type": "registration",
+        "goal": [
+          "Turn the time the contact wrote into one of the offered times, or into nothing when it is not offered or could be am or pm: the resolution is mechanical, from the times offered on [sc__day]."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_DEC_S",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "SC__SC_SWAP_D",
@@ -8162,11 +8189,10 @@
         "node_id": "SC__SC_DEC_S",
         "node_type": "decision",
         "goal": [
-          "Validate the chosen time against [sc__available_slots]."
+          "Check that the time was understood: [sc__slot] holds one offered time on [sc__day], or nothing."
         ],
         "do": [
-          "[sc__slot_try] = [sc__slot_try] + 1",
-          "Map [sc__slot] to the exact object in [sc__available_slots] whose start_local is on the date [sc__day]. It is valid only if its start_local time equals [sc__slot] exactly (never round to the nearest listed time) and that object has start_co."
+          "[sc__slot_try] = [sc__slot_try] + 1"
         ],
         "trigger": [],
         "say": [],
@@ -8174,37 +8200,37 @@
         "execute": null,
         "store": [],
         "capture": [],
-        "eval": "llm",
+        "eval": "code",
         "route": [
           {
             "target": "SC__SC_DEC_CHK",
-            "condition_text": "IF [sc__slot] corresponds to an object in [sc__available_slots] with a non-null start_co -> GO_TO: SC__SC_DEC_CHK",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "not a parseable expression: invalid syntax (<unknown>, line 1)"
+            "condition_text": "IF [sc__slot] IS NOT NULL -> GO_TO: SC__SC_DEC_CHK",
+            "is_mechanical": true,
+            "python_expression": "sc__slot is not None",
+            "reason": null
           },
           {
             "target": "SC__SC_MORE",
             "condition_text": "IF [sc__slot_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: SC__SC_MORE",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "is_mechanical": true,
+            "python_expression": "sc__slot_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
           },
           {
-            "target": "SC__SC_ASK_S",
-            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_ASK_S",
-            "is_mechanical": false,
-            "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "target": "SC__SC_BAD_TIME",
+            "condition_text": "IF [sc__slot] IS NULL -> GO_TO: SC__SC_BAD_TIME",
+            "is_mechanical": true,
+            "python_expression": "sc__slot is None",
+            "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "SC__SC_ASK_S",
+            "target": "SC__SC_BAD_TIME",
             "condition_text": null,
-            "is_mechanical": false,
+            "is_mechanical": true,
             "python_expression": null,
-            "reason": "eval='llm' forces an LLM-evaluated edge"
+            "reason": null
           }
         ]
       },
@@ -8269,12 +8295,12 @@
         "node_id": "SC__SC_BAD_TIME",
         "node_type": "message",
         "goal": [
-          "Tell the contact that exact time is not in the list and show the times again so they can choose one."
+          "Tell the contact the time was not understood (it is not offered, or it could be morning or afternoon) and ask again; the offered times are already on screen."
         ],
         "do": [],
         "trigger": [],
         "say": [
-          "I could not match that to one of the available times. Please choose one from the list."
+          "Sorry, I didn't understand that time. Please tell me one of the available times, and add am or pm if it helps."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -8283,7 +8309,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "SC__SC_HOURS",
+            "target": "SC__SC_ASK_S",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,

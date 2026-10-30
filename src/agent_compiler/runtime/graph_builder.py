@@ -132,6 +132,9 @@ _STORE_MATCH_IN_RE = re.compile(r"^match in <([A-Z_][A-Z0-9_]*)>\s*\|\s*(?:'([^'
 _STORE_RESOLVE_DAY_RE = re.compile(
     r"^RESOLVE_DAY\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+IN\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
 )
+_STORE_RESOLVE_TIME_RE = re.compile(
+    r"^RESOLVE_TIME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AMONG\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
+)
 _STORE_DAY_LABEL_RE = re.compile(r"^DAY_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -235,6 +238,12 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
         slots[name] = _resolve_day_reference(reply, calendar, offered)
         return
 
+    resolve_time = _STORE_RESOLVE_TIME_RE.match(rhs)
+    if resolve_time:
+        reply, offered, day = (slots.get(resolve_time.group(i)) for i in (1, 2, 3))
+        slots[name] = _resolve_time_reference(reply, offered, day)
+        return
+
     day_label = _STORE_DAY_LABEL_RE.match(rhs)
     if day_label:
         slots[name] = _day_label(slots.get(day_label.group(1)), slots.get("preferred_language"))
@@ -334,6 +343,46 @@ def _resolve_day_reference(reply: Any, calendar: Any, offered: Any) -> str | Non
     if match is None:
         match = next((d for d in dates[1:] if d.weekday() == weekday), None)
     return match.isoformat() if match else None
+
+
+_BARE_HOUR_RE = re.compile(r"^\D*?(\d{1,2})\D*$")
+
+
+def _resolve_time_reference(reply: Any, offered: Any, day: Any) -> str | None:
+    """
+    The offered HH:MM on `day` that `reply` unambiguously names, or None.
+
+    A time written in full ("10:30", "3 pm" already cleaned to 15:00) must be one of the offered
+    times. A bare hour ("a las 3") is accepted only when exactly one of that hour and its
+    afternoon twin is offered on the hour sharp: with both, or neither, the contact must say
+    which, instead of the agent guessing am or pm.
+    """
+    if not isinstance(reply, str) or not isinstance(day, str) or not isinstance(offered, list):
+        return None
+    day_parts = _date_parts(day)
+    if day_parts is None:
+        return None
+    times = {
+        _time_part(item["start_local"])
+        for item in offered
+        if isinstance(item, dict)
+        and isinstance(item.get("start_local"), str)
+        and _date_parts(item["start_local"]) == day_parts
+    } - {None}
+    text = _clean_slot_time(reply.strip())
+    full = re.fullmatch(r"(\d{1,2}):(\d{2})", text)
+    if full is not None:
+        wanted = f"{int(full.group(1)):02d}:{full.group(2)}"
+        return wanted if wanted in times else None
+    bare = _BARE_HOUR_RE.match(text)
+    if bare is None or re.search(r"\b(am|pm|manana|tarde|noche)\b", _fold(text).replace(".", "")):
+        return None
+    hour = int(bare.group(1))
+    if hour > 23:
+        return None
+    twins = {hour} if hour == 0 or hour > 12 else {hour % 12, hour % 12 + 12}
+    matches = sorted(f"{h:02d}:00" for h in twins if f"{h:02d}:00" in times)
+    return matches[0] if len(matches) == 1 else None
 
 
 def _day_label(day: Any, language: Any) -> str | None:
