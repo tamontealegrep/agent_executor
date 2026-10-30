@@ -6940,7 +6940,8 @@
         "node_id": "SC__SC_ASK_TZ",
         "node_type": "question",
         "goal": [
-          "Ask for the contact's current country and city."
+          "Ask for the contact's current country and city.",
+          "Capture [user_timezone] as the country and city the contact gives, exactly as they wrote them (for example 'colombia, bogota'). If the reply names no place, leave it empty."
         ],
         "do": [],
         "trigger": [],
@@ -6949,15 +6950,40 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[user_timezone] = [user_timezone]"
-        ],
+        "store": [],
         "capture": [
           [
             "user_timezone",
             "free_text"
           ]
         ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_SAVE_TZ",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_SAVE_TZ",
+        "node_type": "registration",
+        "goal": [
+          "Keep the country and city exactly as the contact wrote them: the next step replaces [user_timezone] with the IANA identifier."
+        ],
+        "do": [],
+        "trigger": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[sc__user_location] = [user_timezone]"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -7943,7 +7969,8 @@
         "store": [
           "[sc__day] = RESOLVE_DAY [sc__day] IN [sc__calendar] AMONG [sc__available_slots]",
           "[sc__day_label] = DAY_LABEL [sc__day]",
-          "[sc__day_title] = DAY_TITLE [sc__day]"
+          "[sc__day_title] = DAY_TITLE [sc__day]",
+          "[sc__location_label] = The country and city in [sc__user_location] written as 'Country - City' in the language [preferred_language], with the spelling corrected and each name in that language (for example Italy - Rome in English, Itália - Roma in Portuguese, Italia - Roma in Spanish). If the location is unclear, use the country and city of [user_timezone]. Reply with only that text."
         ],
         "capture": [],
         "eval": "code",
@@ -8045,9 +8072,9 @@
         "do": [],
         "trigger": [],
         "say": [
-          "[sc__day_title]\nVirtual appointment of <APPOINTMENT_DURATION_MINUTES> min\n\n[sc__available_slots]"
+          "📅 [sc__day_title] | ⏱️ <APPOINTMENT_DURATION_MINUTES> min (Virtual)\n🌎 [sc__location_label]\n\n[sc__available_slots]"
         ],
-        "say_verbatim": false,
+        "say_verbatim": true,
         "execute": null,
         "store": [],
         "capture": [],
@@ -8831,6 +8858,7 @@
           "[sc__ok_try] = 0",
           "[sc__day_label] = DAY_LABEL [sc__day]",
           "[sc__day_title] = DAY_TITLE [sc__day]",
+          "[sc__location_label] = The country and city in [sc__user_location] written as 'Country - City' in the language [preferred_language], with the spelling corrected and each name in that language (for example Italy - Rome in English, Itália - Roma in Portuguese, Italia - Roma in Spanish). If the location is unclear, use the country and city of [user_timezone]. Reply with only that text.",
           "[sc__slot_raw] = [sc__slot]",
           "[sc__slot] = RESOLVE_TIME [sc__slot] AMONG [sc__available_slots] AT [sc__day]",
           "[sc__start_date] = PICK [sc__available_slots].start_co AT [sc__day] [sc__slot]"

@@ -246,8 +246,8 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
 
     day_label = _STORE_DAY_LABEL_RE.match(rhs)
     if day_label:
-        label = _day_label(slots.get(day_label.group(2)), slots.get("preferred_language"))
-        slots[name] = label[:1].upper() + label[1:] if label and day_label.group(1) == "TITLE" else label
+        build = _day_title if day_label.group(1) == "TITLE" else _day_label
+        slots[name] = build(slots.get(day_label.group(2)), slots.get("preferred_language"))
         return
 
     pick = _STORE_PICK_RE.match(rhs)
@@ -282,6 +282,12 @@ def _month_by_word() -> dict[str, int]:
 
 
 _LANGUAGE_CODE_BY_NAME = {"spanish": "es", "english": "en", "portuguese": "pt"}
+
+
+def _language_key(language: Any) -> str | None:
+    """'es', 'en' or 'pt' for either the code or the language name (`preferred_language` holds the name)."""
+    text = str(language or "").strip().lower()
+    return text if text in _LANGUAGE_CODE_BY_NAME.values() else _LANGUAGE_CODE_BY_NAME.get(text)
 
 
 def _resolve_day_reference(reply: Any, calendar: Any, offered: Any) -> str | None:
@@ -398,6 +404,26 @@ def _day_label(day: Any, language: Any) -> str | None:
     if code == "en":
         return f"{weekday}, {month} {date.day}"
     return f"{weekday} {date.day} de {month}"
+
+
+_MONTH_ABBREVIATIONS = {
+    "es": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"],
+    "en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "pt": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+}
+
+
+def _day_title(day: Any, language: Any) -> str | None:
+    """`day` (YYYY-MM-DD) as the short heading of a list of times: 'Miércoles. 4 nov' / 'Wednesday. Nov 4'."""
+    parts = _date_parts(day) if isinstance(day, str) else None
+    if parts is None:
+        return None
+    date = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+    code = _language_key(language) or "es"
+    weekday = _WEEKDAY_NAMES[code][date.weekday()]
+    weekday = weekday[:1].upper() + weekday[1:]
+    month = _MONTH_ABBREVIATIONS[code][date.month - 1]
+    return f"{weekday}. {month} {date.day}" if code == "en" else f"{weekday}. {date.day} {month}"
 
 
 def _pick_appointment_field(items: Any, field: str, day: Any, time: Any) -> Any:
@@ -1226,6 +1252,8 @@ Replace `[slot_name]` and `<CONSTANT>` references in `say` text with
         The result.
 """
 
+    language_code = _language_key(language_code)
+
     def _format_value(value: Any) -> str:
         if isinstance(value, str) and value.lstrip().startswith("{"):
             # A chosen appointment can arrive as its JSON text.
@@ -1284,7 +1312,7 @@ Swap each `{{contact.field}}` the contact has for an opaque `<CONTACT_FIELD>` to
 _PART_HEADINGS = frozenset(
         names[code].capitalize() for _, _, names in _PARTS_OF_DAY for code in names
 )
-_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐🗓└]")
+_LIST_LINE_RE = re.compile(r"^(\d+\. )?[📅🕐🗓└🌎]")
 
 
 def _protect_lists(text: str, protected: dict[str, str]) -> str:
