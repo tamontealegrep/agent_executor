@@ -1284,6 +1284,24 @@ def _protect_lists(text: str, protected: dict[str, str]) -> str:
     return "\n".join(out)
 
 
+def _protect_figures(text: str, protected: dict[str, str]) -> str:
+    """
+    `text` with each time (HH:MM) and long number swapped for a `<NUM_n>` token.
+
+    A rewording that drops or rewrites a figure is thrown away by `_keeps_figures`, and the message
+    then goes out in the template's language: "Our support is 360\u00b0" was reworded as "Nuestro soporte es
+    completo" every time, so that block always came out in English. With the figure behind a token the
+    model only has to keep the token, and the figure itself can never change.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        token = f"<NUM_{len(protected) + 1}>"
+        protected[token] = match.group(0)
+        return token
+
+    return _FIGURE_RE.sub(repl, text)
+
+
 def _restore_contact_values(text: str, protected: dict[str, str]) -> str:
     for token, value in protected.items():
         text = text.replace(token, value)
@@ -1421,6 +1439,7 @@ Build a `say`-rendering function.
         if say_verbatim:
             return raw
         raw = _protect_lists(raw, protected)
+        raw = _protect_figures(raw, protected)
 
         language_name = _LANGUAGE_NAMES.get(language_code, language_code) if language_code else None
         in_language = f" in {language_name}" if language_name else ""
@@ -1444,15 +1463,23 @@ Build a `say`-rendering function.
         # offer with made-up dates, say). A rewording that adds a question or balloons past
         # the original is discarded. The original text is in the template's language, not
         # the contact's, so a discarded rewording is retried once before falling back to it.
+        # The last attempt is a plain translation: two rewordings in a row can both be thrown away
+        # (a question tacked on mid-sentence, say), and the message would go out in English.
+        translate_prompt = (
+            f"Translate this agent message{in_language}, sentence by sentence, as faithfully as possible. "
+            "Keep every placeholder like <NAME> exactly as written, add nothing and ask nothing. "
+            "Output ONLY the translation:\n\n"
+            f"{raw}"
+        )
         paraphrased = raw
-        for temperature in (1.0, 0.0):
-            candidate = _drop_added_questions(llm_client.complete(prompt, temperature=temperature), raw)
+        for attempt_prompt, temperature in ((prompt, 1.0), (prompt, 0.0), (translate_prompt, 0.0)):
+            candidate = _drop_added_questions(llm_client.complete(attempt_prompt, temperature=temperature), raw)
             if (
                 candidate
                 and candidate.count("?") <= raw.count("?")
                 and len(candidate) <= 2 * len(raw) + 60
                 and _keeps_figures(raw, candidate)
-                and all(token in candidate for token in protected if token.startswith("<LIST_"))
+                and all(token in candidate for token in protected if token.startswith(("<LIST_", "<NUM_")))
             ):
                 paraphrased = candidate
                 break
