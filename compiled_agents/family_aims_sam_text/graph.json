@@ -726,7 +726,9 @@
         "node_id": "AM__AM_RESCHED_PICK",
         "node_type": "question",
         "goal": [
-          "Ask for a new slot, chosen from [am__available_slots]."
+          "Ask for a new slot, chosen from [am__available_slots].",
+          "Capture [am__new_time] as the exact time of day the contact wrote, as HH:MM in 24-hour format. If they named only a day (or no exact time), leave [am__new_time] empty: never choose a time for them.",
+          "Capture [am__new_slot] as the offered slot on the day and at the time the contact chose."
         ],
         "do": [],
         "trigger": [],
@@ -739,6 +741,10 @@
         "store": [],
         "capture": [
           [
+            "am__new_time",
+            "free_text"
+          ],
+          [
             "am__new_slot",
             "Slot"
           ]
@@ -747,13 +753,81 @@
         "route": [
           {
             "target": "AM__AM_DO_RESCHED",
+            "condition_text": "IF [am__new_time] IS NOT NULL AND [am__new_slot] IS NOT NULL -> GO_TO: AM__AM_DO_RESCHED",
+            "is_mechanical": true,
+            "python_expression": "am__new_time is not None and am__new_slot is not None",
+            "reason": null
+          },
+          {
+            "target": "AM__AM_RESCHED_TIME",
+            "condition_text": "IF [am__new_time] IS NULL -> GO_TO: AM__AM_RESCHED_TIME",
+            "is_mechanical": true,
+            "python_expression": "am__new_time is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "AM__AM_RESCHED_TIME",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
           }
+        ]
+      },
+      {
+        "node_id": "AM__AM_RESCHED_TIME",
+        "node_type": "question",
+        "goal": [
+          "The contact has not given an exact time yet. Capture [am__new_time] as the exact time of day they write, as HH:MM in 24-hour format; if they do not give one, leave it empty.",
+          "Capture [am__new_slot] as the offered slot on the day they chose earlier in the conversation, at that time."
         ],
-        "fallback": []
+        "do": [],
+        "trigger": [],
+        "say": [
+          "Which time works best for you on that day? These are the available times (24-hour format):",
+          "[am__available_slots]"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "am__new_time",
+            "free_text"
+          ],
+          [
+            "am__new_slot",
+            "Slot"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AM__AM_DO_RESCHED",
+            "condition_text": "IF [am__new_time] IS NOT NULL AND [am__new_slot] IS NOT NULL -> GO_TO: AM__AM_DO_RESCHED",
+            "is_mechanical": true,
+            "python_expression": "am__new_time is not None and am__new_slot is not None",
+            "reason": null
+          },
+          {
+            "target": "AM__AM_RESCHED_TIME",
+            "condition_text": "IF [am__new_time] IS NULL -> GO_TO: AM__AM_RESCHED_TIME",
+            "is_mechanical": true,
+            "python_expression": "am__new_time is None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "AM__AM_RESCHED_TIME",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
       },
       {
         "node_id": "AM__AM_DO_RESCHED",
@@ -11549,24 +11623,6 @@
   },
   "session_timeout_minutes": 10080,
   "say_policies": [
-    "The conversation operating language is [preferred_language], initialized from {{contact.language}} when available or defaulting to English. When the global language-change handler routes to language_management, let that subflow update [preferred_language] and sync GHL before continuing; do not make a parallel language decision or tool call.",
-    "If [preferred_language] == 'English', respond in warm professional English; if 'Spanish', respond in natural Colombian Spanish; if 'Portuguese', respond in natural Brazilian Portuguese. If it is empty, default to English.",
-    "For ambiguous replies such as yes, no, ok, numbers, dates, or times, keep the current [preferred_language]. Change it only if the user explicitly asks for another language or sends a clear message in another supported language.",
-    "If an approved SAY, FAQ, or handler message is written in another supported language, translate it faithfully into [preferred_language] without adding or removing facts.",
-    "Write in a warm, brief, useful style and keep each turn focused on one clear next step.",
-    "When a question must be asked again because the previous reply did not resolve it, do not restate it almost verbatim: briefly acknowledge what the lead just said and re-ask the same question with different, more natural wording, so the retry does not sound scripted or robotic.",
-    "This is an asynchronous text channel: process the user's full latest message and do not use voice-specific instructions such as call flow, silence handling, interruptions, or audio cues.",
-    "If the user asks for more detail, answer concretely and gently return to the next qualification, value, or scheduling step.",
-    "Keep each response focused: at most 2 short paragraphs, and end with one clear question only when the approved text already asks one.",
-    "Never invent a closing question (e.g. 'do you have any questions about this?', 'would you like to know more?') when rephrasing an informational message. Only end with a question if the approved text you are rephrasing already asks one — presenting information is a complete turn on its own and does not need an invented prompt for a reply.",
-    "Use short messages for classification questions.",
-    "When explaining requirements, programs, or documents, use 3 to 5 brief bullets instead of a dense block.",
-    "If approved content is long, split it across two short message turns only when the flow already routes that way.",
-    "You may use line breaks and simple bullets to improve clarity in text messages.",
-    "For documents, requirements, programs, or times, write a short introductory line followed by a scannable list.",
-    "When a response ends with a question after an explanation or list, place that question on a separate line.",
-    "Do not use tables or code blocks.",
-    "Write emails, phone numbers, and dates exactly as they should be registered; ask for confirmation before scheduling.",
     "Use the user's name naturally without repeating it excessively. Once in the greeting and occasionally for personalization is enough.",
     "If the user corrects the pronunciation of their name, adapt immediately and do not say it incorrectly again.",
     "If you do not have the user's name, do not invent one or use generic labels such as friend, sir, or ma'am.",
