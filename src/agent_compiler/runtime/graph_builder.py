@@ -696,6 +696,31 @@ def _clean_email(value: str) -> str | None:
     return email if _EMAIL_RE.match(email) else None
 
 
+_EMAIL_IN_TEXT_RE = re.compile(r"[^\s@,;:<>()\[\]]+@[^\s@,;:<>()\[\]]+\.[^\s@,;:<>()\[\]]{2,}")
+_EMAIL_UPDATED_ACK = "Thanks, I updated your email to [{slot}]."
+
+
+def _correct_contact_email(slots: dict[str, Any], capture: list[tuple[str, str]], reply: str) -> str | None:
+    """
+    The address the contact wrote in `reply` when it replaces the email already kept for the appointment.
+
+    Someone who mistyped their email says "sorry, it is ...@gmail.com" to whatever is asked next
+    (the day, the time), and the question took it for a wrong answer, so the confirmation went to the
+    typo. The address is read mechanically, with no model call. The summary question is left alone:
+    its own `fix` capture applies corrections and the summary is shown again. Returns the
+    name of the slot that was replaced, or None.
+    """
+    match = _EMAIL_IN_TEXT_RE.search(reply or "")
+    email = _clean_email(match.group(0).rstrip(".")) if match else None
+    key = next((k for k in slots if k == "c_email" or k.endswith("__c_email")), None)
+    if email is None or key is None or not slots.get(key) or slots[key] == email:
+        return None
+    if any(type_expr.strip() == "email" or name.endswith("fix") for name, type_expr in capture):
+        return None
+    slots[key] = email
+    return key
+
+
 def _clean_phone(value: str) -> str | None:
     """The phone without spaces or punctuation (a leading 00 written as +), or None when it cannot be a number."""
     phone = re.sub(r"[\s().-]", "", value)
@@ -1922,11 +1947,34 @@ Build one LangGraph node function for `node`.
                 policies=judgment_policies or [],
                 contact=contact,
             )
+            corrected_email_slot = _correct_contact_email(slots, node.capture, last_user_message)
             if node.capture:
                 extracted = _llm_extract_capture(llm_client, node.capture, ctx)
                 for slot_name, type_expr in node.capture:
                     if slot_name in extracted:
                         slots[slot_name] = _coerce_value(extracted[slot_name], type_expr)
+                if corrected_email_slot and not any(extracted.get(name) not in (None, "") for name, _ in node.capture):
+                    # Only the email was sent: say it was updated and ask the same question again.
+                    ack = render_say(
+                        f"{node.node_id}__email_ack",
+                        [_EMAIL_UPDATED_ACK.format(slot=corrected_email_slot)],
+                        False,
+                        language_code,
+                        slots,
+                        say_policies,
+                        contact=contact,
+                    )
+                    say_callback(ack)
+                    history = _append_history(history, f"agent: {ack}")
+                    return Command(
+                        update={
+                            "slots": slots,
+                            "current_state": node.node_id,
+                            "last_user_message": last_user_message,
+                            "history": history,
+                        },
+                        goto=node.node_id,
+                    )
 
             # A question node must ALWAYS route via a returned Command, never
             # a plain dict — see _resolve_target's docstring: LangGraph does
