@@ -1600,6 +1600,22 @@ _ARG_BIND_RE = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$")
 _CONST_REF_RE = re.compile(r"^<([A-Z_][A-Z0-9_]*)>$")
 _ATTR_ACCESS_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$")
 _SEGMENT_SPLIT_RE = re.compile(r",\s*|\.(?=\s|$)")
+_IN_UPPERCASE_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+in\s+uppercase\b", re.IGNORECASE)
+
+
+def _uppercase_binding(rhs: str, slots: dict[str, Any]) -> tuple[bool, Any]:
+    """
+    `[slot] in uppercase ('EN', 'ES', or 'PT')`: the slot's value in capitals, a language name as its code.
+
+    The segment splitter cuts that line at the commas inside the parenthesis, so the binding never
+    resolved and a model filled it in: an English contact was booked with `language: "ES"`.
+    """
+    match = _IN_UPPERCASE_RE.match(rhs)
+    value = slots.get(match.group(1)) if match else None
+    if not isinstance(value, str) or not value.strip():
+        return False, None
+    code = _LANGUAGE_CODE_BY_NAME.get(value.strip().lower())
+    return True, (code or value.strip()).upper()
 
 
 def _extract_mechanical_arg_bindings(do_lines: list[str], slots: dict[str, Any]) -> dict[str, Any]:
@@ -1651,7 +1667,9 @@ Parse `DO` lines for `input_name = <value>` tool-argument hints.
             arg_name, rhs = match.group(1), match.group(2).strip()
             if rhs.endswith(")") and "(" not in rhs:
                 rhs = rhs[:-1].rstrip()  # closing paren of "call tool (a=[x], b=[y])."
-            resolved, value = _resolve_simple_rhs(rhs, slots)
+            resolved, value = _uppercase_binding(rhs, slots)
+            if not resolved:
+                resolved, value = _resolve_simple_rhs(rhs, slots)
             if resolved:
                 bindings[arg_name] = value
     return bindings
