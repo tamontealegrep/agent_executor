@@ -7,6 +7,7 @@ Global router for FAQs and handlers during question interrupts.
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from collections.abc import Callable
@@ -26,6 +27,16 @@ RouterMatch = tuple[str, "GraphNode | FaqNode"]
 """Tuple ``(kind, node)`` where ``kind`` is ``"handler"`` or ``"faq"``."""
 
 _LANGUAGE_CHANGE_HANDLER_ID = "H_LANG_CHANGE"
+
+LANGUAGE_DETECTION_ENV = "GLOBAL_ROUTER_LANGUAGE_DETECTION"
+"""`false` (default) catches explicit language requests with fixed phrases before the model is asked;
+`true` leaves every language decision to the model."""
+
+
+def language_detection_by_model() -> bool:
+    """True when the environment asks for the model, not the fixed phrases, to detect language changes."""
+    return os.environ.get(LANGUAGE_DETECTION_ENV, "false").strip().lower() in {"true", "1", "yes", "on"}
+
 
 _SUPPORTED_LANGUAGE_NAMES = {"English", "Spanish", "Portuguese"}
 _LANGUAGE_NAMES_BY_CODE = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
@@ -361,7 +372,7 @@ def match_global_router(
 
     # 1. First check rule-based detection
     language_resolved = False
-    if language_handler is not None and det_intent != "none":
+    if language_handler is not None and det_intent != "none" and not language_detection_by_model():
         if det_intent == "content_answer" and det_lang:
             # The reply is content in another language: switch language, then still
             # check it against the handlers/FAQs below instead of skipping them.
@@ -414,10 +425,10 @@ def match_global_router(
 
         # Check if the user message is a content answer
         last_msg = (ctx.last_user_message or "").lower()
-        is_content = "_ANSWER" in upper_dec or any(w in last_msg for w in [
+        is_content = "_ANSWER" in upper_dec or (not language_detection_by_model() and any(w in last_msg for w in [
             "subrogacion", "subrrogacion", "fiv", "ivf", "ropa", "in vitro", "gestacion",
             "maternidad", "pareja", "mi nombre", "me interesa", "quiero",
-        ])
+        ]))
         if is_content:
             return None  # Continue with answer!
 
