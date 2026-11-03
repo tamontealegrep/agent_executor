@@ -55,10 +55,19 @@ def _language_name_from_slots(slots: dict[str, Any] | None, fallback: str | None
     return value if value in _SUPPORTED_LANGUAGE_NAMES else fallback
 
 
-_BARE_REPLY_WORDS = frozenset(
-    "si no sim nao yes yeah yep nope claro ok okay vale dale listo bueno bien correcto exacto afirmativo negativo "
-    "por supuesto favor gracias de acuerdo obvio seguro porfa please sure certo pode quero tambien tambem".split()
+_BARE_REPLY_WORDS_ES = (
+    "si no claro ok vale dale listo bueno bien correcto exacto afirmativo negativo por supuesto favor gracias "
+    "de acuerdo obvio seguro porfa tambien perfecto genial adelante efectivamente asi"
 )
+_BARE_REPLY_WORDS_EN = (
+    "yes no yeah yep yup nope nah ok okay sure please thanks thank you right correct exactly absolutely of course "
+    "definitely certainly fine great good alright all also too affirmative negative go ahead sounds"
+)
+_BARE_REPLY_WORDS_PT = (
+    "sim nao claro ok certo pode quero tambem obrigado obrigada com certeza exatamente perfeito beleza tudo bem "
+    "legal isso mesmo aceito por favor positivo negativo combinado otimo pode ser"
+)
+_BARE_REPLY_WORDS = frozenset(f"{_BARE_REPLY_WORDS_ES} {_BARE_REPLY_WORDS_EN} {_BARE_REPLY_WORDS_PT}".split())
 
 
 def _fold(text: str) -> str:
