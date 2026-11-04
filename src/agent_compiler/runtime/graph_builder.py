@@ -232,7 +232,7 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
         return
     quoted = _QUOTED_RE.match(rhs)
     if quoted:
-        slots[name] = quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
+        slots[name] = _expand_constants(quoted.group(1) if quoted.group(1) is not None else quoted.group(2), slots)
         return
     match_in = _STORE_MATCH_IN_RE.match(rhs)
     if match_in and match_in.group(1) in slots:
@@ -1772,6 +1772,14 @@ Ask the model which (if any) of the non-mechanical route conditions applies.
 
 _ARG_BIND_RE = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$")
 _CONST_REF_RE = re.compile(r"^<([A-Z_][A-Z0-9_]*)>$")
+_CONST_IN_TEXT_RE = re.compile(r"<([A-Z_][A-Z0-9_]*)>")
+
+
+def _expand_constants(text: str, slots: dict[str, Any]) -> str:
+    """A constant written inside a quoted text ('<A> to <B>') is replaced by its value, like a bare <A>."""
+    return _CONST_IN_TEXT_RE.sub(
+        lambda m: str(slots[m.group(1)]) if slots.get(m.group(1)) is not None else m.group(0), text
+    )
 _ATTR_ACCESS_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$")
 _SEGMENT_SPLIT_RE = re.compile(r",\s*|\.(?=\s|$)")
 _IN_UPPERCASE_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+in\s+uppercase\b", re.IGNORECASE)
@@ -1889,7 +1897,7 @@ def _resolve_simple_rhs(rhs: str, slots: dict[str, Any]) -> tuple[bool, Any]:
         return True, slots.get(const_ref.group(1))
     quoted = _QUOTED_RE.match(rhs)
     if quoted:
-        return True, quoted.group(1) if quoted.group(1) is not None else quoted.group(2)
+        return True, _expand_constants(quoted.group(1) if quoted.group(1) is not None else quoted.group(2), slots)
     attr_access = _ATTR_ACCESS_RE.match(rhs)
     if attr_access:
         container = slots.get(attr_access.group(1))
