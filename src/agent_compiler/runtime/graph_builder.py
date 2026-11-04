@@ -147,6 +147,7 @@ _STORE_LOCATION_LABEL_RE = re.compile(r"^LOCATION_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9
 _STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE|FULL)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_CONTACT_RE = re.compile(r"^\{\{contact\.([a-zA-Z_][a-zA-Z0-9_]*)\}\}$")
 _STORE_LANGUAGE_NAME_RE = re.compile(r"^LANGUAGE_NAME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
+_STORE_FIRST_WORD_RE = re.compile(r"^FIRST_WORD\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_FIND_DAY_RE = re.compile(r"^FIND_DAY\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+IN\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -277,6 +278,12 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
     language_name = _STORE_LANGUAGE_NAME_RE.match(rhs)
     if language_name:
         slots[name] = _LANGUAGE_NAMES.get(_language_key(slots.get(language_name.group(1))) or "", "English")
+        return
+
+    first_word = _STORE_FIRST_WORD_RE.match(rhs)
+    if first_word:
+        words = str(slots.get(first_word.group(1)) or "").split()
+        slots[name] = words[0] if words else None
         return
 
     find_day = _STORE_FIND_DAY_RE.match(rhs)
@@ -1775,13 +1782,20 @@ Ask the model which (if any) of the non-mechanical route conditions applies.
 _ARG_BIND_RE = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$")
 _CONST_REF_RE = re.compile(r"^<([A-Z_][A-Z0-9_]*)>$")
 _CONST_IN_TEXT_RE = re.compile(r"<([A-Z_][A-Z0-9_]*)>")
+_SLOT_IN_TEXT_RE = re.compile(r"\[([a-z_][a-z0-9_]*)\]")
 
 
 def _expand_constants(text: str, slots: dict[str, Any]) -> str:
-    """A constant written inside a quoted text ('<A> to <B>') is replaced by its value, like a bare <A>."""
-    return _CONST_IN_TEXT_RE.sub(
-        lambda m: str(slots[m.group(1)]) if slots.get(m.group(1)) is not None else m.group(0), text
-    )
+    """
+    A constant (`<A>`) or slot (`[a]`) written inside a quoted text is replaced by its value, like a bare `<A>`
+    or `[a]` on the right-hand side already is; one that has no value stays as written.
+    """
+
+    def value_of(match: re.Match[str]) -> str:
+        value = slots.get(match.group(1))
+        return str(value) if value is not None else match.group(0)
+
+    return _SLOT_IN_TEXT_RE.sub(value_of, _CONST_IN_TEXT_RE.sub(value_of, text))
 _ATTR_ACCESS_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$")
 _SEGMENT_SPLIT_RE = re.compile(r",\s*|\.(?=\s|$)")
 _IN_UPPERCASE_RE = re.compile(r"^\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+in\s+uppercase\b", re.IGNORECASE)
