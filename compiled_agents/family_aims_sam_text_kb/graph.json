@@ -1653,7 +1653,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they ask to book, schedule or set up an appointment, consultation or call), question (they ask something about the company, the services or the process, even if they also greet or name a service), none (anything else, such as a greeting or a service request without a question)"
+          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they ask to book, schedule or set up an appointment, consultation or call), question (they ask a specific question about the company, the services or the process, such as how long it takes, who it is for, where it is done or what it requires, even if they also greet or name a service), none (anything else, such as a greeting, naming a service, or only asking for general information about a service, for example 'I want information about surrogacy' or 'quiero información sobre FIV', which the next messages already give)"
         ],
         "capture": [],
         "eval": "code",
@@ -2054,7 +2054,7 @@
         ],
         "fallback": [
           {
-            "target": "O__OP_GREET_IN",
+            "target": "O__OP_GREET_SVC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2081,7 +2081,139 @@
         "eval": "code",
         "route": [
           {
+            "target": "O__OP_GREET_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_GREET_SVC",
+        "node_type": "decision",
+        "goal": [
+          "The contact wrote first: greet with a message for the service they are interested in, or a general one when the service is not known."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_GREET_ROPA",
+            "condition_text": "IF [svc] == 'ropa' -> GO_TO: O__OP_GREET_ROPA",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ropa'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_GREET_IVF",
+            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_GREET_IVF",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ivf'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_GREET_SUR",
+            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_GREET_SUR",
+            "is_mechanical": true,
+            "python_expression": "svc == 'surrogacy'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
             "target": "O__OP_GREET_IN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_GREET_IVF",
+        "node_type": "message",
+        "goal": [
+          "The contact wrote first and is interested in IVF: greet with a warm, commercial message about their IVF journey."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your in vitro fertilization journey and to help you take the first step toward the baby you dream of."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_Q_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_GREET_ROPA",
+        "node_type": "message",
+        "goal": [
+          "The contact wrote first and is interested in the ROPA method: greet with a warm, commercial message about it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your ROPA method journey, so you can build your family together and take the first step toward the baby you dream of."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_Q_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_GREET_SUR",
+        "node_type": "message",
+        "goal": [
+          "The contact wrote first and is interested in surrogacy: greet with a warm, commercial message about their surrogacy journey."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your surrogacy journey and to help you take the first step toward becoming a parent."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_Q_DEC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
