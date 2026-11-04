@@ -1480,6 +1480,7 @@
           "[o__sur_role] = NULL",
           "[ropa] = NULL",
           "[o__lang_gate_done] = NULL",
+          "[o__first_svc] = NULL",
           "[o__data_consent] = NULL",
           "[o__contact_language] = {{contact.language}}",
           "[preferred_language] = LANGUAGE_NAME [o__contact_language]",
@@ -1643,7 +1644,7 @@
         "node_type": "registration",
         "goal": [
           "Classify what the very first inbound message asks for, before greeting.",
-          "Outbound conversations start with a WhatsApp template that asks the contact to confirm that the number is theirs. A first message that confirms it is a normal start; one that denies it ends the conversation."
+          "The conversation starts in one of two ways: the contact answers the WhatsApp template that asks them to confirm that the number is theirs (reply 'confirm number' or 'it wasn't me'), or the contact writes first, usually with a question."
         ],
         "do": [],
         "trigger": [],
@@ -1652,7 +1653,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, or a bare 'no' answering the number confirmation), book (they ask to book, schedule or set up an appointment, consultation or call), none (anything else, including a greeting, a confirmation that the number is theirs, a question, a service request, or no user message yet)"
+          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they ask to book, schedule or set up an appointment, consultation or call), question (they ask something about the company, the services or the process, even if they also greet or name a service), none (anything else, such as a greeting or a service request without a question)"
         ],
         "capture": [],
         "eval": "code",
@@ -1710,11 +1711,18 @@
             "is_mechanical": true,
             "python_expression": "o__first_intent == 'book'",
             "reason": null
+          },
+          {
+            "target": "O__OP_GREET_TPL",
+            "condition_text": "IF [o__first_intent] == 'number_confirmed' -> GO_TO: O__OP_GREET_TPL",
+            "is_mechanical": true,
+            "python_expression": "o__first_intent == 'number_confirmed'",
+            "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "O__OP_GREET",
+            "target": "O__OP_FIRST_SVC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -1846,7 +1854,7 @@
         ],
         "fallback": [
           {
-            "target": "O__OP_GREET",
+            "target": "O__OP_FIRST_SVC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -1965,16 +1973,16 @@
         "fallback": []
       },
       {
-        "node_id": "O__OP_GREET",
+        "node_id": "O__OP_GREET_TPL",
         "node_type": "message",
         "goal": [
-          "Greet, introduce the assistant and say briefly why we are contacting the lead."
+          "The contact confirmed the number from the template: greet, introduce the assistant and say why we are contacting them."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nWe received your details and saw your interest in our fertility treatments, so I'm writing to help you take the first step."
+          "Thank you for confirming! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nWe received your details and saw that you are interested in our services, so I'm writing to help you take the first step."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -1984,6 +1992,186 @@
         "route": [
           {
             "target": "O__OP_SVC_KNOWN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FIRST_SVC",
+        "node_type": "registration",
+        "goal": [
+          "The contact wrote first: find out which service the message mentions."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__first_svc] = the service the latest user message mentions, as exactly one of ivf (IVF, FIV, in vitro fertilization, egg donation), ropa (the ROPA method) or surrogacy (surrogacy, subrogación, gestación subrogada); NULL when it names none"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_FIRST_SVC_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_FIRST_SVC_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Keep the service the message names, unless the CRM already gave one."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SET_FIRST_SVC",
+            "condition_text": "IF [svc] IS NULL AND [o__first_svc] IS NOT NULL -> GO_TO: O__OP_SET_FIRST_SVC",
+            "is_mechanical": true,
+            "python_expression": "svc is None and o__first_svc is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_GREET_IN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_SET_FIRST_SVC",
+        "node_type": "registration",
+        "goal": [
+          "Remember the service named in the first message."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = [o__first_svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_GREET_IN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_GREET_IN",
+        "node_type": "message",
+        "goal": [
+          "The contact wrote first: introduce the assistant in a general way, without assuming why they wrote."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI help people who are starting a fertility journey, from in vitro fertilization to surrogacy, take their first step."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_Q_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_Q_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Answer the question the contact opened with, if any, before going on."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ANSWER_FIRST",
+            "condition_text": "IF [o__first_intent] == 'question' -> GO_TO: O__OP_ANSWER_FIRST",
+            "is_mechanical": true,
+            "python_expression": "o__first_intent == 'question'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_SVC_KNOWN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_ANSWER_FIRST",
+        "node_type": "registration",
+        "goal": [
+          "Answer the first message through the knowledge base and come back to the service check."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[current_state] = 'O__OP_SVC_KNOWN'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_SIDE",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2016,8 +2204,8 @@
             "reason": null
           },
           {
-            "target": "O__OP_TO_KQ",
-            "condition_text": "IF [svc] == 'ivf' OR [svc] == 'surrogacy' -> GO_TO: O__OP_TO_KQ",
+            "target": "O__OP_SET_APPT",
+            "condition_text": "IF [svc] == 'ivf' OR [svc] == 'surrogacy' -> GO_TO: O__OP_SET_APPT",
             "is_mechanical": true,
             "python_expression": "svc == 'ivf' or svc == 'surrogacy'",
             "reason": null
@@ -2151,15 +2339,15 @@
             "reason": null
           },
           {
-            "target": "O__OP_TO_KQ",
-            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_TO_KQ",
+            "target": "O__OP_SET_APPT",
+            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_SET_APPT",
             "is_mechanical": true,
             "python_expression": "svc == 'ivf'",
             "reason": null
           },
           {
-            "target": "O__OP_TO_KQ",
-            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_TO_KQ",
+            "target": "O__OP_SET_APPT",
+            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_SET_APPT",
             "is_mechanical": true,
             "python_expression": "svc == 'surrogacy'",
             "reason": null
@@ -2209,7 +2397,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_TO_KQ",
+            "target": "O__OP_SET_APPT",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2233,6 +2421,334 @@
         "store": [
           "[svc] = NULL"
         ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SET_APPT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SET_APPT",
+        "node_type": "registration",
+        "goal": [
+          "Tell scheduling which service to book (empty when the contact does not know yet)."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SVC_ROUTE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SVC_ROUTE",
+        "node_type": "decision",
+        "goal": [
+          "Pick the short description of the service the contact is interested in."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SVC_ROPA",
+            "condition_text": "IF [ropa] == 'yes' -> GO_TO: O__OP_SVC_ROPA",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_SVC_IVF",
+            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_SVC_IVF",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ivf'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_SVC_SUR",
+            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_SVC_SUR",
+            "is_mechanical": true,
+            "python_expression": "svc == 'surrogacy'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_SVC_UNK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_SVC_IVF",
+        "node_type": "message",
+        "goal": [
+          "Describe in one short message what in vitro fertilization is."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "In vitro fertilization (IVF) is a treatment in which eggs and sperm are joined in a laboratory and the resulting embryos are transferred to the uterus. At <COMPANY_NAME> it is done in <IVF_CITY>, Colombia."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_VAL_IVF",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SVC_ROPA",
+        "node_type": "message",
+        "goal": [
+          "Describe in one short message what the ROPA method is."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "The ROPA method is a treatment for couples of women: one partner provides the eggs and the other carries the pregnancy, so both take part biologically in the process. At <COMPANY_NAME> it is done in <IVF_CITY>, Colombia."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_VAL_ROPA",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SVC_SUR",
+        "node_type": "message",
+        "goal": [
+          "Describe in one short message what surrogacy is."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Surrogacy is a process in which a woman carries a pregnancy for a person or couple who wants to become parents. <COMPANY_NAME> has surrogacy programs in Colombia, Mexico and Georgia, depending on each family's profile and situation."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_VAL_SUR",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SVC_UNK",
+        "node_type": "message",
+        "goal": [
+          "The contact does not know which service they need yet: reassure them in one short message."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "No problem, it is normal not to know yet. The right path depends on each person's situation, and that is exactly what a specialist helps to clarify."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_VAL_UNK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_VAL_IVF",
+        "node_type": "message",
+        "goal": [
+          "Value proposition: an appointment with an IVF expert."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "We would like to schedule an appointment for you with an expert in in vitro fertilization, where we will answer your questions about your process."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SANDLER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_VAL_ROPA",
+        "node_type": "message",
+        "goal": [
+          "Value proposition: an appointment with a ROPA method expert."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "We would like to schedule an appointment for you with an expert in the ROPA method, where we will answer your questions about your process."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SANDLER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_VAL_SUR",
+        "node_type": "message",
+        "goal": [
+          "Value proposition: an appointment with a surrogacy expert."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "We would like to schedule an appointment for you with an expert in surrogacy, where we will answer your questions about your process."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SANDLER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_VAL_UNK",
+        "node_type": "message",
+        "goal": [
+          "Value proposition: an appointment with a fertility expert."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "We would like to schedule an appointment for you with one of our fertility experts, where we will answer your questions about your process."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SANDLER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_SANDLER",
+        "node_type": "message",
+        "goal": [
+          "Up-front contract (Sandler method): set the expectations of the first appointment, make the commitment mutual and give the contact permission to say no before going on."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Before we go on, I want to be upfront so we both make the most of it. This first appointment is virtual and free, but it works only if we both commit: it takes <APPOINTMENT_DURATION_MINUTES> minutes, we ask you to set that time aside and to come ready to talk about your situation, and our expert will do the same for you.\nAnd if at any point this doesn't feel like the right moment, just tell me. There is no pressure."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
         "capture": [],
         "eval": "code",
         "route": [
@@ -7061,6 +7577,13 @@
             "is_mechanical": true,
             "python_expression": "kq__resume_state is not None",
             "reason": null
+          },
+          {
+            "target": "KQ__KQ_LIMIT",
+            "condition_text": "IF [kq__rounds] >= <MAX_KB_ROUNDS> -> GO_TO: KQ__KQ_LIMIT",
+            "is_mechanical": true,
+            "python_expression": "kq__rounds >= MAX_KB_ROUNDS",
+            "reason": null
           }
         ],
         "fallback": [
@@ -7072,6 +7595,34 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "KQ__KQ_LIMIT",
+        "node_type": "message",
+        "goal": [
+          "The question limit was reached: say the advisor will cover the rest in the appointment and move on."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "You have asked some great questions. To make sure you get the best answers, our advisor will go through anything that is left during your appointment."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "KQ__KQ_NUDGE",
@@ -7436,7 +7987,7 @@
         "eval": "code",
         "route": [
           {
-            "target": "MESSAGE_END_WRONG_NUMBER",
+            "target": "O__OP_FI_WRONG",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
