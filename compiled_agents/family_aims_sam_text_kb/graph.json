@@ -1482,10 +1482,102 @@
           "[o__lang_gate_done] = NULL",
           "[o__first_svc] = NULL",
           "[o__data_consent] = NULL",
+          "[o__contact_name] = {{contact.name}}",
+          "[o__first_name] = FIRST_WORD [o__contact_name]",
           "[o__contact_language] = {{contact.language}}",
           "[preferred_language] = LANGUAGE_NAME [o__contact_language]",
           "[o__contact_service] = {{contact.service}}",
           "[svc] = [o__contact_service]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_NAME_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_NAME_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Greet by first name when the CRM has one."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_HELLO_NAMED",
+            "condition_text": "IF [o__first_name] IS NOT NULL -> GO_TO: O__OP_HELLO_NAMED",
+            "is_mechanical": true,
+            "python_expression": "o__first_name is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_HELLO_ANON",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_HELLO_NAMED",
+        "node_type": "registration",
+        "goal": [
+          "The contact has a name: the greetings open with it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__hello] = 'Hi [o__first_name]!'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_GATE_ONCE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_HELLO_ANON",
+        "node_type": "registration",
+        "goal": [
+          "No name on file: the greetings open without it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__hello] = 'Hi there!'"
         ],
         "capture": [],
         "eval": "code",
@@ -1653,7 +1745,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they ask to book, schedule or set up an appointment, consultation or call), question (they ask a specific question about the company, the services or the process, such as how long it takes, who it is for, where it is done or what it requires, even if they also greet or name a service), none (anything else, such as a greeting, naming a service, or only asking for general information about a service, for example 'I want information about surrogacy' or 'quiero información sobre FIV', which the next messages already give)"
+          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they explicitly ask to book, schedule or set up an appointment, consultation or call; wanting a treatment or service, such as 'I want IVF' or 'quiero una FIV', is naming a service, not booking), question (they ask a specific question about the company, the services or the process, such as how long it takes, who it is for, where it is done or what it requires, or they say something they want or need that is more than naming a service, including something Family Aims may not offer, for example 'I want to adopt a baby', even if they also greet), none (only a greeting, naming a service, or asking for general information about a service, for example 'I want information about surrogacy' or 'quiero información sobre FIV', which the next messages already give)"
         ],
         "capture": [],
         "eval": "code",
@@ -1982,7 +2074,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Thank you for confirming! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nWe received your details and saw that you are interested in our services, so I'm writing to help you take the first step."
+          "[o__hello] Thank you for confirming! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nWe received your details and saw that you are interested in our services, so I'm writing to help you take the first step."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2148,7 +2240,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your in vitro fertilization journey and to help you take the first step toward the baby you dream of."
+          "[o__hello] I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your in vitro fertilization journey and to help you take the first step toward the baby you dream of."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2176,7 +2268,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your ROPA method journey, so you can build your family together and take the first step toward the baby you dream of."
+          "[o__hello] I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your ROPA method journey, so you can build your family together and take the first step toward the baby you dream of."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2204,7 +2296,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your surrogacy journey and to help you take the first step toward becoming a parent."
+          "[o__hello] I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI'm here to support you on your surrogacy journey and to help you take the first step toward becoming a parent."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2232,7 +2324,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Hi there! I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI help people who are starting a fertility journey, from in vitro fertilization to surrogacy, take their first step."
+          "[o__hello] I'm <AGENT_NAME>, the virtual assistant here at <COMPANY_NAME>.\nI help people who are starting a fertility journey, from in vitro fertilization to surrogacy, take their first step."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2386,7 +2478,7 @@
         "node_type": "question",
         "goal": [
           "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language.",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'. A reply that does not say which service they want and is not a question leaves [svc] empty."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty only when the reply says nothing about what they want, such as a bare yes or no, or when it is a question."
         ],
         "do": [],
         "trigger": [],
@@ -2403,7 +2495,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, unknown]"
+            "Literal[ivf, ropa, surrogacy, unknown, none]"
           ]
         ],
         "eval": "code",
@@ -2423,7 +2515,7 @@
         "node_type": "question",
         "goal": [
           "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc].",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'. A reply that does not say which service they want and is not a question leaves [svc] empty."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty only when the reply says nothing about what they want, such as a bare yes or no, or when it is a question."
         ],
         "do": [],
         "trigger": [],
@@ -2439,7 +2531,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, unknown]"
+            "Literal[ivf, ropa, surrogacy, unknown, none]"
           ]
         ],
         "eval": "code",
@@ -2501,6 +2593,13 @@
             "reason": null
           },
           {
+            "target": "O__OP_NO_SERVICE",
+            "condition_text": "IF [svc] == 'none' -> GO_TO: O__OP_NO_SERVICE",
+            "is_mechanical": true,
+            "python_expression": "svc == 'none'",
+            "reason": null
+          },
+          {
             "target": "O__OP_SET_UNKNOWN",
             "condition_text": "IF [o__svc_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_SET_UNKNOWN",
             "is_mechanical": true,
@@ -2517,6 +2616,34 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_NO_SERVICE",
+        "node_type": "message",
+        "goal": [
+          "None of the services is what the contact is looking for: say what we do, say goodbye kindly and leave the door open."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "I understand. At <COMPANY_NAME> we only work on fertility treatments and surrogacy, so I can't help you with that. If you ever want to explore one of those, I'll be glad to help. Have a great day!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_USER_NOT_INTERESTED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_SET_ROPA",
