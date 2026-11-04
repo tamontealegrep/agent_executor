@@ -114,11 +114,13 @@ class SessionState(TypedDict):
     contact: dict[str, Any]
 
 
-_HISTORY_WINDOW = 5
-"""How many recent `"agent: ..."` / `"user: ..."` turns `match_global_router`
-gets as context (2026-09-17) — enough to judge whether a reply continues the
-conversation it's actually in without carrying the whole transcript into
-every routing call."""
+_HISTORY_WINDOW = 10
+"""How many recent `"agent: ..."` / `"user: ..."` lines the session keeps. The
+knowledge-base tool receives all of them (a follow-up question can refer to
+something said several messages ago); every other LLM call only shows the last
+`PROMPT_HISTORY_LINES` of them (2026-09-17: enough to judge whether a reply
+continues the conversation it's in without carrying the whole transcript into
+every routing call)."""
 
 
 def _append_history(history: list[str], entry: str) -> list[str]:

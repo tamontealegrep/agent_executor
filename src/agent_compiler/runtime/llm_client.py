@@ -37,6 +37,11 @@ def _without_slot_ends(value: Any) -> Any:
     return value
 
 
+PROMPT_HISTORY_LINES = 5
+"""How many of the most recent conversation lines a decision prompt shows. The session keeps more
+(`_HISTORY_WINDOW`) so the knowledge-base tool can read further back without every other call paying for it."""
+
+
 def _slots_for_prompt(slots: dict[str, Any], referenced: str) -> dict[str, Any]:
     shown: dict[str, Any] = {}
     ends_named = any(field in referenced for field in _SLOT_END_FIELDS)
@@ -116,7 +121,8 @@ The context every runtime LLM decision call is given, normalized (2026-09-17).
         slot it names is still shown whole; any other large slot is summarized.
         """
         referenced = "\n".join([mentions, *self.goal, *self.do, self.pending_question])
-        history_block = f"Recent conversation:\n{chr(10).join(self.history)}\n\n" if self.history else ""
+        recent = self.history[-PROMPT_HISTORY_LINES:]
+        history_block = f"Recent conversation:\n{chr(10).join(recent)}\n\n" if recent else ""
         contact_block = (
             f"Contact info already on file for this session (from the CRM): "
             f"{json.dumps(self.contact, default=str)}\n\n"
