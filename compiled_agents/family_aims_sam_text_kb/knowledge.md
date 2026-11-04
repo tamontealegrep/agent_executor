@@ -125,7 +125,7 @@ A person does not need to define their family profile in advance. Family Aims ac
 
 ## The first appointment
 
-- The first appointment is a commercial advisory session of 30 minutes with a human advisor. It is the initial step to understand the person's story and needs, resolve doubts, and explain how Family Aims can support each phase.
+- The first appointment is a commercial advisory session with a human advisor. It lasts 30 minutes for surrogacy and 40 minutes for in vitro fertilization (IVF, IVF with donated eggs and the ROPA method). It is the initial step to understand the person's story and needs, resolve doubts, and explain how Family Aims can support each phase.
 - The advisor for surrogacy is Marcela Arango. The advisor for in vitro fertilization is Ayda Chuquizan.
 - Advisory sessions can be virtual. Family Aims can guide people remotely and coordinate a trip only when the program requires it.
 - The medical assessment appointment with the specialist does have a cost, but the commercial advisory session is the initial step to guide the person.

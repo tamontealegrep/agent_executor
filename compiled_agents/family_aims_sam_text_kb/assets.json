@@ -290,7 +290,7 @@
     "description": "Authorized booking tool; creates the appointment from a valid slot.",
     "notes": [
       "MANDATORY EXECUTION: on entering SC__SC_BOOK_I (IVF) or SC__SC_BOOK_S (SUR); requires prior get_available_slots.",
-      "ARGUMENTS: start_date = chosen slot.start_co; duration = <APPOINTMENT_DURATION_MINUTES>; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
+      "ARGUMENTS: start_date = chosen slot.start_co; duration = <IVF_APPOINTMENT_DURATION_MINUTES> for IVF or <SUR_APPOINTMENT_DURATION_MINUTES> for SUR; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
       "SOURCE OF TRUTH: success determines creation; do not confirm before success == true and event_id != null."
     ],
     "inputs": [
@@ -307,7 +307,7 @@
       {
         "name": "duration",
         "required": true,
-        "description": "Appointment duration in minutes, sent as a string. Fixed value for this flow: <APPOINTMENT_DURATION_MINUTES>."
+        "description": "Appointment duration in minutes, sent as a string. Fixed value per calendar: <IVF_APPOINTMENT_DURATION_MINUTES> for IVF, <SUR_APPOINTMENT_DURATION_MINUTES> for SUR."
       },
       {
         "name": "language",
@@ -354,7 +354,7 @@
       {
         "name": "event_link",
         "required": true,
-        "description": "Link to the event in the calendar. null if the booking was not completed."
+        "description": "RSVP link: the link to the event in the calendar, where the contact confirms attendance. null if the booking was not completed."
       },
       {
         "name": "meet_link",

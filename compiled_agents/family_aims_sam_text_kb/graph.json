@@ -2436,9 +2436,50 @@
       },
       {
         "node_id": "O__OP_SET_APPT",
+        "node_type": "decision",
+        "goal": [
+          "Tell scheduling which service to book and how long its appointment lasts."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_APPT_IVF",
+            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_APPT_IVF",
+            "is_mechanical": true,
+            "python_expression": "svc == 'ivf'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_APPT_SUR",
+            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_APPT_SUR",
+            "is_mechanical": true,
+            "python_expression": "svc == 'surrogacy'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_APPT_UNK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_APPT_IVF",
         "node_type": "registration",
         "goal": [
-          "Tell scheduling which service to book (empty when the contact does not know yet)."
+          "IVF appointment."
         ],
         "do": [],
         "trigger": [],
@@ -2447,7 +2488,66 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[appt_svc] = [svc]"
+          "[appt_svc] = 'ivf'",
+          "[appt_minutes] = <IVF_APPOINTMENT_DURATION_MINUTES>"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SVC_ROUTE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_APPT_SUR",
+        "node_type": "registration",
+        "goal": [
+          "Surrogacy appointment."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = 'surrogacy'",
+          "[appt_minutes] = <SUR_APPOINTMENT_DURATION_MINUTES>"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SVC_ROUTE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_APPT_UNK",
+        "node_type": "registration",
+        "goal": [
+          "The service is not known yet: scheduling will ask for it, and the duration is the range of both appointments."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = NULL",
+          "[appt_minutes] = '<SUR_APPOINTMENT_DURATION_MINUTES> to <IVF_APPOINTMENT_DURATION_MINUTES>'"
         ],
         "capture": [],
         "eval": "code",
@@ -2744,7 +2844,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Before we go on, I want to be upfront so we both make the most of it. This first appointment is virtual and free, but it works only if we both commit: it takes <APPOINTMENT_DURATION_MINUTES> minutes, we ask you to set that time aside and to come ready to talk about your situation, and our expert will do the same for you.\nAnd if at any point this doesn't feel like the right moment, just tell me. There is no pressure."
+          "Before we go on, I want to be upfront so we both make the most of it. This first appointment is virtual and free, but it works only if we both commit: it takes [appt_minutes] minutes, we ask you to set that time aside and to come ready to talk about your situation, and our expert will do the same for you.\nAnd if at any point this doesn't feel like the right moment, just tell me. There is no pressure."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2804,7 +2904,8 @@
         "execute": null,
         "store": [
           "[svc] = 'ivf'",
-          "[appt_svc] = 'ivf'"
+          "[appt_svc] = 'ivf'",
+          "[appt_minutes] = <IVF_APPOINTMENT_DURATION_MINUTES>"
         ],
         "capture": [],
         "eval": "code",
@@ -2833,7 +2934,8 @@
         "execute": null,
         "store": [
           "[svc] = 'surrogacy'",
-          "[appt_svc] = 'surrogacy'"
+          "[appt_svc] = 'surrogacy'",
+          "[appt_minutes] = <SUR_APPOINTMENT_DURATION_MINUTES>"
         ],
         "capture": [],
         "eval": "code",
@@ -5308,7 +5410,9 @@
         "say": [],
         "say_verbatim": false,
         "execute": "get_available_slots",
-        "store": [],
+        "store": [
+          "[appt_minutes] = <IVF_APPOINTMENT_DURATION_MINUTES>"
+        ],
         "capture": [
           [
             "sc__available_slots",
@@ -5353,7 +5457,9 @@
         "say": [],
         "say_verbatim": false,
         "execute": "get_available_slots",
-        "store": [],
+        "store": [
+          "[appt_minutes] = <SUR_APPOINTMENT_DURATION_MINUTES>"
+        ],
         "capture": [
           [
             "sc__available_slots",
@@ -5708,7 +5814,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "📅 [sc__day_title] | ⏱️ <APPOINTMENT_DURATION_MINUTES> min (Virtual)\n🌎 [sc__location_label]\n\n[sc__available_slots]"
+          "📅 [sc__day_title] | ⏱️ [appt_minutes] min (Virtual)\n🌎 [sc__location_label]\n\n[sc__available_slots]"
         ],
         "say_verbatim": true,
         "execute": null,
@@ -6676,7 +6782,7 @@
           "[sc__book_try] = [sc__book_try] + 1",
           "TOOL CALL ONLY: call book_appointment now.",
           "start_date = [sc__start_date]",
-          "duration = <APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
+          "duration = <IVF_APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
           "contact_name = [sc__c_name], contact_email = [sc__c_email], contact_phone = [sc__c_phone].",
           "It is FORBIDDEN to write to the contact, confirm the appointment, run FAQs or handlers, or route before capturing [sc__success].",
           "If you do not execute book_appointment, STAY here and retry. NEVER continue with an empty or assumed [sc__success]."
@@ -6694,6 +6800,14 @@
           ],
           [
             "sc__reason",
+            "str"
+          ],
+          [
+            "sc__event_link",
+            "str"
+          ],
+          [
+            "sc__meet_link",
             "str"
           ]
         ],
@@ -6742,7 +6856,7 @@
           "[sc__book_try] = [sc__book_try] + 1",
           "TOOL CALL ONLY: call book_appointment now.",
           "start_date = [sc__start_date]",
-          "duration = <APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
+          "duration = <SUR_APPOINTMENT_DURATION_MINUTES>. language = [preferred_language] in uppercase ('EN', 'ES', or 'PT'). iana_timezone = [user_timezone].",
           "contact_name = [sc__c_name], contact_email = [sc__c_email], contact_phone = [sc__c_phone].",
           "It is FORBIDDEN to write to the contact, confirm the appointment, run FAQs or handlers, or route before capturing [sc__success].",
           "If you do not execute book_appointment, STAY here and retry. NEVER continue with an empty or assumed [sc__success]."
@@ -6760,6 +6874,14 @@
           ],
           [
             "sc__reason",
+            "str"
+          ],
+          [
+            "sc__event_link",
+            "str"
+          ],
+          [
+            "sc__meet_link",
             "str"
           ]
         ],
@@ -6968,7 +7090,195 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Perfect, your appointment is scheduled for [sc__day_label] at [sc__slot].\n\nWe will send the confirmation to [sc__c_email]. Remember to confirm your attendance and add it to your calendar."
+          "Perfect, your appointment is scheduled for [sc__day_label] at [sc__slot]."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_LINK_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_LINK_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Send the links the booking returned: the RSVP link and the video call link when both came back, otherwise the one that did."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_LINK",
+            "condition_text": "IF [sc__event_link] IS NOT NULL AND [sc__meet_link] IS NOT NULL -> GO_TO: SC__SC_LINK",
+            "is_mechanical": true,
+            "python_expression": "sc__event_link is not None and sc__meet_link is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_LINK_RSVP",
+            "condition_text": "IF [sc__event_link] IS NOT NULL -> GO_TO: SC__SC_LINK_RSVP",
+            "is_mechanical": true,
+            "python_expression": "sc__event_link is not None",
+            "reason": null
+          },
+          {
+            "target": "SC__SC_LINK_MEET",
+            "condition_text": "IF [sc__meet_link] IS NOT NULL -> GO_TO: SC__SC_LINK_MEET",
+            "is_mechanical": true,
+            "python_expression": "sc__meet_link is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SC__SC_EMAIL",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SC__SC_LINK",
+        "node_type": "message",
+        "goal": [
+          "Give the RSVP link to confirm attendance and the video call link, say that an email with the appointment information is on its way, and ask to check the spam folder."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Here is the link to confirm your attendance (RSVP): [sc__event_link]\n\nAnd this is the link to the video call: [sc__meet_link]\n\nYou will also receive an email at [sc__c_email] with all the information. If you don't see it in a few minutes, please check your spam folder just in case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_COMMIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_LINK_RSVP",
+        "node_type": "message",
+        "goal": [
+          "Give the RSVP link to confirm attendance, say that an email with the appointment information is on its way, and ask to check the spam folder."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Here is the link to confirm your attendance (RSVP): [sc__event_link]\n\nYou will also receive an email at [sc__c_email] with all the information. If you don't see it in a few minutes, please check your spam folder just in case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_COMMIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_LINK_MEET",
+        "node_type": "message",
+        "goal": [
+          "Give the video call link, say that an email with the appointment information is on its way, and ask to check the spam folder."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Here is the link to the video call: [sc__meet_link]\n\nYou will also receive an email at [sc__c_email] with all the information. If you don't see it in a few minutes, please check your spam folder just in case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_COMMIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_EMAIL",
+        "node_type": "message",
+        "goal": [
+          "No link came back: say that an email with the appointment information is on its way and ask to check the spam folder."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "You will receive an email at [sc__c_email] with all the information about your appointment. If you don't see it in a few minutes, please check your spam folder just in case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SC__SC_COMMIT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SC__SC_COMMIT",
+        "node_type": "message",
+        "goal": [
+          "Very short Sandler close: the appointment is a commitment, so the opportunity should not be lost."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "One last thing: this appointment is a commitment for you and for our expert, so please don't let this opportunity slip away."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7634,7 +7944,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "I can see you have a few questions. Our advisor can go through all of them during your appointment, which only takes <APPOINTMENT_DURATION_MINUTES> minutes."
+          "I can see you have a few questions. Our advisor can go through all of them during your appointment."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -9034,7 +9344,7 @@
         {
           "name": "duration",
           "required": true,
-          "description": "Appointment duration in minutes, sent as a string. Fixed value for this flow: <APPOINTMENT_DURATION_MINUTES>.",
+          "description": "Appointment duration in minutes, sent as a string. Fixed value per calendar: <IVF_APPOINTMENT_DURATION_MINUTES> for IVF, <SUR_APPOINTMENT_DURATION_MINUTES> for SUR.",
           "type_expr": "str",
           "examples": [
             "30"
@@ -9105,7 +9415,7 @@
         {
           "name": "event_link",
           "required": true,
-          "description": "Link to the event in the calendar. null if the booking was not completed.",
+          "description": "RSVP link: the link to the event in the calendar, where the contact confirms attendance. null if the booking was not completed.",
           "type_expr": "str",
           "examples": []
         },
@@ -9126,7 +9436,7 @@
       ],
       "notes": [
         "MANDATORY EXECUTION: on entering SC__SC_BOOK_I (IVF) or SC__SC_BOOK_S (SUR); requires prior get_available_slots.",
-        "ARGUMENTS: start_date = chosen slot.start_co; duration = <APPOINTMENT_DURATION_MINUTES>; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
+        "ARGUMENTS: start_date = chosen slot.start_co; duration = <IVF_APPOINTMENT_DURATION_MINUTES> for IVF or <SUR_APPOINTMENT_DURATION_MINUTES> for SUR; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
         "SOURCE OF TRUTH: success determines creation; do not confirm before success == true and event_id != null."
       ]
     },
@@ -9406,7 +9716,8 @@
     "HUMAN_IVF_ADVISOR_NAME": "Ayda Chuquizan",
     "PROCESS_DURATION_MONTHS": "24 months",
     "IVF_CITY": "Bogotá",
-    "APPOINTMENT_DURATION_MINUTES": "30",
+    "IVF_APPOINTMENT_DURATION_MINUTES": "40",
+    "SUR_APPOINTMENT_DURATION_MINUTES": "30",
     "MIGRATION_POLICY_REASON": "This policy responds exclusively to Colombian migration requirements and aims to ensure that the process can be carried out legally and safely.",
     "SUPPORTED_LANG": "English|Spanish|Portuguese",
     "DATA_POLICY_URL": "https://familyaims.com/privacy-policy-us/",
