@@ -2372,34 +2372,6 @@
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_EXPLAIN",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "O__OP_EXPLAIN",
-        "node_type": "message",
-        "goal": [
-          "Explain briefly what the services we offer consist of."
-        ],
-        "do": [],
-        "trigger": [],
-        "disabled_in": [],
-        "say": [
-          "Here is what we offer:\n\n- Conventional fertility treatments in Bogotá, Colombia: in vitro fertilization (IVF), IVF with donated eggs, and the ROPA method for couples of women.\n- Gestational surrogacy, with programs in Colombia, Mexico and Georgia, depending on each family's profile and situation."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
             "target": "O__OP_ASK",
             "condition_text": null,
             "is_mechanical": true,
@@ -2413,7 +2385,44 @@
         "node_id": "O__OP_ASK",
         "node_type": "question",
         "goal": [
-          "Ask which service the lead is interested in and capture it as [svc].",
+          "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language.",
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'. A reply that does not say which service they want and is not a question leaves [svc] empty."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Here is what we offer:\n\n- Conventional fertility treatments in Bogotá, Colombia: in vitro fertilization (IVF), IVF with donated eggs, and the ROPA method for couples of women.\n- Gestational surrogacy, with programs in Colombia, Mexico and Georgia, depending on each family's profile and situation.",
+          "Which of these services are you interested in?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = [svc]"
+        ],
+        "capture": [
+          [
+            "svc",
+            "Literal[ivf, ropa, surrogacy, unknown]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_ASK_AGAIN",
+        "node_type": "question",
+        "goal": [
+          "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc].",
           "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'. A reply that does not say which service they want and is not a question leaves [svc] empty."
         ],
         "do": [],
@@ -2501,7 +2510,7 @@
         ],
         "fallback": [
           {
-            "target": "O__OP_ASK",
+            "target": "O__OP_ASK_AGAIN",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
