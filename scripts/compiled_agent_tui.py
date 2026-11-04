@@ -87,6 +87,7 @@ except Exception:
 
 from compiled_runner.tool_routing import candidate_urls
 from agent_compiler.runtime.graph_builder import build_graph, fresh_state
+from agent_compiler.runtime.knowledge_base import MarkdownKnowledgeBase
 from agent_compiler.runtime.llm_client import OpenAILLMClient
 from agent_compiler.runtime.session_resolver import resolve_session
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
@@ -434,6 +435,16 @@ Copia graph.json/assets.json recién compilados desde la ruta estándar
         graph_dst = dest_dir / "graph.json"
         assets_dst = dest_dir / "assets.json"
 
+        # The knowledge document lives with the agent's definition; it is copied on its own so an edit
+        # to it alone (no recompile) still reaches the TUI.
+        knowledge_src = PROJECT_ROOT / "agents" / "definitions" / slug / "knowledge.md"
+        knowledge_dst = dest_dir / "knowledge.md"
+        if knowledge_src.exists() and (
+            not knowledge_dst.exists() or knowledge_src.stat().st_mtime > knowledge_dst.stat().st_mtime
+        ):
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(knowledge_src, knowledge_dst)
+
         if graph_dst.exists() and graph_src.stat().st_mtime <= graph_dst.stat().st_mtime:
             continue
 
@@ -506,6 +517,9 @@ Un grafo LangGraph real, construido una sola vez por sesion de TUI,
         self.tracing_llm_client = TracingLLMClient(real_llm_client)
         self.tracing_llm_client.enabled = log_llm
 
+        knowledge_path = COMPILED_AGENTS_DIR / agent_slug / "knowledge.md"
+        knowledge_base = MarkdownKnowledgeBase.from_file(knowledge_path) if knowledge_path.exists() else None
+
         self.graph = build_graph(
             self.artifact,
             self.tracing_llm_client,
@@ -513,6 +527,7 @@ Un grafo LangGraph real, construido una sola vez por sesion de TUI,
             tool_http_client=self.tracing_http_client,
             checkpointer=checkpointer,
             say_callback=self._say_buffer.append,
+            knowledge_base=knowledge_base,
         )
 
     # --- Descubrimiento de posibles nombres de slots en el grafo ---

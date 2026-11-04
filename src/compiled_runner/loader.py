@@ -19,6 +19,7 @@ import threading
 from pathlib import Path
 
 from agent_compiler.runtime.graph_builder import build_graph
+from agent_compiler.runtime.knowledge_base import MarkdownKnowledgeBase
 from agent_compiler.runtime.llm_client import OpenAILLMClient
 from agent_compiler.targets.langgraph.runtime_artifact import RuntimeArtifact, runtime_artifact_from_dict
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -122,6 +123,11 @@ Actually build the graph for `compiled_agents/<slug>/graph.json` —
 
     llm_client = OpenAILLMClient(api_key=os.environ.get("OPENAI_API_KEY"))
 
+    # An agent that answers open questions from a document ships it next to its graph. Too large a
+    # document fails here, at startup, rather than costing tokens on every question.
+    knowledge_path = agent_dir / "knowledge.md"
+    knowledge_base = MarkdownKnowledgeBase.from_file(knowledge_path) if knowledge_path.exists() else None
+
     graph = build_graph(
         artifact,
         llm_client,
@@ -129,6 +135,7 @@ Actually build the graph for `compiled_agents/<slug>/graph.json` —
         tool_http_client=ToolRoutingClient(),
         checkpointer=checkpointer,
         say_callback=_say_callback,
+        knowledge_base=knowledge_base,
     )
     return artifact, graph
 

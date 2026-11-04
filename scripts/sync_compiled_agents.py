@@ -31,6 +31,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AGENTS_COMPILED_DIR = PROJECT_ROOT.parent / "agents" / "compiled"
 COMPILED_AGENTS_DIR = PROJECT_ROOT / "compiled_agents"
+DEFINITIONS_DIR = PROJECT_ROOT.parent / "agents" / "definitions"
 
 
 def _sync_one(slug: str) -> bool:
@@ -61,6 +62,12 @@ def _sync_one(slug: str) -> bool:
 
     if assets_src.exists():
         shutil.copy2(assets_src, dest_dir / "assets.json")
+
+    # The knowledge document an agent answers open questions from lives with its definition
+    # (not with the compiled output), so it is copied from there when the agent has one.
+    knowledge_src = DEFINITIONS_DIR / slug / "knowledge.md"
+    if knowledge_src.exists():
+        shutil.copy2(knowledge_src, dest_dir / "knowledge.md")
 
     print(f"OK   {slug} -> {dest_dir}")
     return True
