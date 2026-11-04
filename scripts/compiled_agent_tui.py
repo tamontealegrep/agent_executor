@@ -218,6 +218,7 @@ class CompiledSessionState:
     first_speaker: str = "agent"
     log_llm: bool = False
     log_http: bool = False
+    log_tools: bool = False
     initial_slots: Dict[str, Any] = field(default_factory=dict)
     contact: Dict[str, Any] = field(default_factory=dict)
 
@@ -747,6 +748,7 @@ def _session_payload(state: CompiledSessionState) -> Dict[str, Any]:
         "first_speaker": state.first_speaker,
         "log_llm": state.log_llm,
         "log_http": state.log_http,
+        "log_tools": state.log_tools,
         "initial_slots": state.initial_slots,
         "contact": state.contact,
         "saved_at": _now_iso(),
@@ -768,6 +770,7 @@ def load_session(session_file: Path) -> CompiledSessionState:
         first_speaker=data.get("first_speaker", "agent"),
         log_llm=data.get("log_llm", False),
         log_http=data.get("log_http", False),
+        log_tools=data.get("log_tools", False),
         initial_slots=data.get("initial_slots", {}),
         contact=data.get("contact", {}),
     )
@@ -858,7 +861,8 @@ def render_chat_header(state: CompiledSessionState, session_file: Path) -> None:
 
     log_llm_status = "[green]ON[/green]" if state.log_llm else "[red]OFF[/red]"
     log_http_status = "[green]ON[/green]" if state.log_http else "[red]OFF[/red]"
-    console.print(f"Logs: LLM={log_llm_status}, HTTP={log_http_status}")
+    log_tools_status = "[green]ON[/green]" if state.log_tools else "[red]OFF[/red]"
+    console.print(f"Logs: LLM={log_llm_status}, HTTP={log_http_status}, TOOLS={log_tools_status}")
 
     if state.initial_slots:
         console.print(f"Slots iniciales: {json.dumps(state.initial_slots, ensure_ascii=False)}")
@@ -886,6 +890,7 @@ def render_chat_help() -> None:
     table.add_row("/input-edit", "Asistente interactivo para editar variables de entrada (contact.* y otras)")
     table.add_row("/log-llm", "Prende/apaga el log de prompts y respuestas del LLM")
     table.add_row("/log-http", "Prende/apaga el log de trafico HTTP (tool calls)")
+    table.add_row("/log-tools", "Prende/apaga la vista automatica de tool calls en cada turno")
     table.add_row("/save", "Guarda la sesion actual (el historial local -- el estado real ya esta persistido)")
     table.add_row("/new", "Empieza una conversacion nueva (thread_id nuevo)")
     table.add_row("/back", "Guarda y vuelve al selector de agentes")
@@ -1251,6 +1256,11 @@ def handle_chat_command(raw_text: str, state: CompiledSessionState, session_file
         status = "encendido" if state.log_http else "apagado"
         console.print(f"[cyan]Log de trafico HTTP {status}[/cyan]")
         return True
+    if command == "/log-tools":
+        state.log_tools = not state.log_tools
+        status = "encendido" if state.log_tools else "apagado"
+        console.print(f"[cyan]Log de tools (vista automatica) {status}[/cyan]")
+        return True
     if command == "/save":
         save_session(state, session_file)
         console.print(f"[cyan]Sesion guardada en {session_file}[/cyan]")
@@ -1361,7 +1371,8 @@ Kick off a brand-new thread: ask who speaks first, then invoke it.
         console.print(Panel.fit(msg, title=state.agent_slug, border_style="magenta"))
     state.history.extend(_history_entry("outbound", m) for m in result.messages)
     state.last_traces = result.traces
-    render_traces(result.traces)
+    if state.log_tools:
+        render_traces(result.traces)
     if result.conversation_ended:
         console.print("[dim]-- conversacion finalizada (el grafo llego a un nodo terminal) --[/dim]")
     save_session(state, session_file)
@@ -1410,7 +1421,8 @@ def chat_loop(state: CompiledSessionState, session_file: Path, contact: Optional
             console.print(Panel.fit(msg, title=state.agent_slug, border_style="magenta"))
         state.history.extend(_history_entry("outbound", m) for m in result.messages)
         state.last_traces = result.traces
-        render_traces(result.traces)
+        if state.log_tools:
+            render_traces(result.traces)
         if result.conversation_ended:
             console.print("[dim]-- conversacion finalizada (el grafo llego a un nodo terminal) --[/dim]")
         save_session(state, session_file)
@@ -1461,6 +1473,8 @@ def run_launcher(args: argparse.Namespace) -> int:
                 state.log_llm = True
             if args.log_http:
                 state.log_http = True
+            if getattr(args, "log_tools", False):
+                state.log_tools = True
 
             chat_loop(state, session_file, contact=_contact_from_args(args))
         except ReturnToLauncher:
@@ -1506,6 +1520,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--log-http", action="store_true", help="Habilita el log de trafico HTTP (tool calls) por defecto"
+    )
+    parser.add_argument(
+        "--log-tools", action="store_true", help="Muestra por defecto las tool calls al final de cada turno"
     )
     parser.add_argument(
         "--contact-name", help="Simula un contacto ya conocido por el CRM -- nombre (resuelve {{contact.name}})."
