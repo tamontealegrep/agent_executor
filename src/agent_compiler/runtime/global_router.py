@@ -115,6 +115,11 @@ RESPECT_FILTER_ENV = "GLOBAL_ROUTER_RESPECT_FILTER"
 
 RESPECT_HANDLER_ID = "H_RESPECT"
 
+ABUSE_HANDLER_ID = "H_SAFETY"
+"""The agent's own handler for abuse. When the agent defines it, a disrespectful reply goes there instead of
+getting the fixed reminder, so the agent decides what happens (count strikes, warn, close). It is reached only
+through the respect filter's single judgment, never through the candidate list the router model chooses from."""
+
 RESPECT_REMINDER: list[str] = [
     "I want to help you, and I can do that best if we keep this conversation respectful and courteous. "
     "Let's continue."
@@ -148,14 +153,19 @@ def is_disrespectful(llm_client: LLMClient, ctx: LLMContext) -> bool:
     question_context = f"The agent had just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
     prompt = (
         "A customer is chatting with a clinic's assistant. The conversation must stay cordial and respectful. "
-        "Decide whether the customer's latest message is DISRESPECTFUL: it uses vulgar or offensive words, "
-        "insults or demeans a person or a group (the assistant, the clinic or its staff, or anyone else), "
-        "expresses hate, or is rude, contemptuous or aggressive in tone. The message may be in Spanish, "
-        "English or Portuguese, and may be misspelled or censored (like 'p***a').\n\n"
-        "It is NOT disrespectful when it is blunt, impatient, sad or frustrated without insults, when it "
-        "complains politely, declines or says it is not interested, asks to stop being contacted, or when it only mentions a sensitive subject (infertility, miscarriage, "
-        "surrogacy, price, religion) without attacking anyone. Words that are vulgar only inside a name, "
-        "a quotation of the clinic's own text or a medical term are fine.\n\n"
+        "Decide whether the customer's latest message is DISRESPECTFUL: it insults, name-calls or demeans a "
+        "person or a group (the assistant, the clinic or its staff, or anyone else), uses vulgar or obscene "
+        "words AT someone, makes crude or sexual remarks, makes threats, or expresses hate. The message may be "
+        "in Spanish, English or Portuguese, and may be misspelled or censored (like 'p***a').\n\n"
+        "Being upset is NOT being disrespectful. It is NOT disrespectful when the customer is frustrated, "
+        "impatient, angry, desperate or sad but insults no one: complaining about the service, the wait, the "
+        "price or having to repeat themselves ('this is taking forever', 'I already told you that', 'esto es "
+        "una estafa', 'estoy harto de repetir lo mismo', 'qué mal servicio'), blunt criticism, or an expletive "
+        "that only expresses their own situation and is not aimed at anyone ('qué desespero, joder'). It is also "
+        "not disrespectful when it complains politely, declines or says it is not interested, asks to stop being "
+        "contacted, or only mentions a sensitive subject (infertility, miscarriage, surrogacy, price, religion) "
+        "without attacking anyone. Words that are vulgar only inside a name, a quotation of the clinic's own text "
+        "or a medical term are fine. When it is only frustration, answer OK.\n\n"
         f"{question_context}"
         f"Customer's latest message: {message!r}\n\n"
         "Reply with just DISRESPECTFUL or OK."
@@ -163,8 +173,17 @@ def is_disrespectful(llm_client: LLMClient, ctx: LLMContext) -> bool:
     return llm_client.complete(prompt).strip().upper().startswith("DISRESPECTFUL")
 
 
+def _abuse_handler(router: GlobalRouterDefinition) -> GraphNode | None:
+    return next((h for h in router.handlers if h.node_id == ABUSE_HANDLER_ID), None)
+
+
 def _candidates(router: GlobalRouterDefinition) -> list[RouterMatch]:
-    return [("handler", h) for h in router.handlers] + [("faq", f) for f in router.faqs]
+    """What the router model chooses from. The abuse handler is left out while the respect filter is on:
+    the filter's own judgment is the only way into it, so frustration is never matched to it by phrase."""
+    skip_abuse = respect_filter_enabled()
+    return [("handler", h) for h in router.handlers if not (skip_abuse and h.node_id == ABUSE_HANDLER_ID)] + [
+        ("faq", f) for f in router.faqs
+    ]
 
 
 def _candidate_lines(candidates: list[RouterMatch]) -> str:
@@ -475,7 +494,7 @@ def match_global_router(
 
     # A hateful, vulgar or disrespectful reply gets a courteous reminder and the pending question again.
     if respect_filter_enabled() and is_disrespectful(llm_client, ctx):
-        return ("handler", _respect_reminder())
+        return ("handler", _abuse_handler(router) or _respect_reminder())
 
     # 2. Fall back to LLM classification
     decision = _classify_reply(llm_client, ctx, lines, None if language_resolved else language_handler)
