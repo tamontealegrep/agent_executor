@@ -1745,7 +1745,7 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they explicitly ask to book, schedule or set up an appointment, consultation or call; wanting a treatment or service, such as 'I want IVF' or 'quiero una FIV', is naming a service, not booking), question (they ask a specific question about the company, the services or the process, such as how long it takes, who it is for, where it is done or what it requires, or they say something they want or need that is more than naming a service, including something Family Aims may not offer, for example 'I want to adopt a baby', even if they also greet), none (only a greeting, naming a service, or asking for general information about a service, for example 'I want information about surrogacy' or 'quiero información sobre FIV', which the next messages already give)"
+          "[o__first_intent] = what the latest user message asks for, as exactly one of: sur_candidate (the person wants to become or work as a surrogate or gestational carrier), not_interested (they are not interested, do not want to continue or do not want to be contacted again), wrong_number (the number or contact is not theirs, it was not them, 'it wasn't me', or a bare 'no' answering the number confirmation), number_confirmed (they confirm that the number is theirs, for example 'confirm number', or there is no user message yet because the conversation started with the outbound template), book (they explicitly ask to book, schedule or set up an appointment, consultation or call; wanting a treatment or service, such as 'I want IVF' or 'quiero una FIV', is naming a service, not booking), question (the default: any message that says or asks something other than the cases above and other than the none case below, such as a question about the company, the services or the process, or a statement of what they want or need, including something Family Aims does not offer or that has nothing to do with it; the knowledge base decides whether it is covered), none (only when the message is nothing but a greeting, or nothing but the name of one of our services, or a request for general information about one of our services, for example 'hola quiero información de subrogación', 'I want information about surrogacy' or 'quiero información sobre FIV', which the next messages already give, so they are none even though they ask for something; a message about one of our services in general, even with a greeting, is none; when it is about something else and you are in doubt, choose question, not none)"
         ],
         "capture": [],
         "eval": "code",
@@ -8099,7 +8099,7 @@
         "node_id": "KQ__KQ_NOANS",
         "node_type": "message",
         "goal": [
-          "Say that the knowledge base does not cover that detail and that the human specialist will clarify it during the appointment."
+          "Say that the knowledge base does not cover it, that Family Aims focuses on fertility treatments and surrogacy, and that for anything about those the human specialist will clarify it during the appointment."
         ],
         "do": [
           "[kq__doubt] = NULL",
@@ -8108,7 +8108,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "I don't have that specific detail right now, but the human specialist will be able to clarify it for you during the appointment."
+          "I can't confirm that from here. At <COMPANY_NAME> we focus on fertility treatments and surrogacy; if your question is about those, the human specialist can clarify it for you during the appointment."
         ],
         "say_verbatim": false,
         "execute": null,
