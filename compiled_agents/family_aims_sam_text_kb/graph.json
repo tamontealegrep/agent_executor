@@ -2478,7 +2478,7 @@
         "node_type": "question",
         "goal": [
           "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language.",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map a reply saying that THEY THEMSELVES want to be the surrogate (carry a pregnancy for another family, rent or lend their womb, apply to work as a gestational carrier) to 'carrier', never a reply from someone who wants a surrogacy process for their own family; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
         ],
         "do": [],
         "trigger": [],
@@ -2495,7 +2495,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, unknown, none]"
+            "Literal[ivf, ropa, surrogacy, unknown, carrier, none]"
           ]
         ],
         "eval": "code",
@@ -2515,7 +2515,7 @@
         "node_type": "question",
         "goal": [
           "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc].",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map a reply saying that THEY THEMSELVES want to be the surrogate (carry a pregnancy for another family, rent or lend their womb, apply to work as a gestational carrier) to 'carrier', never a reply from someone who wants a surrogacy process for their own family; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
         ],
         "do": [],
         "trigger": [],
@@ -2531,7 +2531,7 @@
         "capture": [
           [
             "svc",
-            "Literal[ivf, ropa, surrogacy, unknown, none]"
+            "Literal[ivf, ropa, surrogacy, unknown, carrier, none]"
           ]
         ],
         "eval": "code",
@@ -2590,6 +2590,13 @@
             "condition_text": "IF [svc] == 'unknown' -> GO_TO: O__OP_SET_UNKNOWN",
             "is_mechanical": true,
             "python_expression": "svc == 'unknown'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_FI_SUR",
+            "condition_text": "IF [svc] == 'carrier' -> GO_TO: O__OP_FI_SUR",
+            "is_mechanical": true,
+            "python_expression": "svc == 'carrier'",
             "reason": null
           },
           {
@@ -7893,7 +7900,7 @@
         "node_type": "question",
         "goal": [
           "Ask whether the contact has any question or wants to continue with scheduling.",
-          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question ('how long does it take?') or as a request ('tell me about the surrogacy programs'); 'question' when they only say they have a question or a doubt without stating it (e.g. 'yes', 'I have a question', 'tengo una duda'); 'done' when they say they have no questions, say no or nothing else, or want to continue or schedule. A reply that says they have a question or a doubt DOES answer this question."
+          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question ('how long does it take?') or as a request ('tell me about the surrogacy programs'); 'question' when they only say they have a question or a doubt without stating it (e.g. 'yes', 'I have a question', 'tengo una duda'); 'done' when they say they have no questions, say no or nothing else, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is). A reply that says they have a question or a doubt DOES answer this question."
         ],
         "do": [],
         "trigger": [],
@@ -7907,7 +7914,7 @@
         "capture": [
           [
             "kq__next_step",
-            "Literal[asked, question, done]"
+            "Literal[asked, question, done, carrier]"
           ]
         ],
         "eval": "code",
@@ -7940,6 +7947,13 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "KQ__KQ_CARRIER_DOUBT",
+            "condition_text": "IF [kq__next_step] == 'carrier' -> GO_TO: KQ__KQ_CARRIER_DOUBT",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'carrier'",
+            "reason": null
+          },
           {
             "target": "KQ__KQ_FROM_MSG",
             "condition_text": "IF [kq__next_step] == 'asked' -> GO_TO: KQ__KQ_FROM_MSG",
@@ -7984,7 +7998,7 @@
         "node_type": "question",
         "goal": [
           "Invite the contact to ask their question.",
-          "Capture [kq__next_step] = 'asked' when the reply asks for information about the company or its services, as a question or as a request ('tell me about…'); 'done' when they say no or nothing else, have nothing to ask after all, or want to continue or schedule."
+          "Capture [kq__next_step] = 'asked' when the reply asks for information about the company or its services, as a question or as a request ('tell me about…'); 'done' when they say no or nothing else, have nothing to ask after all, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is)."
         ],
         "do": [],
         "trigger": [],
@@ -7998,7 +8012,7 @@
         "capture": [
           [
             "kq__next_step",
-            "Literal[asked, done]"
+            "Literal[asked, done, carrier]"
           ]
         ],
         "eval": "code",
@@ -8029,6 +8043,13 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "KQ__KQ_CARRIER_Q",
+            "condition_text": "IF [kq__next_step] == 'carrier' -> GO_TO: KQ__KQ_CARRIER_Q",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'carrier'",
+            "reason": null
+          },
           {
             "target": "O__OP_TO_SCHED",
             "condition_text": "IF [kq__next_step] == 'done' -> GO_TO: O__OP_TO_SCHED",
@@ -8068,6 +8089,93 @@
         "route": [
           {
             "target": "KQ__KQ_ANSWER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CARRIER_DOUBT",
+        "node_type": "registration",
+        "goal": [
+          "The contact says they want to be the surrogate: confirm the role before anything else, and come back to the question they were answering."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = NULL",
+          "[current_state] = 'KQ__KQ_ASK_DOUBT'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SUR_SAVE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CARRIER_Q",
+        "node_type": "registration",
+        "goal": [
+          "The contact says they want to be the surrogate: confirm the role before anything else, and come back to the question they were answering."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = NULL",
+          "[current_state] = 'KQ__KQ_ASK_Q'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SUR_SAVE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CARRIER_MORE",
+        "node_type": "registration",
+        "goal": [
+          "The contact says they want to be the surrogate: confirm the role before anything else, and come back to the question they were answering."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = NULL",
+          "[current_state] = 'KQ__KQ_MORE'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_SUR_SAVE",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -8386,7 +8494,7 @@
         "node_type": "question",
         "goal": [
           "Ask only whether the contact has any other question.",
-          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question or as a request ('tell me about…'); 'question' when they only say they have another question without stating it (e.g. 'yes', 'sí, otra'); 'done' when they have no more questions, say no or nothing else, or want to continue or schedule. A reply that says they have another question DOES answer this question."
+          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question or as a request ('tell me about…'); 'question' when they only say they have another question without stating it (e.g. 'yes', 'sí, otra'); 'done' when they have no more questions, say no or nothing else, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is). A reply that says they have another question DOES answer this question."
         ],
         "do": [],
         "trigger": [],
@@ -8400,7 +8508,7 @@
         "capture": [
           [
             "kq__next_step",
-            "Literal[asked, question, done]"
+            "Literal[asked, question, done, carrier]"
           ]
         ],
         "eval": "code",
@@ -8431,6 +8539,13 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "KQ__KQ_CARRIER_MORE",
+            "condition_text": "IF [kq__next_step] == 'carrier' -> GO_TO: KQ__KQ_CARRIER_MORE",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'carrier'",
+            "reason": null
+          },
           {
             "target": "O__OP_TO_SCHED",
             "condition_text": "IF [kq__rounds] >= <MAX_KB_ROUNDS> -> GO_TO: O__OP_TO_SCHED",
@@ -8738,17 +8853,27 @@
           "I want to work as a surrogate",
           "how can I become a surrogate",
           "I want to become a surrogate",
+          "I want to rent out my womb",
+          "I want to carry a baby for someone else",
+          "I want to offer my womb",
           "quiero ser gestante",
           "quiero ser madre sustituta",
           "quiero postularme como gestante",
           "quiero trabajar como gestante",
           "como puedo ser gestante",
+          "quiero alquilar mi vientre",
+          "quiero rentar mi vientre",
+          "quiero ofrecer mi vientre",
+          "quiero gestar el bebé de otra familia",
+          "quiero ser madre subrogante",
           "cómo puedo ser gestante",
           "quero ser barriga de aluguel",
           "quero ser mãe substituta",
           "quero me candidatar a barriga de aluguel",
           "quero trabalhar como gestante",
-          "como posso ser barriga de aluguel"
+          "como posso ser barriga de aluguel",
+          "quero alugar minha barriga",
+          "quero gerar o bebê de outra família"
         ],
         "disabled_in": [
           "O__OP_CONFIRM_SUR"
