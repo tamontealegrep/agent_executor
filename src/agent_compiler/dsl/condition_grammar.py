@@ -44,6 +44,7 @@ NAMED_PREDICATES: dict[str, re.Pattern[str]] = {
     "numeric_string_without_spaces_or_punctuation": re.compile(r"^[0-9]+$"),
     "iana_timezone_format": re.compile(r"^[A-Z][A-Za-z_]+/[A-Z][A-Za-z_]+(?:/[A-Z][A-Za-z_]+)?$"),
     "scheduling_state_id": re.compile(r"^SC__.+$"),
+    "knowledge_state_id": re.compile(r"^KQ__.+$"),
 }
 
 NAMED_PREDICATE_DESCRIPTIONS: dict[str, str] = {
@@ -67,6 +68,12 @@ NAMED_PREDICATE_DESCRIPTIONS: dict[str, str] = {
         "with 'SC__' followed by at least one more character. Valid: "
         "'SC__SC_ASK_E', 'SC__SC_DEC_OK'. Not valid: 'AH__AH_ASK', 'O__OP_S', "
         "'SC__', ''."
+    ),
+    "knowledge_state_id": (
+        "The id of a state that belongs to the knowledge questions subflow: it "
+        "starts with 'KQ__' followed by at least one more character. Valid: "
+        "'KQ__KQ_ASK_DOUBT', 'KQ__KQ_MORE'. Not valid: 'SC__SC_ASK_E', "
+        "'O__OP_ASK', 'KQ__', ''."
     ),
 }
 """Human-readable, precise definition of every `NAMED_PREDICATES` entry
