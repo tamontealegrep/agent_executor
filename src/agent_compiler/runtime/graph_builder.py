@@ -138,6 +138,9 @@ _STORE_RESOLVE_TIME_RE = re.compile(
 )
 _STORE_LOCATION_LABEL_RE = re.compile(r"^LOCATION_LABEL\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_DAY_LABEL_RE = re.compile(r"^DAY_(LABEL|TITLE|FULL)\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
+_STORE_CONTACT_RE = re.compile(r"^\{\{contact\.([a-zA-Z_][a-zA-Z0-9_]*)\}\}$")
+_STORE_LANGUAGE_NAME_RE = re.compile(r"^LANGUAGE_NAME\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
+_STORE_FIND_DAY_RE = re.compile(r"^FIND_DAY\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+IN\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$")
 _STORE_PICK_RE = re.compile(
     r"^PICK\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\.([a-zA-Z_][a-zA-Z0-9_]*)"
     r"\s+AT\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]\s+\[([a-zA-Z_][a-zA-Z0-9_]*)\]$"
@@ -259,6 +262,21 @@ Apply one `STORE`/`DO` mutation line's effect to `ctx.slots`, in place.
         slots[name] = build(slots.get(day_label.group(2)), slots.get("preferred_language"))
         return
 
+    contact_ref = _STORE_CONTACT_RE.match(rhs)
+    if contact_ref:
+        slots[name] = _contact_field(ctx.contact, contact_ref.group(1))
+        return
+
+    language_name = _STORE_LANGUAGE_NAME_RE.match(rhs)
+    if language_name:
+        slots[name] = _LANGUAGE_NAMES.get(_language_key(slots.get(language_name.group(1))) or "", "English")
+        return
+
+    find_day = _STORE_FIND_DAY_RE.match(rhs)
+    if find_day:
+        slots[name] = _offered_day(slots.get(find_day.group(1)), slots.get(find_day.group(2)))
+        return
+
     pick = _STORE_PICK_RE.match(rhs)
     if pick:
         items, field, day, time = (slots.get(pick.group(1)), pick.group(2), slots.get(pick.group(3)), slots.get(pick.group(4)))
@@ -297,6 +315,37 @@ def _language_key(language: Any) -> str | None:
     """'es', 'en' or 'pt' for either the code or the language name (`preferred_language` holds the name)."""
     text = str(language or "").strip().lower()
     return text if text in _LANGUAGE_CODE_BY_NAME.values() else _LANGUAGE_CODE_BY_NAME.get(text)
+
+
+def _contact_field(contact: dict[str, Any] | None, field: str) -> Any:
+    """
+    The CRM value of `{{contact.<field>}}`, or None when the CRM has none.
+
+    A blank value, the word "null", and the unsubstituted merge tag itself (`{{contact.name}}` arriving
+    as text) all mean the CRM does not have the field. This is what `{{contact.X}} != '{{contact.X}}'`
+    conditions used to ask a model to judge; as a plain copy the flow can route on `IS NOT NULL`.
+    """
+    value = (contact or {}).get(field)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.lower() in _EMPTY_WORDS or text == "{{contact." + field + "}}":
+            return None
+        return text
+    return value
+
+
+def _offered_day(day: Any, items: Any) -> Any:
+    """`day` when some appointment in `items` starts on that date in its own `start_local`, else None."""
+    if not isinstance(items, list) or not isinstance(day, str):
+        return None
+    wanted = _date_parts(day)
+    if wanted is None:
+        return None
+    for item in items:
+        start = item.get("start_local") if isinstance(item, dict) else None
+        if isinstance(start, str) and _date_parts(start) == wanted:
+            return day
+    return None
 
 
 def _resolve_day_reference(reply: Any, calendar: Any, offered: Any) -> str | None:
