@@ -92,6 +92,11 @@ from agent_compiler.runtime.global_router import (
     match_global_router,
     router_for_state,
 )
+from agent_compiler.runtime.knowledge_base import (
+    KNOWLEDGE_TOOL_NAME,
+    KnowledgeBase,
+    make_knowledge_tool_executor,
+)
 from agent_compiler.runtime.llm_client import LLMClient, LLMContext
 from agent_compiler.runtime.tool_executor import ToolExecutionError, make_tool_executor
 from agent_compiler.targets.langgraph.condition_parser import NAMED_PREDICATES
@@ -1475,6 +1480,10 @@ def _restore_contact_values(text: str, protected: dict[str, str]) -> str:
 logger = logging.getLogger(__name__)
 
 _ADVISOR_HANDLER_ID = "H_ADVISOR_Q"
+_KNOWLEDGE_HANDLER_ID = "H_KB_Q"
+"""The handler a side question falls to when no FAQ or handler matched it: the knowledge base
+answers it when the agent has one, otherwise the advisor handler hands it to a person."""
+_SIDE_QUESTION_FALLBACK_IDS = (_KNOWLEDGE_HANDLER_ID, _ADVISOR_HANDLER_ID)
 _LANGUAGE_CHANGE_HANDLER_ID = "H_LANG_CHANGE"
 
 
@@ -2004,6 +2013,11 @@ Resolve every declared tool input's value for one tool call.
         if name in input_names and name not in bound:
             bound[name] = value
 
+    # `history` is reserved: a tool that declares it receives the recent conversation as the runtime
+    # holds it, never a value a DO line or the model has to produce.
+    if "history" in input_names and "history" not in bound and ctx.history:
+        bound["history"] = "\n".join(ctx.history)
+
     mentioned = _arg_names_mentioned(ctx.do)
     optional_mentioned = {f.name for f in contract_inputs if not f.required and f.name in mentioned}
     missing_fields = [
@@ -2257,11 +2271,17 @@ Build one LangGraph node function for `node`.
                     # to a yes/no question), so a reply that asks something still gets matched against
                     # the specific FAQs and handlers before the generic advisor fallback.
                     match = match_side_question(
-                        llm_client, active_router, router_ctx, frozenset({_ADVISOR_HANDLER_ID, _LANGUAGE_CHANGE_HANDLER_ID})
+                        llm_client, active_router, router_ctx, frozenset({*_SIDE_QUESTION_FALLBACK_IDS, _LANGUAGE_CHANGE_HANDLER_ID})
                     )
                 if side_question and match is None:
                     advisor_handler = next(
-                        (h for h in active_router.handlers if h.node_id == _ADVISOR_HANDLER_ID), None
+                        (
+                            h
+                            for fallback_id in _SIDE_QUESTION_FALLBACK_IDS
+                            for h in active_router.handlers
+                            if h.node_id == fallback_id
+                        ),
+                        None,
                     )
                     if advisor_handler is not None:
                         match = ("handler", advisor_handler)
@@ -2454,6 +2474,7 @@ def build_graph(
     tool_http_client: Any = None,
     say_callback: Callable[[str], None] = print,
     checkpointer: BaseCheckpointSaver | None = None,
+    knowledge_base: KnowledgeBase | None = None,
 ) -> Any:
     """
 Build and compile a real `langgraph.graph.StateGraph` for `artifact`.
@@ -2473,6 +2494,8 @@ Build and compile a real `langgraph.graph.StateGraph` for `artifact`.
                 `terminal` node's `SAY` block (and every matched global-router
                 handler/FAQ's `SAY`). Defaults to `print`; inject a list-append
                 callback in tests instead.
+            knowledge_base (KnowledgeBase | None): Answers the agent's `kb_answer` tool
+                (see `knowledge_base.py`). Without one the tool is called over HTTP like any other.
             checkpointer (BaseCheckpointSaver | None): Where session state
                 (`[current_state]`, captured slots, ...) is persisted between
                 turns. Defaults to `InMemorySaver()` — state is lost on process
@@ -2510,6 +2533,9 @@ Build and compile a real `langgraph.graph.StateGraph` for `artifact`.
         for name, contract in contracts.items()
     }
     tool_input_fields = {name: contract.inputs for name, contract in contracts.items()}
+    if knowledge_base is not None and KNOWLEDGE_TOOL_NAME in contracts:
+        # The agent's own knowledge answers its `kb_answer` tool in-process: no endpoint to call.
+        tool_executors[KNOWLEDGE_TOOL_NAME] = make_knowledge_tool_executor(llm_client, knowledge_base)
 
     builder = StateGraph(SessionState)
     for node in agent_graph.nodes:
