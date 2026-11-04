@@ -3119,7 +3119,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Before we go on, I want to be upfront so we both make the most of it. This first appointment is virtual and free, but it works only if we both commit: it takes [appt_minutes] minutes, we ask you to set that time aside and to come ready to talk about your situation, and our expert will do the same for you.\nAnd if at any point this doesn't feel like the right moment, just tell me. There is no pressure."
+          "Before we go on, I want to be upfront so we both make the most of this space. This first appointment is virtual and free, but it works only if we both commit: it takes [appt_minutes] minutes, we ask you to set that time aside and to come ready to talk about your situation, and our expert will do the same for you."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -7899,8 +7899,7 @@
         "node_id": "KQ__KQ_ASK_DOUBT",
         "node_type": "question",
         "goal": [
-          "Ask whether the contact has any question or wants to continue with scheduling.",
-          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question ('how long does it take?') or as a request ('tell me about the surrogacy programs'); 'question' when they only say they have a question or a doubt without stating it (e.g. 'yes', 'I have a question', 'tengo una duda'); 'done' when they say they have no questions, say no or nothing else, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is). A reply that says they have a question or a doubt DOES answer this question."
+          "Ask whether the contact has any question or wants to continue with scheduling."
         ],
         "do": [],
         "trigger": [],
@@ -7911,12 +7910,35 @@
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "kq__next_step",
-            "Literal[asked, question, done, carrier]"
-          ]
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_CLS_DOUBT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
         ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CLS_DOUBT",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote. Only a clear wish to schedule, or a clear 'nothing to ask', moves on to scheduling; everything else is answered or clarified first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -7956,9 +7978,9 @@
           },
           {
             "target": "KQ__KQ_FROM_MSG",
-            "condition_text": "IF [kq__next_step] == 'asked' -> GO_TO: KQ__KQ_FROM_MSG",
+            "condition_text": "IF [kq__next_step] == 'ask' -> GO_TO: KQ__KQ_FROM_MSG",
             "is_mechanical": true,
-            "python_expression": "kq__next_step == 'asked'",
+            "python_expression": "kq__next_step == 'ask'",
             "reason": null
           },
           {
@@ -7970,9 +7992,16 @@
           },
           {
             "target": "O__OP_TO_SCHED",
-            "condition_text": "IF [kq__next_step] == 'done' -> GO_TO: O__OP_TO_SCHED",
+            "condition_text": "IF [kq__next_step] == 'schedule' -> GO_TO: O__OP_TO_SCHED",
             "is_mechanical": true,
-            "python_expression": "kq__next_step == 'done'",
+            "python_expression": "kq__next_step == 'schedule'",
+            "reason": null
+          },
+          {
+            "target": "KQ__KQ_CONFIRM",
+            "condition_text": "IF [kq__next_step] == 'ambiguous' AND [kq__ask_try] < <MAX_RETRY_ATTEMPTS> -> GO_TO: KQ__KQ_CONFIRM",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'ambiguous' and kq__ask_try < MAX_RETRY_ATTEMPTS",
             "reason": null
           },
           {
@@ -7985,7 +8014,7 @@
         ],
         "fallback": [
           {
-            "target": "KQ__KQ_ASK_DOUBT",
+            "target": "KQ__KQ_CONFIRM",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -7994,11 +8023,66 @@
         ]
       },
       {
+        "node_id": "KQ__KQ_CONFIRM",
+        "node_type": "question",
+        "goal": [
+          "The last reply could mean either going on to scheduling or wanting to keep talking: ask which, in one short sentence, and do not move on to scheduling until the contact says so."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Just to make sure I understand: would you like to schedule your appointment now, or is there anything else you'd like to ask or tell me?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_CLS_CONFIRM",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CLS_CONFIRM",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote. Only a clear wish to schedule, or a clear 'nothing to ask', moves on to scheduling; everything else is answered or clarified first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_DEC_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "KQ__KQ_ASK_Q",
         "node_type": "question",
         "goal": [
-          "Invite the contact to ask their question.",
-          "Capture [kq__next_step] = 'asked' when the reply asks for information about the company or its services, as a question or as a request ('tell me about…'); 'done' when they say no or nothing else, have nothing to ask after all, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is)."
+          "Invite the contact to ask their question."
         ],
         "do": [],
         "trigger": [],
@@ -8009,12 +8093,35 @@
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "kq__next_step",
-            "Literal[asked, done, carrier]"
-          ]
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_CLS_Q",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
         ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CLS_Q",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote. Only a clear wish to schedule, or a clear 'nothing to ask', moves on to scheduling; everything else is answered or clarified first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -8052,9 +8159,9 @@
           },
           {
             "target": "O__OP_TO_SCHED",
-            "condition_text": "IF [kq__next_step] == 'done' -> GO_TO: O__OP_TO_SCHED",
+            "condition_text": "IF [kq__next_step] == 'schedule' -> GO_TO: O__OP_TO_SCHED",
             "is_mechanical": true,
-            "python_expression": "kq__next_step == 'done'",
+            "python_expression": "kq__next_step == 'schedule'",
             "reason": null
           }
         ],
@@ -8493,8 +8600,7 @@
         "node_id": "KQ__KQ_MORE",
         "node_type": "question",
         "goal": [
-          "Ask only whether the contact has any other question.",
-          "Capture [kq__next_step] = 'asked' when the reply already asks for information about the company or its services, either as a question or as a request ('tell me about…'); 'question' when they only say they have another question without stating it (e.g. 'yes', 'sí, otra'); 'done' when they have no more questions, say no or nothing else, or want to continue or schedule. 'carrier' when the reply says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier (never when they want a surrogacy process for their own family, and never when they only ask what surrogacy is). A reply that says they have another question DOES answer this question."
+          "Ask only whether the contact has any other question."
         ],
         "do": [],
         "trigger": [],
@@ -8505,12 +8611,35 @@
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "kq__next_step",
-            "Literal[asked, question, done, carrier]"
-          ]
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_CLS_MORE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
         ],
+        "fallback": []
+      },
+      {
+        "node_id": "KQ__KQ_CLS_MORE",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote. Only a clear wish to schedule, or a clear 'nothing to ask', moves on to scheduling; everything else is answered or clarified first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing more to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have another question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -8555,9 +8684,9 @@
           },
           {
             "target": "KQ__KQ_FROM_MSG",
-            "condition_text": "IF [kq__next_step] == 'asked' -> GO_TO: KQ__KQ_FROM_MSG",
+            "condition_text": "IF [kq__next_step] == 'ask' -> GO_TO: KQ__KQ_FROM_MSG",
             "is_mechanical": true,
-            "python_expression": "kq__next_step == 'asked'",
+            "python_expression": "kq__next_step == 'ask'",
             "reason": null
           },
           {
@@ -8566,11 +8695,25 @@
             "is_mechanical": true,
             "python_expression": "kq__next_step == 'question'",
             "reason": null
+          },
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": "IF [kq__next_step] == 'schedule' -> GO_TO: O__OP_TO_SCHED",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'schedule'",
+            "reason": null
+          },
+          {
+            "target": "KQ__KQ_CONFIRM",
+            "condition_text": "IF [kq__next_step] == 'ambiguous' -> GO_TO: KQ__KQ_CONFIRM",
+            "is_mechanical": true,
+            "python_expression": "kq__next_step == 'ambiguous'",
+            "reason": null
           }
         ],
         "fallback": [
           {
-            "target": "O__OP_TO_SCHED",
+            "target": "KQ__KQ_CONFIRM",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
