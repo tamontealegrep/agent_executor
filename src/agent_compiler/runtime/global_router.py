@@ -316,7 +316,9 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
             "(\"no hablo inglés\", \"I don't speak Spanish\", \"não falo inglês\"), infer the target language from the message if clearly written in another supported language (Spanish, English, or Portuguese). Reply LANGUAGE_CHANGE.\n"
             "Priority 3 - Automatic Detection: If the user's latest message is clearly written in "
             "Spanish, English, or Portuguese, and its language differs from the agent's current language "
-            f"({current_lang}), reply LANGUAGE_CHANGE.\n\n"
+            f"({current_lang}), reply LANGUAGE_CHANGE_ANSWER: <LanguageName>. The user is simply writing in "
+            "their own language, so what they said must still be processed: never use plain LANGUAGE_CHANGE "
+            "for this, which is reserved for a request to switch language (Priority 1 and 2) and discards the message.\n\n"
             "CRITICAL EXCLUSIONS & LOOPS TO AVOID:\n"
             f"- AVOID LOOPS: If the user's language or requested language ALREADY MATCHES the agent's current language ({current_lang}), do NOT reply LANGUAGE_CHANGE.\n"
             "- Do NOT infer a language change from a single word, proper name, city/country name, brand name, number, date, or short answer (\"ok\", \"sí\", \"no\", \"claro\", \"hello\").\n"
@@ -324,7 +326,10 @@ Stage 1: prioritize language changes, then classify continuation vs interrupt.
             "even if it also matches another handler or FAQ.\n\n"
             f"Priority handler: {language_handler[1].node_id}; triggers: {language_handler[1].trigger}\n\n"
         )
-        response_options = "LANGUAGE_CHANGE (or LANGUAGE_CHANGE: <LanguageName>), CONTINUE, or INTERRUPT"
+        response_options = (
+            "LANGUAGE_CHANGE (or LANGUAGE_CHANGE: <LanguageName>), LANGUAGE_CHANGE_ANSWER: <LanguageName>, "
+            "CONTINUE, or INTERRUPT"
+        )
     else:
         response_options = "CONTINUE or INTERRUPT"
     prompt = (
