@@ -2478,7 +2478,7 @@
         "node_type": "question",
         "goal": [
           "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language.",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty only when the reply says nothing about what they want, such as a bare yes or no, or when it is a question."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
         ],
         "do": [],
         "trigger": [],
@@ -2515,7 +2515,7 @@
         "node_type": "question",
         "goal": [
           "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc].",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty only when the reply says nothing about what they want, such as a bare yes or no, or when it is a question."
+          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
         ],
         "do": [],
         "trigger": [],
@@ -4655,7 +4655,62 @@
         "node_id": "SM__SM_S",
         "node_type": "start",
         "goal": [
-          "Enter safety management."
+          "An abusive message arrived: count it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SM__SM_COUNT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SM__SM_COUNT",
+        "node_type": "registration",
+        "goal": [
+          "Count the abusive message and remember where the contact was, in case the conversation goes on."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[abuse_count] = [abuse_count] + 1",
+          "[sm__resume_state] = [current_state]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SM__SM_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "SM__SM_DEC",
+        "node_type": "decision",
+        "goal": [
+          "At the strike limit the conversation closes silently; before it, give one short warning."
         ],
         "do": [],
         "trigger": [],
@@ -4669,6 +4724,76 @@
         "route": [
           {
             "target": "SM__SM_END",
+            "condition_text": "IF [abuse_count] >= <MAX_ABUSE_STRIKES> -> GO_TO: SM__SM_END",
+            "is_mechanical": true,
+            "python_expression": "abuse_count >= MAX_ABUSE_STRIKES",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "SM__SM_WARN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SM__SM_WARN",
+        "node_type": "message",
+        "goal": [
+          "Warn once, calmly and firmly, that the conversation needs to stay respectful, without lecturing and without repeating the insult."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "I want to help you, but I need us to keep this conversation respectful."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "SM__SM_BACK",
+            "condition_text": "IF [sm__resume_state] IS NOT NULL -> GO_TO: SM__SM_BACK",
+            "is_mechanical": true,
+            "python_expression": "sm__resume_state is not None",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_ASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "SM__SM_BACK",
+        "node_type": "decision",
+        "goal": [
+          "Go back to where the contact was, without filler messages."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "[sm__resume_state]",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -8580,18 +8705,7 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "hate messages toward the company",
-          "insults or offensive language",
-          "aggressive or hateful comments about the services",
-          "hate speech",
-          "mensajes de odio",
-          "insultos",
-          "lenguaje ofensivo",
-          "comentarios agresivos u odiosos",
-          "mensagens de ódio",
-          "insultos (pt)",
-          "linguagem ofensiva",
-          "comentários agressivos ou de ódio"
+          "insults, vulgar or obscene language aimed at someone, threats or hate speech (reached through the respect filter, not by phrase)"
         ],
         "disabled_in": [],
         "say": [],
@@ -9978,6 +10092,7 @@
     "AGENT_NAME": "Sam",
     "COMPANY_NAME": "Family Aims",
     "MAX_RETRY_ATTEMPTS": "3",
+    "MAX_ABUSE_STRIKES": "3",
     "END_LISTEN_MAX_ATTEMPTS": "20",
     "DATA_LAW_REFERENCE": "Law 1581 of 2012 and its regulatory decrees, as well as the international HIPAA and GDPR standards where applicable, available at https://familyaims.com/privacy-policy-us/",
     "HUMAN_SURROGACY_ADVISOR_NAME": "Marcela Arango",
