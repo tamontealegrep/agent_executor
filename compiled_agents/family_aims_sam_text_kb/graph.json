@@ -2841,7 +2841,7 @@
         "node_id": "O__OP_SVC_ROUTE",
         "node_type": "decision",
         "goal": [
-          "Pick the short description of the service the contact is interested in."
+          "Pick the offer message of the service the contact is interested in."
         ],
         "do": [],
         "trigger": [],
@@ -2854,22 +2854,22 @@
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_SVC_ROPA",
-            "condition_text": "IF [ropa] == 'yes' -> GO_TO: O__OP_SVC_ROPA",
+            "target": "O__OP_VAL_ROPA",
+            "condition_text": "IF [ropa] == 'yes' -> GO_TO: O__OP_VAL_ROPA",
             "is_mechanical": true,
             "python_expression": "ropa == 'yes'",
             "reason": null
           },
           {
-            "target": "O__OP_SVC_IVF",
-            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_SVC_IVF",
+            "target": "O__OP_VAL_IVF",
+            "condition_text": "IF [svc] == 'ivf' -> GO_TO: O__OP_VAL_IVF",
             "is_mechanical": true,
             "python_expression": "svc == 'ivf'",
             "reason": null
           },
           {
-            "target": "O__OP_SVC_SUR",
-            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_SVC_SUR",
+            "target": "O__OP_VAL_SUR",
+            "condition_text": "IF [svc] == 'surrogacy' -> GO_TO: O__OP_VAL_SUR",
             "is_mechanical": true,
             "python_expression": "svc == 'surrogacy'",
             "reason": null
@@ -2884,90 +2884,6 @@
             "reason": null
           }
         ]
-      },
-      {
-        "node_id": "O__OP_SVC_IVF",
-        "node_type": "message",
-        "goal": [
-          "Describe in one short message what in vitro fertilization is."
-        ],
-        "do": [],
-        "trigger": [],
-        "disabled_in": [],
-        "say": [
-          "In vitro fertilization (IVF) is a treatment in which eggs and sperm are joined in a laboratory and the resulting embryos are transferred to the uterus."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "O__OP_VAL_IVF",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "O__OP_SVC_ROPA",
-        "node_type": "message",
-        "goal": [
-          "Describe in one short message what the ROPA method is."
-        ],
-        "do": [],
-        "trigger": [],
-        "disabled_in": [],
-        "say": [
-          "The ROPA method is a treatment for couples of women: one partner provides the eggs and the other carries the pregnancy, so both take part biologically in the process."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "O__OP_VAL_ROPA",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "O__OP_SVC_SUR",
-        "node_type": "message",
-        "goal": [
-          "Describe in one short message what surrogacy is."
-        ],
-        "do": [],
-        "trigger": [],
-        "disabled_in": [],
-        "say": [
-          "Surrogacy is a process in which a woman carries a pregnancy for a person or couple who wants to become parents."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "O__OP_VAL_SUR",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
       },
       {
         "node_id": "O__OP_SVC_UNK",
