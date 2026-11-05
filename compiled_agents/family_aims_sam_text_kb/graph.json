@@ -2895,7 +2895,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "In vitro fertilization (IVF) is a treatment in which eggs and sperm are joined in a laboratory and the resulting embryos are transferred to the uterus. At <COMPANY_NAME> it is done in <IVF_CITY>, Colombia."
+          "In vitro fertilization (IVF) is a treatment in which eggs and sperm are joined in a laboratory and the resulting embryos are transferred to the uterus."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2923,7 +2923,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "The ROPA method is a treatment for couples of women: one partner provides the eggs and the other carries the pregnancy, so both take part biologically in the process. At <COMPANY_NAME> it is done in <IVF_CITY>, Colombia."
+          "The ROPA method is a treatment for couples of women: one partner provides the eggs and the other carries the pregnancy, so both take part biologically in the process."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -2951,7 +2951,7 @@
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Surrogacy is a process in which a woman carries a pregnancy for a person or couple who wants to become parents. <COMPANY_NAME> has surrogacy programs in Colombia, Mexico and Georgia, depending on each family's profile and situation."
+          "Surrogacy is a process in which a woman carries a pregnancy for a person or couple who wants to become parents."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3001,13 +3001,13 @@
         "node_id": "O__OP_VAL_IVF",
         "node_type": "message",
         "goal": [
-          "Value proposition: an appointment with an IVF expert."
+          "Say in one short message how the company offers IVF."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "We would like to schedule an appointment for you with an expert in in vitro fertilization, where we will answer your questions about your process."
+          "<COMPANY_NAME> has in vitro fertilization programs in <IVF_CITY>, Colombia, with your own or donated eggs, depending on each person's profile and situation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3029,13 +3029,13 @@
         "node_id": "O__OP_VAL_ROPA",
         "node_type": "message",
         "goal": [
-          "Value proposition: an appointment with a ROPA method expert."
+          "Say in one short message how the company offers the ROPA method."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "We would like to schedule an appointment for you with an expert in the ROPA method, where we will answer your questions about your process."
+          "<COMPANY_NAME> offers the ROPA method for couples of women in <IVF_CITY>, Colombia, adapted to each couple's profile and situation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3057,13 +3057,13 @@
         "node_id": "O__OP_VAL_SUR",
         "node_type": "message",
         "goal": [
-          "Value proposition: an appointment with a surrogacy expert."
+          "Say in one short message how the company offers surrogacy."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "We would like to schedule an appointment for you with an expert in surrogacy, where we will answer your questions about your process."
+          "<COMPANY_NAME> has surrogacy programs in Colombia, Mexico and Georgia, depending on each family's profile and situation."
         ],
         "say_verbatim": false,
         "execute": null,
@@ -3085,13 +3085,13 @@
         "node_id": "O__OP_VAL_UNK",
         "node_type": "message",
         "goal": [
-          "Value proposition: an appointment with a fertility expert."
+          "Say in one short message which programs the company offers."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "We would like to schedule an appointment for you with one of our fertility experts, where we will answer your questions about your process."
+          "<COMPANY_NAME> has in vitro fertilization programs in <IVF_CITY>, Colombia, and surrogacy programs in Colombia, Mexico and Georgia, depending on each person's profile and situation."
         ],
         "say_verbatim": false,
         "execute": null,
