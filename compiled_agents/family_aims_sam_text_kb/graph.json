@@ -2477,8 +2477,7 @@
         "node_id": "O__OP_ASK",
         "node_type": "question",
         "goal": [
-          "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language.",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map a reply saying that THEY THEMSELVES want to be the surrogate (carry a pregnancy for another family, rent or lend their womb, apply to work as a gestational carrier) to 'carrier', never a reply from someone who wants a surrogacy process for their own family; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
+          "Show what the services consist of and ask which one the lead is interested in, capturing it as [svc]. Both messages belong to this state so that, after a language switch, the contact gets the overview and the question again in the new language."
         ],
         "do": [],
         "trigger": [],
@@ -2489,19 +2488,12 @@
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[svc] = [svc]"
-        ],
-        "capture": [
-          [
-            "svc",
-            "Literal[ivf, ropa, surrogacy, unknown, carrier, none]"
-          ]
-        ],
+        "store": [],
+        "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_DEC",
+            "target": "O__OP_CLS_SVC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -2514,8 +2506,7 @@
         "node_id": "O__OP_ASK_AGAIN",
         "node_type": "question",
         "goal": [
-          "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc].",
-          "Map IVF, conventional fertility, IVF with donated eggs and egg donation to 'ivf'; map the ROPA method (dual motherhood, any mention of ROPA) to 'ropa'; map surrogacy and gestational surrogacy to 'surrogacy'; map a reply saying that THEY THEMSELVES want to be the surrogate (carry a pregnancy for another family, rent or lend their womb, apply to work as a gestational carrier) to 'carrier', never a reply from someone who wants a surrogacy process for their own family; map any reply saying they do not know yet, are not sure, want to hear about all of them or cannot choose to 'unknown'; map a reply saying that none of these services is what they are looking for, or naming anything that is not one of these services (for example 'adoption' or 'la adopción'), to 'none'. Leave [svc] empty when the reply does not say what they want, such as a bare yes or no, a question, or a complaint or expression of frustration or annoyance (which is not a rejection of the services)."
+          "The previous answer did not choose a service: ask again, without repeating the overview, and capture it as [svc]."
         ],
         "do": [],
         "trigger": [],
@@ -2525,15 +2516,36 @@
         ],
         "say_verbatim": false,
         "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_CLS_SVC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_CLS_SVC",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote about the service they want. Only the latest message counts, never what was said before it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
         "store": [
-          "[svc] = [svc]"
+          "[svc] = what the latest user message says about the service they want. Read only that message, never what was said before it, and answer with the first of these that applies, exactly one word: carrier (it says THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family), ropa (it names the ROPA method or dual motherhood), ivf (it names in vitro fertilization, IVF, FIV, conventional fertility treatment, IVF with donated eggs or egg donation), surrogacy (it names surrogacy or gestational surrogacy for their own family), none (it says none of these services is what they look for, or names something else they want, for example 'quiero adoptar', 'adoption', 'I want to buy bread'), unknown (it says in words that they do not know yet, are not sure, want to hear about all of them or cannot choose, for example 'no sé', 'todos', 'cuéntame de todo'), blank (anything else: a bare 'yes', 'sí', 'ok', 'vale', 'bueno', 'entiendo', a question, a complaint or frustration; these never mean none or unknown, whatever was said before)"
         ],
-        "capture": [
-          [
-            "svc",
-            "Literal[ivf, ropa, surrogacy, unknown, carrier, none]"
-          ]
-        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -2616,13 +2628,41 @@
         ],
         "fallback": [
           {
-            "target": "O__OP_ASK_AGAIN",
+            "target": "O__OP_CLEAR_SVC",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_CLEAR_SVC",
+        "node_type": "registration",
+        "goal": [
+          "The reply did not say which service they want: clear it so nothing downstream reads a placeholder, and ask again."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[svc] = NULL"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_ASK_AGAIN",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_NO_SERVICE",
@@ -3082,6 +3122,310 @@
         "fallback": []
       },
       {
+        "node_id": "O__OP_BOOK_IN",
+        "node_type": "registration",
+        "goal": [
+          "A booking request interrupted the contact: remember where they were."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__back_state] = [current_state]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BOOK_WHERE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_BOOK_WHERE",
+        "node_type": "decision",
+        "goal": [
+          "A booking request that comes while the contact is already scheduling just continues the scheduling where they were; anywhere else it starts it."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BACK",
+            "condition_text": "IF [o__back_state] MATCHES scheduling_state_id -> GO_TO: O__OP_BACK",
+            "is_mechanical": true,
+            "python_expression": "_matches(o__back_state, 'scheduling_state_id')",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_BOOK_CHECK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_BACK",
+        "node_type": "decision",
+        "goal": [
+          "Go back to the question the contact was answering, without filler messages."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "[o__back_state]",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_HUMAN_CHECK",
+        "node_type": "registration",
+        "goal": [
+          "The message mentions a person or a bot: read whether the contact asks to talk to one or only asks who is writing."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__back_state] = [current_state]",
+          "[o__human_req] = what the latest user message asks, as exactly one of: connect (it asks, or says they want, to be put in touch with, or to talk to, a human advisor or a real person: 'quiero hablar con un humano', 'pásame con un asesor', 'can I talk to a person'), identity (it only asks whether they are talking to a bot, a robot, an AI or a real person, or who is writing: 'eres un bot?', 'hablo con una persona?', 'estoy hablando con un humano?', 'are you human?'; a question is identity even when it names a person)"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_HUMAN_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_HUMAN_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Send a request for a person to scheduling with the advisor; answer a question about who is writing and go back."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_HUMAN_GO",
+            "condition_text": "IF [o__human_req] == 'connect' -> GO_TO: O__OP_HUMAN_GO",
+            "is_mechanical": true,
+            "python_expression": "o__human_req == 'connect'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_HUMAN_ID",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_HUMAN_GO",
+        "node_type": "registration",
+        "goal": [
+          "The contact asks for a human advisor: schedule the appointment for the service they already chose."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_HUMAN_ID",
+        "node_type": "message",
+        "goal": [
+          "Say who is writing: an AI assistant, with the personalized advisory led by a human specialist."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "I am an AI assistant that helps with initial orientation and scheduling. Personalized advisory is led by a human specialist from the commercial team."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BACK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_BOOK_CHECK",
+        "node_type": "registration",
+        "goal": [
+          "The contact asked to book an appointment: read from their message which service it is for."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__book_svc] = which service the latest user message asks to book, as exactly one of: ivf (it names in vitro fertilization, IVF, FIV or the ROPA method), surrogacy (it names surrogacy or gestational surrogacy), none (it names no service: a request such as 'I want to schedule', 'quiero agendar' or 'quero agendar' says none, even if the conversation so far was about one)"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BOOK_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_BOOK_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Book the service the message names; when it names none, keep the one the contact already chose."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_BOOK_IVF",
+            "condition_text": "IF [o__book_svc] == 'ivf' -> GO_TO: O__OP_BOOK_IVF",
+            "is_mechanical": true,
+            "python_expression": "o__book_svc == 'ivf'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_BOOK_SUR",
+            "condition_text": "IF [o__book_svc] == 'surrogacy' -> GO_TO: O__OP_BOOK_SUR",
+            "is_mechanical": true,
+            "python_expression": "o__book_svc == 'surrogacy'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_BOOK_KEEP",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_BOOK_KEEP",
+        "node_type": "registration",
+        "goal": [
+          "The request names no service: schedule the one already chosen, if any."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[appt_svc] = [svc]"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
         "node_id": "O__OP_BOOK_IVF",
         "node_type": "registration",
         "goal": [
@@ -3481,8 +3825,7 @@
         "node_id": "O__OP_CONSENT",
         "node_type": "question",
         "goal": [
-          "Tell the contact that continuing means accepting the data processing policy, give where to read it, and ask if they want to continue.",
-          "Capture 'yes' when they agree to continue, 'no' when they refuse."
+          "Tell the contact that continuing means accepting the data processing policy, give where to read it, and ask if they want to continue."
         ],
         "do": [],
         "trigger": [],
@@ -3493,12 +3836,35 @@
         "say_verbatim": false,
         "execute": null,
         "store": [],
-        "capture": [
-          [
-            "o__consent",
-            "Literal[yes, no]"
-          ]
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_CLS_CONSENT",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
         ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_CLS_CONSENT",
+        "node_type": "registration",
+        "goal": [
+          "Classify what the contact just wrote about continuing under the data policy. Only a clear yes or a clear no settles it; a question, a doubt or a hesitation is answered first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__consent] = what the latest user message says about continuing with the conversation under the data processing policy, as exactly one of: yes (they agree to continue: 'sí', 'ok', 'claro', 'adelante', 'quiero agendar'), no (they clearly refuse the policy or clearly say they do not want to continue: 'no', 'no acepto', 'no quiero'), other (anything else: a question, a doubt, an objection or a hesitation such as 'lo voy a pensar', 'necesito pensarlo', 'cuánto cuesta?'; these are never a no)"
+        ],
+        "capture": [],
         "eval": "code",
         "route": [
           {
@@ -3515,7 +3881,7 @@
         "node_id": "O__OP_CONSENT_DEC",
         "node_type": "decision",
         "goal": [
-          "Continue to scheduling on yes, close on no, re-ask when the answer is unclear."
+          "Continue to scheduling on yes, close on no, answer a question or a hesitation first and come back to the policy."
         ],
         "do": [
           "[o__consent_try] = [o__consent_try] + 1"
@@ -3549,6 +3915,13 @@
             "is_mechanical": true,
             "python_expression": "o__consent_try >= MAX_RETRY_ATTEMPTS",
             "reason": null
+          },
+          {
+            "target": "O__OP_CONSENT_OTHER",
+            "condition_text": "IF [o__consent] == 'other' -> GO_TO: O__OP_CONSENT_OTHER",
+            "is_mechanical": true,
+            "python_expression": "o__consent == 'other'",
+            "reason": null
           }
         ],
         "fallback": [
@@ -3560,6 +3933,35 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_CONSENT_OTHER",
+        "node_type": "registration",
+        "goal": [
+          "The reply to the policy question is a question, a doubt or a hesitation: answer it from the knowledge base and come back to the policy question."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[o__consent] = NULL",
+          "[current_state] = 'O__OP_CONSENT'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_SIDE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_CONSENT_OK",
@@ -4681,7 +5083,7 @@
             "reason": null
           },
           {
-            "target": "AH__AH_ASK",
+            "target": "AH__AH_SAY",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -4690,7 +5092,7 @@
         ],
         "fallback": [
           {
-            "target": "AH__AH_ASK",
+            "target": "AH__AH_SAY",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -4727,17 +5129,115 @@
         "fallback": []
       },
       {
-        "node_id": "AH__AH_ASK",
-        "node_type": "question",
+        "node_id": "AH__AH_SAY",
+        "node_type": "message",
         "goal": [
-          "Say that this question is best answered by a human advisor, then ask whether the lead wants to schedule a conversation with one.",
-          "Capture [ah__offer_reply] = 'declined' only when the reply clearly refuses the offer or shows no interest in it (for example 'no gracias', 'ahora no', 'maybe later', 'I will look elsewhere'), even when it is polite or mixed with thanks; any other reply, even a vague one, is 'accepted'."
+          "Say that this question is best answered by a human advisor."
         ],
         "do": [],
         "trigger": [],
         "disabled_in": [],
         "say": [
-          "Our human advisors are the best people to explain that in detail, including prices and the specifics of your case. Would you like to schedule a conversation with an advisor?"
+          "Our human advisors are the best people to explain that in detail, including prices and the specifics of your case."
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_REASK",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Go to scheduling only on a clear yes, close kindly only on a clear no; a question or an objection is answered first."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "AH__AH_TO_SCHEDULING",
+            "condition_text": "IF [ah__offer_reply] == 'accepted' -> GO_TO: AH__AH_TO_SCHEDULING",
+            "is_mechanical": true,
+            "python_expression": "ah__offer_reply == 'accepted'",
+            "reason": null
+          },
+          {
+            "target": "AH__AH_DECLINED",
+            "condition_text": "IF [ah__offer_reply] == 'declined' -> GO_TO: AH__AH_DECLINED",
+            "is_mechanical": true,
+            "python_expression": "ah__offer_reply == 'declined'",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "AH__AH_OTHER",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "AH__AH_OTHER",
+        "node_type": "registration",
+        "goal": [
+          "The reply to the offer is a question or an objection: answer it from the knowledge base and come back to the offer."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[ah__offer_reply] = NULL",
+          "[current_state] = 'AH__AH_REASK'"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "KQ__KQ_SIDE",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "AH__AH_REASK",
+        "node_type": "question",
+        "goal": [
+          "Ask whether the lead wants to schedule a conversation with an advisor. It is also the question the lead comes back to after a side question or objection was answered.",
+          "Capture [ah__offer_reply] = 'accepted' only when the reply clearly agrees to schedule (for example 'sí', 'claro', 'ok, agendemos', 'quiero agendar'); 'declined' only when it clearly refuses the offer or shows no interest in it (for example 'no gracias', 'ahora no', 'maybe later', 'I will look elsewhere'), even when polite or mixed with thanks; 'other' for anything else: a question ('dónde queda'), an objection or a comment ('es muy caro'). Never take an objection or a question for a yes."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "Would you like to schedule a conversation with an advisor?"
         ],
         "say_verbatim": false,
         "execute": null,
@@ -4745,7 +5245,7 @@
         "capture": [
           [
             "ah__offer_reply",
-            "Literal[accepted, declined]"
+            "Literal[accepted, declined, other]"
           ]
         ],
         "eval": "code",
@@ -4759,40 +5259,6 @@
           }
         ],
         "fallback": []
-      },
-      {
-        "node_id": "AH__AH_DEC",
-        "node_type": "decision",
-        "goal": [
-          "Close kindly only if the lead clearly declined, never going back to the question that was interrupted. Any other reply, even a vague one, counts as accepting and goes to scheduling."
-        ],
-        "do": [],
-        "trigger": [],
-        "disabled_in": [],
-        "say": [],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "AH__AH_DECLINED",
-            "condition_text": "IF [ah__offer_reply] == 'declined' -> GO_TO: AH__AH_DECLINED",
-            "is_mechanical": true,
-            "python_expression": "ah__offer_reply == 'declined'",
-            "reason": null
-          }
-        ],
-        "fallback": [
-          {
-            "target": "AH__AH_TO_SCHEDULING",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ]
       },
       {
         "node_id": "AH__AH_DECLINED",
@@ -9524,103 +9990,12 @@
         "say": [],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[appt_svc] = [svc]"
-        ],
+        "store": [],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_TO_SCHED",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_SCHEDULE_IVF",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "the contact asks to book, schedule or set up an appointment, consultation or call for IVF or the ROPA method, instead of answering what was just asked",
-          "I want to schedule an appointment for IVF",
-          "I want to book an appointment for the ROPA method",
-          "I would like to book a consultation for IVF",
-          "quiero agendar una cita de fiv",
-          "quiero agendar una cita para fiv",
-          "quiero agendar una cita de ropa",
-          "quiero agendar una cita para el método ropa",
-          "quiero agendar una cita de fertilización in vitro",
-          "necesito una cita para fiv",
-          "quero agendar uma consulta de fiv",
-          "quero agendar uma consulta de ropa",
-          "quero marcar uma consulta de fertilização in vitro"
-        ],
-        "disabled_in": [
-          "SC"
-        ],
-        "say": [
-          "Of course, let's schedule your appointment."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [
-          "[svc] = 'ivf'",
-          "[appt_svc] = 'ivf'"
-        ],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "O__OP_BOOK_IVF",
-            "condition_text": null,
-            "is_mechanical": true,
-            "python_expression": null,
-            "reason": null
-          }
-        ],
-        "fallback": []
-      },
-      {
-        "node_id": "H_SCHEDULE_SUR",
-        "node_type": "message",
-        "goal": [],
-        "do": [],
-        "trigger": [
-          "the contact asks to book, schedule or set up an appointment, consultation or call for surrogacy, instead of answering what was just asked",
-          "I want to schedule an appointment for surrogacy",
-          "I want to book an appointment for gestational surrogacy",
-          "I would like to book a consultation for surrogacy",
-          "quiero agendar una cita de subrogacion",
-          "quiero agendar una cita de subrogación",
-          "quiero agendar una cita para subrogación",
-          "quiero agendar una cita de gestación subrogada",
-          "necesito una cita para subrogación",
-          "quero agendar uma consulta de subrogação",
-          "quero agendar uma consulta de barriga de aluguel",
-          "quero marcar uma consulta de gestação de substituição"
-        ],
-        "disabled_in": [
-          "SC"
-        ],
-        "say": [
-          "Of course, let's schedule your appointment."
-        ],
-        "say_verbatim": false,
-        "execute": null,
-        "store": [
-          "[svc] = 'surrogacy'",
-          "[appt_svc] = 'surrogacy'"
-        ],
-        "capture": [],
-        "eval": "code",
-        "route": [
-          {
-            "target": "O__OP_BOOK_SUR",
+            "target": "O__OP_HUMAN_CHECK",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,
@@ -9635,12 +10010,14 @@
         "goal": [],
         "do": [],
         "trigger": [
-          "the contact asks to book, schedule or set up an appointment, consultation or call without naming a service, instead of answering what was just asked",
+          "the contact asks to book, schedule or set up an appointment, consultation or call, with or without naming a service, instead of answering what was just asked",
           "I want to schedule an appointment",
           "I want to book an appointment",
           "I would like to book a consultation",
           "I need an appointment",
           "can I schedule an appointment",
+          "I want to schedule an appointment for IVF",
+          "I want to book an appointment for surrogacy",
           "quiero agendar una cita",
           "quiero programar una cita",
           "quiero reservar una cita",
@@ -9652,28 +10029,28 @@
           "agendame una cita",
           "agéndame una cita",
           "podemos agendar una cita",
+          "quiero agendar una cita de fiv",
+          "quiero agendar una cita de subrogación",
           "quero agendar uma consulta",
           "quero marcar uma consulta",
           "quero agendar uma consultoria",
           "preciso de uma consulta",
-          "gostaria de agendar uma consulta"
+          "gostaria de agendar uma consulta",
+          "quero agendar uma consulta de fiv",
+          "quero agendar uma consulta de subrogação"
         ],
-        "disabled_in": [
-          "SC"
-        ],
+        "disabled_in": [],
         "say": [
           "Of course, let's schedule your appointment."
         ],
         "say_verbatim": false,
         "execute": null,
-        "store": [
-          "[appt_svc] = [svc]"
-        ],
+        "store": [],
         "capture": [],
         "eval": "code",
         "route": [
           {
-            "target": "O__OP_TO_SCHED",
+            "target": "O__OP_BOOK_IN",
             "condition_text": null,
             "is_mechanical": true,
             "python_expression": null,

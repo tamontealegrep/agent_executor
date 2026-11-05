@@ -139,6 +139,10 @@ def _respect_reminder() -> GraphNode:
     )
 
 
+_RESPECT_QUESTION_CHARS = 200
+"""How much of the agent's last message the respect check sees as context."""
+
+
 def is_disrespectful(llm_client: LLMClient, ctx: LLMContext) -> bool:
     """
     One model call: is the latest reply hateful, vulgar, insulting or otherwise rude?
@@ -150,7 +154,10 @@ def is_disrespectful(llm_client: LLMClient, ctx: LLMContext) -> bool:
     message = (ctx.last_user_message or "").strip()
     if not message:
         return False
-    question_context = f"The agent had just asked: {ctx.pending_question!r}\n\n" if ctx.pending_question else ""
+    # Only the end of what the agent said is context: a long message (an overview followed by a question)
+    # makes the model judge the topic instead of the customer's words.
+    asked = (ctx.pending_question or "").strip()[-_RESPECT_QUESTION_CHARS:]
+    question_context = f"The agent had just asked (context only): {asked!r}\n\n" if asked else ""
     prompt = (
         "A customer is chatting with a clinic's assistant. The conversation must stay cordial and respectful. "
         "Decide whether the customer's latest message is DISRESPECTFUL: it insults, name-calls or demeans a "
@@ -165,7 +172,10 @@ def is_disrespectful(llm_client: LLMClient, ctx: LLMContext) -> bool:
         "not disrespectful when it complains politely, declines or says it is not interested, asks to stop being "
         "contacted, or only mentions a sensitive subject (infertility, miscarriage, surrogacy, price, religion) "
         "without attacking anyone. Words that are vulgar only inside a name, a quotation of the clinic's own text "
-        "or a medical term are fine. When it is only frustration, answer OK.\n\n"
+        "or a medical term are fine. Saying that the offer or the service is a scam or a fraud ('esto es una "
+        "estafa', 'it is a scam') is a complaint about the thing, not an insult; calling people thieves or "
+        "scammers ('son unos estafadores', 'you are crooks') is an insult. Judge the words of the customer's "
+        "message itself, never the topic of the conversation. When it is only frustration, answer OK.\n\n"
         f"{question_context}"
         f"Customer's latest message: {message!r}\n\n"
         "Reply with just DISRESPECTFUL or OK."
