@@ -3145,7 +3145,7 @@
         "node_id": "O__OP_TO_SCHED",
         "node_type": "decision",
         "goal": [
-          "Single entrance to scheduling: it opens only after the contact accepted the data policy."
+          "Single entrance to scheduling. First it checks that the program (the calendar) fits who the contact says they are: the ROPA method is only for couples of women, and IVF alone does not include an egg donor or a surrogate, so it is not a path for men. It opens only after the contact accepted the data policy."
         ],
         "do": [],
         "trigger": [],
@@ -3157,6 +3157,48 @@
         "capture": [],
         "eval": "code",
         "route": [
+          {
+            "target": "O__OP_NF_SUR",
+            "condition_text": "IF [ropa] == 'yes' AND [profile] == 'couple_men' -> GO_TO: O__OP_NF_SUR",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes' and profile == 'couple_men'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_SUR",
+            "condition_text": "IF [ropa] == 'yes' AND [profile] == 'single_man' -> GO_TO: O__OP_NF_SUR",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes' and profile == 'single_man'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_IVF",
+            "condition_text": "IF [ropa] == 'yes' AND [profile] == 'single_woman' -> GO_TO: O__OP_NF_IVF",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes' and profile == 'single_woman'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_IVF",
+            "condition_text": "IF [ropa] == 'yes' AND [profile] == 'hetero' -> GO_TO: O__OP_NF_IVF",
+            "is_mechanical": true,
+            "python_expression": "ropa == 'yes' and profile == 'hetero'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_SUR",
+            "condition_text": "IF [appt_svc] == 'ivf' AND [profile] == 'couple_men' -> GO_TO: O__OP_NF_SUR",
+            "is_mechanical": true,
+            "python_expression": "appt_svc == 'ivf' and profile == 'couple_men'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_SUR",
+            "condition_text": "IF [appt_svc] == 'ivf' AND [profile] == 'single_man' -> GO_TO: O__OP_NF_SUR",
+            "is_mechanical": true,
+            "python_expression": "appt_svc == 'ivf' and profile == 'single_man'",
+            "reason": null
+          },
           {
             "target": "O__OP_TO_SC",
             "condition_text": "IF [o__data_consent] == 'yes' -> GO_TO: O__OP_TO_SC",
@@ -3174,6 +3216,266 @@
             "reason": null
           }
         ]
+      },
+      {
+        "node_id": "O__OP_NF_SUR",
+        "node_type": "question",
+        "goal": [
+          "The program the contact chose does not fit them: IVF alone (and the ROPA method) does not include an egg donor or a surrogate, so it is not a path for a couple of men or a man on his own. Say so kindly in one short message, say that the surrogacy program does cover their case, and ask if they want to continue with surrogacy.",
+          "Capture 'yes' when they agree to continue with surrogacy, 'no' when they do not."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "From what you have told me, in vitro fertilization on its own is not a path we offer for your situation, because it does not include an egg donor or a surrogate. Our surrogacy program does cover it. Would you like to continue with surrogacy?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "o__fit_ans",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_NF_SUR_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_NF_SUR_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Switch to surrogacy on yes, close on no, re-ask when the answer is unclear."
+        ],
+        "do": [
+          "[o__fit_try] = [o__fit_try] + 1"
+        ],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_NF_SUR_SET",
+            "condition_text": "IF [o__fit_ans] == 'yes' -> GO_TO: O__OP_NF_SUR_SET",
+            "is_mechanical": true,
+            "python_expression": "o__fit_ans == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_NO",
+            "condition_text": "IF [o__fit_ans] == 'no' -> GO_TO: O__OP_NF_NO",
+            "is_mechanical": true,
+            "python_expression": "o__fit_ans == 'no'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_NO",
+            "condition_text": "IF [o__fit_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_NF_NO",
+            "is_mechanical": true,
+            "python_expression": "o__fit_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_NF_SUR",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_NF_SUR_SET",
+        "node_type": "registration",
+        "goal": [
+          "The contact accepts surrogacy instead: switch the program and the calendar to surrogacy."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[ropa] = NULL",
+          "[svc] = 'surrogacy'",
+          "[appt_svc] = 'surrogacy'",
+          "[appt_minutes] = <SUR_APPOINTMENT_DURATION_MINUTES>",
+          "[o__fit_try] = 0"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_NF_IVF",
+        "node_type": "question",
+        "goal": [
+          "The ROPA method is only for couples of women, and the contact says they are not one: say so kindly in one short message, say that the in vitro fertilization program does fit their situation, and ask if they want to continue with IVF.",
+          "Capture 'yes' when they agree to continue with IVF, 'no' when they do not."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "From what you have told me, the ROPA method is not an option for you, because it is only for couples of women. Our in vitro fertilization program does fit your situation. Would you like to continue with in vitro fertilization?"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [
+          [
+            "o__fit_ans",
+            "Literal[yes, no]"
+          ]
+        ],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_NF_IVF_DEC",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_NF_IVF_DEC",
+        "node_type": "decision",
+        "goal": [
+          "Switch to IVF on yes, close on no, re-ask when the answer is unclear."
+        ],
+        "do": [
+          "[o__fit_try] = [o__fit_try] + 1"
+        ],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_NF_IVF_SET",
+            "condition_text": "IF [o__fit_ans] == 'yes' -> GO_TO: O__OP_NF_IVF_SET",
+            "is_mechanical": true,
+            "python_expression": "o__fit_ans == 'yes'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_NO",
+            "condition_text": "IF [o__fit_ans] == 'no' -> GO_TO: O__OP_NF_NO",
+            "is_mechanical": true,
+            "python_expression": "o__fit_ans == 'no'",
+            "reason": null
+          },
+          {
+            "target": "O__OP_NF_NO",
+            "condition_text": "IF [o__fit_try] >= <MAX_RETRY_ATTEMPTS> -> GO_TO: O__OP_NF_NO",
+            "is_mechanical": true,
+            "python_expression": "o__fit_try >= MAX_RETRY_ATTEMPTS",
+            "reason": null
+          }
+        ],
+        "fallback": [
+          {
+            "target": "O__OP_NF_IVF",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ]
+      },
+      {
+        "node_id": "O__OP_NF_IVF_SET",
+        "node_type": "registration",
+        "goal": [
+          "The contact accepts IVF instead of the ROPA method: switch the program and the calendar to IVF."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [
+          "[ropa] = NULL",
+          "[svc] = 'ivf'",
+          "[appt_svc] = 'ivf'",
+          "[appt_minutes] = <IVF_APPOINTMENT_DURATION_MINUTES>",
+          "[o__fit_try] = 0"
+        ],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "O__OP_TO_SCHED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
+      },
+      {
+        "node_id": "O__OP_NF_NO",
+        "node_type": "message",
+        "goal": [
+          "The contact does not want the program that fits them: say goodbye kindly and leave the door open."
+        ],
+        "do": [],
+        "trigger": [],
+        "disabled_in": [],
+        "say": [
+          "I understand. If you ever want to explore it, I will be glad to help. Have a great day!"
+        ],
+        "say_verbatim": false,
+        "execute": null,
+        "store": [],
+        "capture": [],
+        "eval": "code",
+        "route": [
+          {
+            "target": "MESSAGE_END_USER_NOT_INTERESTED",
+            "condition_text": null,
+            "is_mechanical": true,
+            "python_expression": null,
+            "reason": null
+          }
+        ],
+        "fallback": []
       },
       {
         "node_id": "O__OP_CONSENT",
@@ -4904,8 +5206,8 @@
         "eval": "code",
         "route": [
           {
-            "target": "SC__SC_ASK_TZ",
-            "condition_text": "IF [appt_svc] IS NOT NULL -> GO_TO: SC__SC_ASK_TZ",
+            "target": "O__OP_TO_SCHED",
+            "condition_text": "IF [appt_svc] IS NOT NULL -> GO_TO: O__OP_TO_SCHED",
             "is_mechanical": true,
             "python_expression": "appt_svc is not None",
             "reason": null
@@ -7852,7 +8154,8 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)",
+          "[profile] = who the contact says they are in their latest message, as exactly one of: couple_men (a couple of two men, a male same-sex couple), couple_women (a couple of two women), single_man (a man on his own, a single father), single_woman (a woman on her own, a single mother), hetero (a couple of a man and a woman); when the latest message says nothing about this, keep the current value of [profile]"
         ],
         "capture": [],
         "eval": "code",
@@ -7979,7 +8282,8 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)",
+          "[profile] = who the contact says they are in their latest message, as exactly one of: couple_men (a couple of two men, a male same-sex couple), couple_women (a couple of two women), single_man (a man on his own, a single father), single_woman (a woman on her own, a single mother), hetero (a couple of a man and a woman); when the latest message says nothing about this, keep the current value of [profile]"
         ],
         "capture": [],
         "eval": "code",
@@ -8035,7 +8339,8 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have a question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)",
+          "[profile] = who the contact says they are in their latest message, as exactly one of: couple_men (a couple of two men, a male same-sex couple), couple_women (a couple of two women), single_man (a man on his own, a single father), single_woman (a woman on her own, a single mother), hetero (a couple of a man and a woman); when the latest message says nothing about this, keep the current value of [profile]"
         ],
         "capture": [],
         "eval": "code",
@@ -8553,7 +8858,8 @@
         "say_verbatim": false,
         "execute": null,
         "store": [
-          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing more to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have another question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)"
+          "[kq__next_step] = what the latest user message is, as exactly one of: carrier (the message says that THEY THEMSELVES want to be the surrogate: carry a pregnancy for another family, rent or lend their womb, or apply to work as a gestational carrier; never someone who wants a surrogacy process for their own family, and never someone who only asks what surrogacy is), schedule (the message is explicitly about scheduling: they clearly say they want to schedule, book or continue to the appointment, or clearly say they have nothing more to ask: no, nothing else, that's all, I'm ready; a message that talks about anything else is not schedule), question (they only say they have another question or doubt without stating it: 'I have a question', 'tengo una duda', or a bare 'yes' to this question), ambiguous (a message with no content of its own that does not say whether they want to schedule or have something to ask: a bare 'ok', 'vale', 'bueno', 'mmm', 'maybe', 'tal vez', 'puede ser', 'no sé' or an emoji; these are ambiguous even though 'ok' can sound like agreement), ask (anything else that has content of its own, either a question or a request such as 'tell me about…', or a statement about themselves or their situation such as 'we are a same-sex couple'; a statement is answered like a question, and when in doubt between schedule and ask choose ask)",
+          "[profile] = who the contact says they are in their latest message, as exactly one of: couple_men (a couple of two men, a male same-sex couple), couple_women (a couple of two women), single_man (a man on his own, a single father), single_woman (a woman on her own, a single mother), hetero (a couple of a man and a woman); when the latest message says nothing about this, keep the current value of [profile]"
         ],
         "capture": [],
         "eval": "code",
