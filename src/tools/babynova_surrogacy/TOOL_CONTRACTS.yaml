@@ -275,3 +275,69 @@ tool_contracts:
       - name: errors
         required: true
         description: "Mensaje de error técnico si la clasificación falló. null en caso de éxito."
+
+  - name: surrogate_classification_v2
+    description: "Final classification v2 (babynova_surrogate_questions_text_v2). Source of truth for result."
+    notes:
+      - "MANDATORY EXECUTION TRIGGER: run it as soon as the questionnaire reaches the final classification step."
+      - "ARGUMENT RULE: never invent values; send an empty field when the data is missing."
+      - "ARGUMENT RULE: birth_type (cesarea or natural) is only needed when the last birth was less than 18 months ago; otherwise it can be empty."
+      - "ARGUMENT RULE: document_type is cedula_ciudadania, ppt or other. Only the first two are accepted."
+      - "RULES: age 18-38; allowed city; 1 to 4 children; last birth at least 18 months ago after a C-section or 12 months after a natural birth; at most 2 C-sections; preeclampsia rejects; abortions are only recorded; BMI 18.5-29.9; CC or PPT; no drug use; time available for appointments."
+      - "SOURCE OF TRUTH RULE: use result as the only verdict. Nationality is recorded but never rejects."
+    inputs:
+      - name: age
+        required: false
+        description: "Candidate age in years."
+      - name: city
+        required: false
+        description: "City of residence in Colombia."
+      - name: nationality
+        required: false
+        description: "Nationality (ISO 3166-1 alpha-3). Recorded only."
+      - name: number_of_children
+        required: false
+        description: "Number of children born alive."
+      - name: last_birth_date
+        required: false
+        description: "Date of the last birth, YYYY-MM-DD or YYYY/MM/DD."
+      - name: birth_type
+        required: false
+        description: "cesarea or natural. Required when the last birth was less than 18 months ago."
+      - name: number_of_c_sections
+        required: false
+        description: "Number of C-sections. Use 0 when none."
+      - name: abortions
+        required: false
+        description: "Whether the candidate has had an abortion. Recorded only."
+      - name: preeclampsia
+        required: false
+        description: "Whether the candidate has a history of preeclampsia."
+      - name: bmi
+        required: false
+        description: "BMI calculated by calculate_bmi."
+      - name: document_type
+        required: false
+        description: "cedula_ciudadania, ppt or other."
+      - name: drug_use
+        required: false
+        description: "Whether the candidate uses psychoactive substances."
+      - name: availability
+        required: false
+        description: "Whether the candidate has time to attend the medical appointments."
+    outputs:
+      - name: success
+        required: true
+        description: "Whether the classification ran correctly."
+      - name: result
+        required: true
+        description: "'Approved', 'Inconclusive', 'Rejected (Age)', 'Rejected (Timing)', 'Rejected (City)', 'Rejected (Children)', 'Rejected (C-Sections)', 'Rejected (Preeclampsia)', 'Rejected (BMI)', 'Rejected (Documentation)', 'Rejected (Drug Use)' or 'Rejected (Availability)'."
+      - name: eligibility_result
+        required: true
+        description: "approved, rejected or inconclusive."
+      - name: eligibility_reason
+        required: true
+        description: "Rejection reason, "missing_data (<field>)" naming the first missing field (for example "missing_data (last_birth_date)"), or none."
+      - name: errors
+        required: true
+        description: "Technical error message when the classification failed. null on success."

@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter
+from fastapi import APIRouter
 
 from tools.babynova_surrogacy.api.v1.endpoints import (
     book_appointment,
@@ -9,6 +9,7 @@ from tools.babynova_surrogacy.api.v1.endpoints import (
     health,
     get_available_slots,
     surrogate_classification,
+    surrogate_classification_v2,
 )
 from tools.utils.api.v1.endpoints import calculate_bmi, time_now
 
@@ -19,6 +20,7 @@ api_router.include_router(find_appointment.router, tags=["find_appointment"])
 api_router.include_router(cancel_appointment.router, tags=["cancel_appointment"])
 api_router.include_router(edit_appointment.router, tags=["edit_appointment"])
 api_router.include_router(surrogate_classification.router, tags=["surrogate_classification"])
+api_router.include_router(surrogate_classification_v2.router, tags=["surrogate_classification_v2"])
 api_router.include_router(check_documentation.router, tags=["check_documentation"])
 api_router.include_router(health.router, tags=["health"])
 
