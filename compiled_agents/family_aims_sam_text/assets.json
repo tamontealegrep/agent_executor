@@ -242,54 +242,6 @@
     "outputs": []
   },
   {
-    "name": "check_visa",
-    "description": "Checks if one or more nationalities require a visa to enter Colombia as a tourist.",
-    "notes": [
-      "MANDATORY EXECUTION TRIGGER: execute it when the contact mentions their nationality or asks if they need a visa to travel to Colombia.",
-      "ARGUMENTS: nationalities as CSV or list; prefer ISO 3166-1 alpha-3 (UPPERCASE).",
-      "SOURCE OF TRUTH RULE: use nationality, requires_visa, and conditional_visa (not an array) to decide the query result. Check conditional_visa for cases like China or India where a visa is required unless they have a USA/Schengen visa."
-    ],
-    "inputs": [
-      {
-        "name": "nationalities",
-        "required": true,
-        "description": "One or more nationalities to check. Examples: 'USA', 'China, India', ['Spain', 'AFG']."
-      }
-    ],
-    "outputs": [
-      {
-        "name": "success",
-        "required": true,
-        "description": "Boolean value indicating if the tool executed correctly."
-      },
-      {
-        "name": "nationality",
-        "required": true,
-        "description": "Name of the checked nationality(ies), cleared of spaces."
-      },
-      {
-        "name": "requires_visa",
-        "required": true,
-        "description": "Indicates if the person requires a visa to enter Colombia (bool)."
-      },
-      {
-        "name": "conditional_visa",
-        "required": true,
-        "description": "Indicates if the requirement is conditioned on a USA/Schengen visa (bool)."
-      },
-      {
-        "name": "summary",
-        "required": true,
-        "description": "Readable summary of the requirements found."
-      },
-      {
-        "name": "errors",
-        "required": true,
-        "description": "Technical error message if the query failed. null on success."
-      }
-    ]
-  },
-  {
     "name": "get_available_slots",
     "description": "Authorized availability tool; source of truth for days and times.",
     "notes": [
@@ -338,7 +290,7 @@
     "description": "Authorized booking tool; creates the appointment from a valid slot.",
     "notes": [
       "MANDATORY EXECUTION: on entering SC__SC_BOOK_I (IVF) or SC__SC_BOOK_S (SUR); requires prior get_available_slots.",
-      "ARGUMENTS: start_date = chosen slot.start_co; duration = <APPOINTMENT_DURATION_MINUTES>; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
+      "ARGUMENTS: start_date = chosen slot.start_co; duration = <IVF_APPOINTMENT_DURATION_MINUTES> for IVF or <SUR_APPOINTMENT_DURATION_MINUTES> for SUR; language in {'EN','ES','PT'}; iana_timezone = same as availability; calendar_type in {'IVF','SUR'}.",
       "SOURCE OF TRUTH: success determines creation; do not confirm before success == true and event_id != null."
     ],
     "inputs": [
@@ -355,7 +307,7 @@
       {
         "name": "duration",
         "required": true,
-        "description": "Appointment duration in minutes, sent as a string. Fixed value for this flow: <APPOINTMENT_DURATION_MINUTES>."
+        "description": "Appointment duration in minutes, sent as a string. Fixed value per calendar: <IVF_APPOINTMENT_DURATION_MINUTES> for IVF, <SUR_APPOINTMENT_DURATION_MINUTES> for SUR."
       },
       {
         "name": "language",
@@ -402,7 +354,7 @@
       {
         "name": "event_link",
         "required": true,
-        "description": "Link to the event in the calendar. null if the booking was not completed."
+        "description": "RSVP link: the link to the event in the calendar, where the contact confirms attendance. null if the booking was not completed."
       },
       {
         "name": "meet_link",
@@ -567,6 +519,45 @@
         "name": "errors",
         "required": true,
         "description": "Error message if the modification failed."
+      }
+    ]
+  },
+  {
+    "name": "kb_answer",
+    "description": "Authorized tool that answers an open question about the company and its services from the approved knowledge base. Its kb_answer output is the only source for the answer.",
+    "notes": [
+      "MANDATORY EXECUTION: on entering KQ__KQ_ANSWER.",
+      "ARGUMENTS: question is the contact's question and language is the conversation language.",
+      "history is added by the runtime; the flow never sets it.",
+      "SOURCE OF TRUTH: use kb_found as the only verdict. When kb_found is false the knowledge base does not cover the question: never answer it from your own knowledge."
+    ],
+    "inputs": [
+      {
+        "name": "question",
+        "required": true,
+        "description": "The contact's question, in their own words."
+      },
+      {
+        "name": "language",
+        "required": false,
+        "description": "Language of the answer: English, Spanish or Portuguese."
+      },
+      {
+        "name": "history",
+        "required": false,
+        "description": "Recent conversation, filled in by the runtime (never by the flow). It lets a follow-up question such as 'and how long does it take?' be understood."
+      }
+    ],
+    "outputs": [
+      {
+        "name": "kb_answer",
+        "required": true,
+        "description": "The answer written in the requested language. Empty when kb_found is false."
+      },
+      {
+        "name": "kb_found",
+        "required": true,
+        "description": "Whether the knowledge base answered the question (true/false)."
       }
     ]
   }
